@@ -7,11 +7,11 @@ SPDX-License-Identifier: GPL-2.0-or-later
 # Akonadi E2E Tests
 
 A [pytest][pytest]-based test suite for end-to-end testing of Akonadi Resources
-against various real servers.
+against real servers.
 
 Akonadi itself has a fairly exhaustive test-suite that performs various operations against
 a fully running Akonadi server. However, those tests only cover interaction with Akonadi itself
-and only use a special testing Akonadi Resource (the akonadi_knut_resource).
+and only use a special testing Akonadi Resource (the `akonadi_knut_resource`).
 
 Individual Akonadi Resources (like the IMAP Resource, or Google Groupware Resource) have a
 very limited subset of unit-tests, but there are no tests that would verify the interaction
@@ -24,6 +24,27 @@ and more. All that is done through [pytest fixtures][pytest-fixtures] to ensure 
 and teardown.
 
 ## Running
+
+This project uses the [`uv`][uv] Python project manager.
+
+**Install dependencies**
+```shell
+uv sync
+```
+
+**Run all tests including lints (any additional arguments will be passed to `pytest`)**:
+
+```shell
+uv run pytest
+```
+
+**Add new dependency**
+```shell
+uv add <package>
+```
+
+For further usage, see the [`uv` documentation][uv].
+
 
 ## Conventions
 
@@ -46,8 +67,10 @@ in this respository. This will automatically run all linters on each commit.
 
 
 
+[kdepim-runtime]: https://invent.kde.org/pim/kdepim-runtime
 [pytest]: https://pytest.org
 [pytest-fixtures]: https://docs.pytest.org/en/7.1.x/how-to/fixtures.html
+[uv]: https://docs.astral.sh/uv/
 [pep-8]: https://peps.python.org/pep-0008/
 [pep-257]: https://peps.python.org/pep-0257/
 [ruff]: https://docs.astral.sh/ruff/
