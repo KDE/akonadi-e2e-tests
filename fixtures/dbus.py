@@ -17,6 +17,7 @@ import pytest
 
 log = getLogger(__name__)
 
+
 class AkonadiDBus:
     """A high-level client for the Akonadi DBus service."""
 
@@ -25,7 +26,7 @@ class AkonadiDBus:
         self._client = client
 
     @classmethod
-    async def create(cls, instance_id: str) -> 'AkonadiDBus':
+    async def create(cls, instance_id: str) -> "AkonadiDBus":
         client = await MessageBus().connect()
 
         return AkonadiDBus(instance_id, client)
@@ -95,7 +96,7 @@ class AkonadiDBus:
                 log.debug("Name owner changed: %s -> %s", name, new_owner)
                 event.set()
 
-        interface.on_name_owner_changed(name_owner_changed) # type: ignore[attr-defined]
+        interface.on_name_owner_changed(name_owner_changed)  # type: ignore[attr-defined]
 
         resp = await self._client.call(
             Message(

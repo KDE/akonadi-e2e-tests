@@ -70,7 +70,7 @@ class CyrusServer:
                 dedent(f"""
             # This is the most minimal Cyrus config ever - it stores everything into /tmp/<instance_id>/cyrus
             # and accepts any credentials for login.
-                           
+
             # Root where cyrus will store everything
             configdirectory: {base_dir}/conf
             master_pid_file: {base_dir}/run/master.pid
@@ -100,7 +100,7 @@ class CyrusServer:
                 dedent(f"""
             START {{
                 recover       cmd="ctl_cyrusdb -r -C {imapd_conf_path}"
-            }}     
+            }}
 
             SERVICES {{
                 imap          cmd="imapd -C {imapd_conf_path}" listen="9993" prefork=0

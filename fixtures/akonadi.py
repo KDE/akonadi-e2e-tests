@@ -170,7 +170,7 @@ class AkonadiServer:
 
                 [%General]
                 Driver=QSQLITE
-        
+
                 [QSQLITE]
                 Name={self._env.db_path}
             """)

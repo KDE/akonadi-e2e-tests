@@ -5,6 +5,7 @@
 """
 Meta-tests that check that the infrastructure for the tests is working as expected.
 """
+
 from aioimaplib import aioimaplib  # type: ignore
 
 import pytest
@@ -15,6 +16,7 @@ from fixtures.cyrus import CyrusServer
 # Ensure that tests in this module are always run before any other modules, so that we
 # can ensure that the infrastructure is working as expected.
 testmark = pytest.mark.order(1)
+
 
 @pytest.mark.asyncio
 async def test_cyrus_ready(cyrus_server: CyrusServer):
