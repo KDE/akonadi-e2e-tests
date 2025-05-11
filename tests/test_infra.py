@@ -7,11 +7,10 @@ Meta-tests that check that the infrastructure for the tests is working as expect
 """
 
 from aioimaplib import aioimaplib  # type: ignore
+from src.akonadi import AkonadiServer, AkonadiDBus
+from src.imap import CyrusServer
 
 import pytest
-from fixtures.akonadi import AkonadiServer
-from fixtures.dbus import AkonadiDBus
-from fixtures.cyrus import CyrusServer
 
 # Ensure that tests in this module are always run before any other modules, so that we
 # can ensure that the infrastructure is working as expected.

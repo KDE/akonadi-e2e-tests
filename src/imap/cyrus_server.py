@@ -7,17 +7,15 @@ import grp
 from logging import getLogger
 import os
 from pathlib import Path
-from typing import AsyncGenerator
 from textwrap import dedent
-import pytest
 
 log = getLogger(__name__)
 
 
 class CyrusServer:
-    def __init__(self, instance_id: str):
+    def __init__(self, root_dir: Path):
         self._server = None
-        self._instance_id = instance_id
+        self._root_dir = root_dir
 
     @property
     def port(self) -> int:
@@ -26,12 +24,12 @@ class CyrusServer:
 
     async def start(self):
         log.info("Starting Cyrus-IMAP server")
-        os.makedirs(Path(f"/tmp/{self._instance_id}/cyrus/etc"), exist_ok=True)
-        os.makedirs(Path(f"/tmp/{self._instance_id}/cyrus/log"), exist_ok=True)
-        os.makedirs(Path(f"/tmp/{self._instance_id}/cyrus/run"), exist_ok=True)
+        os.makedirs(Path(f"/tmp/{self._root_dir}/cyrus/etc"), exist_ok=True)
+        os.makedirs(Path(f"/tmp/{self._root_dir}/cyrus/log"), exist_ok=True)
+        os.makedirs(Path(f"/tmp/{self._root_dir}/cyrus/run"), exist_ok=True)
         imapd_conf_path = self._write_imapd_conf()
         cyrus_conf_path = self._write_cyrus_conf(imapd_conf_path)
-        log_path = Path(f"/tmp/{self._instance_id}/cyrus/log/cyrus.log")
+        log_path = Path(f"/tmp/{self._root_dir}/cyrus/log/cyrus.log")
 
         self._server = await asyncio.create_subprocess_exec(
             "/usr/lib/cyrus/master",
@@ -63,7 +61,7 @@ class CyrusServer:
         log.info("Cyrus-IMAP server stopped")
 
     def _write_imapd_conf(self) -> Path:
-        base_dir = Path(f"/tmp/{self._instance_id}/cyrus/")
+        base_dir = Path(f"/tmp/{self._root_dir}/cyrus/")
         imapd_conf_path = Path(f"{base_dir}/etc/imapd.conf")
         with open(imapd_conf_path, "w", encoding="utf-8") as f:
             f.write(
@@ -94,7 +92,7 @@ class CyrusServer:
         return imapd_conf_path
 
     def _write_cyrus_conf(self, imapd_conf_path: Path) -> Path:
-        cyrus_conf_path = Path(f"/tmp/{self._instance_id}/cyrus/etc/cyrus.conf")
+        cyrus_conf_path = Path(f"/tmp/{self._root_dir}/cyrus/etc/cyrus.conf")
         with open(cyrus_conf_path, "w", encoding="utf-8") as f:
             f.write(
                 dedent(f"""
@@ -128,11 +126,3 @@ class CyrusServer:
                 await asyncio.sleep(0.1)
             except OSError:
                 await asyncio.sleep(0.1)
-
-
-@pytest.fixture
-async def cyrus_server(instance_id: str) -> AsyncGenerator[CyrusServer, None]:
-    server = CyrusServer(instance_id)
-    await server.start()
-    yield server
-    await server.stop()

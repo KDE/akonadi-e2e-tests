@@ -1,19 +1,10 @@
-# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
-#
-# SPDX-License-Identifier: GPL-2.0-or-later
-
-"""
-This module contains a high-level client for the Akonadi DBus service.
-and a Pytest fixture to create the client.
-"""
-
 import asyncio
 from logging import getLogger
-from typing import AsyncGenerator
-from dbus_next.aio import MessageBus
-from dbus_next.aio.proxy_object import ProxyInterface
+
 from dbus_next.message import Message
-import pytest
+from dbus_next.aio.message_bus import MessageBus
+from dbus_next.aio.proxy_object import ProxyInterface
+
 
 log = getLogger(__name__)
 
@@ -113,14 +104,3 @@ class AkonadiDBus:
             await event.wait()
         else:
             log.debug("Service %s has owner %s, continuing", service_name, resp.body[0])
-
-
-@pytest.fixture()
-async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
-    """A pytest fixture that creates a new AkonadiDBus client.
-
-    Depends on the `instance_id` fixture.
-    """
-    dbus = await AkonadiDBus.create(instance_id)
-    yield dbus
-    await dbus.disconnect()

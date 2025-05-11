@@ -1,66 +1,14 @@
-# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
-#
-# SPDX-License-Identifier: GPL-2.0-or-later
-
-"""Fixtures for Akonadi.
-
-This module contains fixtures for Akonadi. It provides a temporary directory for an
-Akonadi instance and a fixture that creates an Akonadi server.
-"""
-
 import asyncio
 from asyncio.subprocess import Process
 from logging import getLogger
 import os
 from pathlib import Path
-import tempfile
 from textwrap import dedent
-from typing import AsyncGenerator
 
-import pytest
-
-from fixtures.dbus import AkonadiDBus
+from akonadi.dbus import AkonadiDBus
+from akonadi.env import AkonadiEnv
 
 log = getLogger(__name__)
-
-
-class AkonadiEnv:
-    """Describes the environment for the Akonadi server.
-
-    Returns paths to various configuration files and directories.
-    """
-
-    def __init__(self, root_path: Path, instance_id: str) -> None:
-        self._root_path = root_path
-        self._instance_id = instance_id
-
-    @property
-    def instance_id(self) -> str:
-        return self._instance_id
-
-    @property
-    def xdg_config_home(self) -> Path:
-        return self._root_path / "config"
-
-    @property
-    def xdg_data_home(self) -> Path:
-        return self._root_path / "data"
-
-    @property
-    def akonadi_config_dir(self) -> Path:
-        return self.xdg_config_home / "akonadi/instance" / self._instance_id
-
-    @property
-    def akonadi_data_dir(self) -> Path:
-        return self.xdg_data_home / "akonadi/instance" / self._instance_id
-
-    @property
-    def akonadiserverrc_path(self) -> Path:
-        return self.akonadi_config_dir / "akonadiserverrc"
-
-    @property
-    def db_path(self) -> Path:
-        return self.akonadi_data_dir / "akonadi.db"
 
 
 class AkonadiServer:
@@ -143,14 +91,7 @@ class AkonadiServer:
         Returns:
             The environment variables to be used for the Akonadi server.
         """
-
-        environ = os.environ.copy()
-        environ["HOME"] = str(self._tempdir / "home")
-        environ["TMPDIR"] = str(self._tempdir / "tmp")
-        environ["XDG_CONFIG_HOME"] = str(self._tempdir / "config")
-        environ["XDG_CACHE_HOME"] = str(self._tempdir / "cache")
-        environ["XDG_DATA_HOME"] = str(self._tempdir / "data")
-        environ["AKONADI_INSTANCE"] = self._instance_id
+        environ = self._env.environ
         environ["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
 
         os.makedirs(self._env.akonadi_config_dir, exist_ok=True)
@@ -188,30 +129,3 @@ class AkonadiServer:
                 defaultnotebook=done
             """)
             )
-
-
-@pytest.fixture()
-async def instance_id() -> AsyncGenerator[str, None]:
-    """Pytest fixture that creates a temporary directory for an Akonadi instance.
-
-    Returns:
-        The instance ID of the Akonadi instance.
-    """
-    with tempfile.TemporaryDirectory(prefix="akonadi-e2e-", delete=False) as tempdir:
-        yield Path(tempdir).name
-
-
-@pytest.fixture()
-async def akonadi_server(
-    instance_id: str, dbus_client: AkonadiDBus
-) -> AsyncGenerator[AkonadiServer, None]:
-    """Pytest fixture that creates an Akonadi server.
-
-    Returns:
-        The Akonadi server.
-    """
-
-    server = AkonadiServer(instance_id, dbus_client)
-    await server.start()
-    yield server
-    await server.stop()
