@@ -12,6 +12,7 @@ requires-python = ">=3.13"
 # >are< the main usage of this package, we list them here.
 dependencies = [
     "aioimaplib>=2.0.1",
+    "camel-converter>=4.0.1",
     "dbus-next>=0.2.3",
     "mypy>=1.15.0",
     "pydantic>=2.11.4",
@@ -25,6 +26,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "session"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]

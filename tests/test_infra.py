@@ -7,14 +7,10 @@ Meta-tests that check that the infrastructure for the tests is working as expect
 """
 
 from aioimaplib import aioimaplib  # type: ignore
-from src.akonadi import AkonadiServer, AkonadiDBus
-from src.imap import CyrusServer
-
 import pytest
 
-# Ensure that tests in this module are always run before any other modules, so that we
-# can ensure that the infrastructure is working as expected.
-testmark = pytest.mark.order(1)
+from src.akonadi import AkonadiServer, AkonadiDBus, AkonadiClient
+from src.imap import CyrusServer
 
 
 @pytest.mark.asyncio
@@ -31,5 +27,15 @@ async def test_akonadi_server_starts(
     akonadi_server: AkonadiServer, dbus_client: AkonadiDBus
 ) -> None:
     assert await akonadi_server.is_running()
-    path: str = await dbus_client.server_interface.call_server_path()  # type: ignore[attr-defined]
-    assert path.startswith("/tmp/akonadi-e2e-test-")
+    iface = await dbus_client.server_interface()
+    path: str = await iface.call_server_path()  # type: ignore[attr-defined]
+    assert path.startswith("/tmp/akonadi-e2e-")
+
+
+@pytest.mark.asyncio
+async def test_akonadi_client(akonadi_client: AkonadiClient) -> None:
+    collections = await akonadi_client.list_collections()
+    assert len(collections) == 2
+    assert collections[0].id == 0  # root collection
+    assert collections[1].id == 1  # search collection
+    assert collections[1].name == "Search"

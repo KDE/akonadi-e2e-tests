@@ -2,8 +2,6 @@ import asyncio
 from logging import getLogger
 from .env import AkonadiEnv
 from .model import Collection, Item
-from .model.collection import ListCollectionsResult
-
 
 log = getLogger(__name__)
 
@@ -31,20 +29,34 @@ class AkonadiClient:
 
     async def collection_by_id(self, collection_id: int) -> Collection | None:
         return Collection.model_validate_json(
-            await self._execute_client(f"info -c --json {collection_id}")
+            await self._execute_client(f"info -c --json {collection_id}"),
+            by_alias=True,
         )
 
     async def list_collections(self, parent_id: int | None = None) -> list[Collection]:
-        return ListCollectionsResult.model_validate_json(
-            await self._execute_client(f"list -c -l --json {parent_id or 0}")
-        ).collections
+        root = Collection.model_validate_json(
+            await self._execute_client(f"list -c -l -R --json {parent_id or 0}"),
+            by_alias=True,
+        )
+
+        def flatten(
+            collections: list[Collection], parent: Collection
+        ) -> list[Collection]:
+            r = [parent]
+            for child in parent.child_collections:
+                r.extend(flatten(collections, child))
+            return r
+
+        return flatten(root.child_collections, root)
 
     async def item_by_id(self, item_id: int) -> Item | None:
         return Item.model_validate_json(
-            await self._execute_client(f"info -i --json {item_id}")
+            await self._execute_client(f"info -i --json {item_id}"),
+            by_alias=True,
         )
 
     async def list_items(self, collection_id: int) -> list[Item]:
         return Collection.model_validate_json(
-            await self._execute_client(f"list -i -l --json {collection_id}")
+            await self._execute_client(f"list -i -l --json {collection_id}"),
+            by_alias=True,
         ).child_items

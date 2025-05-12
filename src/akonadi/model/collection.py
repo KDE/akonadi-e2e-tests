@@ -1,58 +1,32 @@
 from enum import Flag
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict
+from camel_converter import to_camel
 
 from .item import Item
 
 
 class Rights(Flag):
-    READ_ONLY = (0,)
-    CAN_CHANGE_ITEM = 0x1
-    CAN_CREATE_ITEM = 0x2
-    CAN_DELETE_ITEM = 0x4
-    CAN_CHANGE_COLLECTION = 0x8
-    CAN_CREATE_COLLECTION = 0x10
-    CAN_DELETE_COLLECTION = 0x20
-    CAN_LINK_ITEM = 0x40
-    CAN_UNLINK_ITEM = 0x80
+    READ_ONLY = "ReadOnly"
+    CAN_CHANGE_ITEM = "CanChangeItem"
+    CAN_CREATE_ITEM = "CanCreateItem"
+    CAN_DELETE_ITEM = "CanDeleteItem"
+    CAN_CHANGE_COLLECTION = "CanChangeCollection"
+    CAN_CREATE_COLLECTION = "CanCreateCollection"
+    CAN_DELETE_COLLECTION = "CanDeleteCollection"
+    CAN_LINK_ITEM = "CanLinkItem"
+    CAN_UNLINK_ITEM = "CanUnlinkItem"
 
 
 class Collection(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
     id: int
     name: str
     remote_id: str | None = None
     parent_id: int
     resource: str
     content_mime_types: list[str]
-    rights: Rights
+    rights: set[Rights]
     is_virtual: bool
     child_collections: list["Collection"]
     child_items: list[Item]
-
-    @classmethod
-    @field_validator("rights", mode="before")
-    def validate_rights(cls, v: list[str]) -> Rights:
-        r = set(v)
-        rights = Rights.READ_ONLY
-        if "ReadOnly" in r:
-            rights |= Rights.READ_ONLY
-        if "CanChangeItem" in r:
-            rights |= Rights.CAN_CHANGE_ITEM
-        if "CanCreateItem" in r:
-            rights |= Rights.CAN_CREATE_ITEM
-        if "CanDeleteItem" in r:
-            rights |= Rights.CAN_DELETE_ITEM
-        if "CanChangeCollection" in r:
-            rights |= Rights.CAN_CHANGE_COLLECTION
-        if "CanCreateCollection" in r:
-            rights |= Rights.CAN_CREATE_COLLECTION
-        if "CanDeleteCollection" in r:
-            rights |= Rights.CAN_DELETE_COLLECTION
-        return rights
-
-
-class ListCollectionsResult(BaseModel):
-    collections: list[Collection]
-
-
-class ListItemsResult(BaseModel):
-    items: list[Item]
