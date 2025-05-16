@@ -1,9 +1,19 @@
 import asyncio
 from logging import getLogger
-from .env import AkonadiEnv
-from .model import Collection, Item
+from src.akonadi.env import AkonadiEnv
+from src.akonadi.model import Collection, Item, Agent, AgentStatus, ListAgentsResult
 
 log = getLogger(__name__)
+
+__all__ = [
+    "AkonadiClient",
+    "ClientError",
+    "Collection",
+    "Item",
+    "Agent",
+    "AgentStatus",
+    "ListAgentsResult",
+]
 
 
 class ClientError(Exception):

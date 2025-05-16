@@ -9,7 +9,11 @@ Meta-tests that check that the infrastructure for the tests is working as expect
 from aioimaplib import aioimaplib  # type: ignore
 import pytest
 
-from src.akonadi import AkonadiServer, AkonadiDBus, AkonadiClient
+from src.akonadi.server import AkonadiServer
+from src.akonadi.client import AkonadiClient
+from src.akonadi.imap_resource import ImapResource
+from src.akonadi.dbus.client import AkonadiDBus
+from src.akonadi.client import AgentStatus
 from src.imap import CyrusServer
 
 
@@ -27,8 +31,7 @@ async def test_akonadi_server_starts(
     akonadi_server: AkonadiServer, dbus_client: AkonadiDBus
 ) -> None:
     assert await akonadi_server.is_running()
-    iface = await dbus_client.server_interface()
-    path: str = await iface.call_server_path()  # type: ignore[attr-defined]
+    path = await dbus_client.server_interface.server_path()
     assert path.startswith("/tmp/akonadi-e2e-")
 
 
