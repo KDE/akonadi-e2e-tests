@@ -60,6 +60,19 @@ async def akonadi_client(
     yield client
 
 
+@pytest.fixture()
+async def imap_resource(
+    dbus_client: AkonadiDBus,
+    akonadi_server: AkonadiServer,
+) -> AsyncGenerator[ImapResource, None]:
+    # We need running Akonadi in order to create a new resource
+    assert await akonadi_server.is_running()
+
+    resource = await ImapResource.create(dbus_client)
+    yield resource
+    # We don't really need to do anything here, Akonadi will stop the resource for us
+
+
 @pytest.fixture
 async def cyrus_server(instance_id: str) -> AsyncGenerator[CyrusServer, None]:
     server = CyrusServer(Path(f"/tmp/{instance_id}"))

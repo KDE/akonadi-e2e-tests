@@ -25,6 +25,7 @@ class AkonadiClient:
         self._env = env
 
     async def _execute_client(self, args: str) -> bytes:
+        log.debug("Executing akonadiclient %s", args)
         client = await asyncio.create_subprocess_shell(
             f"akonadiclient {args}",
             env=self._env.environ,
@@ -70,3 +71,16 @@ class AkonadiClient:
             await self._execute_client(f"list -i -l --json {collection_id}"),
             by_alias=True,
         ).child_items
+
+    async def list_agents(self) -> list[Agent]:
+        return ListAgentsResult.model_validate_json(
+            await self._execute_client("agents --list --json"),
+            by_alias=True,
+        ).root
+
+    async def agent_by_identifier(self, identifier: str) -> Agent | None:
+        agents = ListAgentsResult.model_validate_json(
+            await self._execute_client(f"agents --info --json {identifier}"),
+            by_alias=True,
+        ).root
+        return agents[0] if agents else None

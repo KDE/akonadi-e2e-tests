@@ -36,9 +36,22 @@ async def test_akonadi_server_starts(
 
 
 @pytest.mark.asyncio
-async def test_akonadi_client(akonadi_client: AkonadiClient) -> None:
+async def test_akonadi_client_list_collections(akonadi_client: AkonadiClient) -> None:
     collections = await akonadi_client.list_collections()
     assert len(collections) == 2
     assert collections[0].id == 0  # root collection
     assert collections[1].id == 1  # search collection
     assert collections[1].name == "Search"
+
+
+@pytest.mark.asyncio
+async def test_akonadi_client_list_agents(
+    akonadi_client: AkonadiClient, imap_resource: ImapResource
+) -> None:
+    assert imap_resource.instance_id == "akonadi_imap_resource_0"
+    agents = await akonadi_client.list_agents()
+    assert len(agents) == 1
+    assert agents[0].identifier == "akonadi_imap_resource_0"
+    assert agents[0].name == "IMAP E-Mail Server"
+    assert agents[0].status == AgentStatus.IDLE
+    assert agents[0].type == "akonadi_imap_resource"
