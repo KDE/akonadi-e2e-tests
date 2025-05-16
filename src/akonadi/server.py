@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 from textwrap import dedent
 
-from akonadi.dbus import AkonadiDBus
-from akonadi.env import AkonadiEnv
+from src.akonadi.dbus.client import AkonadiDBus
+from src.akonadi.env import AkonadiEnv
 
 log = getLogger(__name__)
 
@@ -56,6 +56,7 @@ class AkonadiServer:
             raise
 
         await self._dbus.wait_for_service(self._dbus.akonadi_server_service_name, 10)
+
         log.info("Akonadi Server started")
 
     async def stop(self) -> None:
@@ -65,8 +66,7 @@ class AkonadiServer:
         """
         log.info("Stopping Akonadi Server")
         if self._akonadi_control is not None:
-            control_iface = await self._dbus.control_interface()
-            await control_iface.call_shutdown()  # type: ignore
+            await self._dbus.control_interface.shutdown()
 
             await self._akonadi_control.wait()
         log.info("Akonadi Server stopped")

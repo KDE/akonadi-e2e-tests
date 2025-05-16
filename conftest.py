@@ -7,7 +7,10 @@ from typing import AsyncGenerator
 import tempfile
 import pytest
 
-from src.akonadi import AkonadiDBus, AkonadiServer, AkonadiClient
+from src.akonadi.server import AkonadiServer
+from src.akonadi.client import AkonadiClient
+from src.akonadi.imap_resource import ImapResource
+from src.akonadi.dbus.client import AkonadiDBus
 from src.imap.cyrus_server import CyrusServer
 
 
@@ -28,9 +31,9 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
 
     Depends on the `instance_id` fixture.
     """
-    dbus = await AkonadiDBus.create(instance_id)
+    dbus = AkonadiDBus(instance_id)
     yield dbus
-    await dbus.disconnect()
+    dbus.close()
 
 
 @pytest.fixture()
