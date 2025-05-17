@@ -1,5 +1,6 @@
 import asyncio
 from asyncio.subprocess import Process
+from asyncio.streams import StreamReader
 from logging import getLogger
 import os
 from pathlib import Path
@@ -42,6 +43,19 @@ class AkonadiServer:
             env=environ,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+        )
+
+        async def read_stdout(stream: StreamReader | None) -> None:
+            while stream is not None:
+                line = await stream.readline()
+                if line:
+                    log.debug("akonadi_control: %s", line.decode().strip())
+                else:
+                    log.debug("akonadi_control stdout closed")
+                    break
+
+        self._akonadi_control_reader = asyncio.create_task(
+            read_stdout(self._akonadi_control.stderr)
         )
 
         try:
@@ -93,6 +107,7 @@ class AkonadiServer:
         """
         environ = self._env.environ
         environ["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
+        environ["QT_LOGGING_RULES"] = "*.debug=true;qt.*.debug=false"
 
         os.makedirs(self._env.akonadi_config_dir, exist_ok=True)
         os.makedirs(self._env.akonadi_data_dir, exist_ok=True)

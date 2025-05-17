@@ -7,6 +7,7 @@ Meta-tests that check that the infrastructure for the tests is working as expect
 """
 
 from aioimaplib import aioimaplib  # type: ignore
+from logging import getLogger
 import pytest
 
 from src.akonadi.server import AkonadiServer
@@ -15,6 +16,8 @@ from src.akonadi.imap_resource import ImapResource
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.client import AgentStatus
 from src.imap import CyrusServer
+
+log = getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -52,6 +55,17 @@ async def test_akonadi_client_list_agents(
     agents = await akonadi_client.list_agents()
     assert len(agents) == 1
     assert agents[0].identifier == "akonadi_imap_resource_0"
-    assert agents[0].name == "IMAP E-Mail Server"
+    assert agents[0].name == "IMAP Account"
     assert agents[0].status == AgentStatus.IDLE
     assert agents[0].type == "akonadi_imap_resource"
+
+
+@pytest.mark.asyncio
+async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
+    assert imap_resource.instance_id == "akonadi_imap_resource_0"
+    collections = await imap_resource.list_collections()
+    assert len(collections) == 5
+
+    await imap_resource.sync_collection("INBOX")
+    items = await imap_resource.list_items("INBOX")
+    assert len(items) == 2

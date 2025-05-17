@@ -1,6 +1,6 @@
 import asyncio
 from logging import getLogger
-from sdbus.default_bus import sd_bus_open
+from sdbus import SdBus, sd_bus_open
 from sdbus.exceptions import DbusNameHasNoOwnerError
 from sdbus_async.dbus_daemon import FreedesktopDbus
 
@@ -42,12 +42,22 @@ class AkonadiDBus:
         )
 
     @property
+    def client(self) -> SdBus:
+        return self._client
+
+    @property
     def akonadi_server_service_name(self) -> str:
         return f"org.freedesktop.Akonadi.{self._instance_id}"
 
     @property
     def akonadi_control_service_name(self) -> str:
         return f"org.freedesktop.Akonadi.Control.{self._instance_id}"
+
+    def resource_service_name(self, instance_id: str) -> str:
+        return f"org.freedesktop.Akonadi.Resource.{instance_id}.{self._instance_id}"
+
+    def agent_service_name(self, instance_id: str) -> str:
+        return f"org.freedesktop.Akonadi.Agent.{instance_id}.{self._instance_id}"
 
     @property
     def control_interface(self) -> OrgFreedesktopAkonadiControlManagerInterface:
@@ -77,7 +87,7 @@ class AkonadiDBus:
         self, instance_name: str
     ) -> OrgFreedesktopAkonadiAgentControlInterface:
         return OrgFreedesktopAkonadiAgentControlInterface.new_proxy(
-            f"org.freedesktop.Akonadi.Agent.{instance_name}.{self._instance_id}",
+            self.agent_service_name(instance_name),
             "/",
             self._client,
         )
@@ -86,12 +96,13 @@ class AkonadiDBus:
         self, instance_name: str
     ) -> OrgFreedesktopAkonadiResourceInterface:
         return OrgFreedesktopAkonadiResourceInterface.new_proxy(
-            f"org.freedesktop.Akonadi.Resource.{instance_name}.{self._instance_id}",
+            self.resource_service_name(instance_name),
             "/",
             self._client,
         )
 
     async def _wait_for_name_owner(self, service_name: str) -> None:
+        log.debug("Waiting for name owner of %s", service_name)
         dbus = FreedesktopDbus.new_proxy(
             "org.freedesktop.DBus",
             "/org/freedesktop/DBus",

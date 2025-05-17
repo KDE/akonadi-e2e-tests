@@ -3,11 +3,18 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
+import random
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 import grp
 from logging import getLogger
 import os
 from pathlib import Path
 from textwrap import dedent
+
+from aioimaplib import IMAP4  # type: ignore
+import psutil
+import pytest
 
 log = getLogger(__name__)
 
@@ -16,11 +23,27 @@ class CyrusServer:
     def __init__(self, root_dir: Path):
         self._server = None
         self._root_dir = root_dir
+        self._port = -1
 
     @property
     def port(self) -> int:
-        # TODO: Randomize this
-        return 9993
+        if self._port == -1:
+            for _ in range(10):
+                port = random.randint(10000, 65535)
+                # FIXME: This is still racy: someone else could take up the port after this check
+                # and before cyrus' master starts listening on it. It should be rare enough, though,
+                # to allow for this race condition, and honestly I don't see a better way to do this
+                # right now.
+                if not any(
+                    conn.laddr[1] == port for conn in psutil.net_connections(kind="tcp")
+                ):
+                    log.debug("Selected port %d for Cyrus-IMAP server", port)
+                    self._port = port
+                    break
+            else:
+                pytest.fail("Failed to find a free port")
+
+        return self._port
 
     async def start(self):
         log.info("Starting Cyrus-IMAP server")
@@ -34,8 +57,8 @@ class CyrusServer:
         self._server = await asyncio.create_subprocess_exec(
             "/usr/lib/cyrus/master",
             *["-C", imapd_conf_path, "-M", cyrus_conf_path, "-L", log_path],
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
         )
 
         try:
@@ -47,16 +70,20 @@ class CyrusServer:
             self._server.kill()
             raise
 
-        log.info("Cyrus-IMAP server started")
+        log.info("Cyrus-IMAP server started on port %d", self.port)
 
     async def stop(self):
         log.info("Stopping Cyrus-IMAP server")
-        self._server.terminate()
         try:
+            # FIXME: Using .terminate() sends SIGTERM to `uv`, which forwards it to the
+            # cyrus' master process, but also terminates itself.
+            self._server.kill()
             await asyncio.wait_for(self._server.wait(), timeout=10)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log.warning("Cyrus-IMAP server did not terminate in time, killing it")
             self._server.kill()
+        except BaseException as e:
+            log.warning("Failed to stop Cyrus-IMAP server: %s", e)
 
         log.info("Cyrus-IMAP server stopped")
 
@@ -101,7 +128,7 @@ class CyrusServer:
             }}
 
             SERVICES {{
-                imap          cmd="imapd -C {imapd_conf_path}" listen="9993" prefork=0
+                imap          cmd="imapd -C {imapd_conf_path}" listen="{self.port}" prefork=0
             }}
 
             EVENTS {{
@@ -126,3 +153,43 @@ class CyrusServer:
                 await asyncio.sleep(0.1)
             except OSError:
                 await asyncio.sleep(0.1)
+
+
+async def prepare_test_environment(
+    username: str, password: str, server: CyrusServer
+) -> None:
+    log.info("Populating IMAP server for user %s", username)
+    imap = IMAP4(host="127.0.0.1", port=server.port)
+    await imap.wait_hello_from_server()
+    resp = await imap.login(username, password)
+    assert resp.result == "OK"
+
+    for name in ["INBOX", "Trash", "Sent", "Templates"]:
+        resp = await imap.create(name)
+        assert resp.result == "OK"
+
+    msg = EmailMessage()
+    msg.set_content("Hello, world!\r\n")
+    msg["Subject"] = "Test message"
+    msg["From"] = "test1@example.com"
+    msg["To"] = "test@example.com"
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid()
+    resp = await imap.append(
+        msg.as_bytes().replace(b"\n", b"\r\n"), "INBOX", flags="\\Seen"
+    )
+    assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
+
+    msg = EmailMessage()
+    msg.set_content("Hello, world!\r\n")
+    msg["Subject"] = "Test message 2"
+    msg["From"] = "test2@example.com"
+    msg["To"] = "test@example.com"
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid()
+    resp = await imap.append(msg.as_bytes().replace(b"\n", b"\r\n"), "INBOX")
+    assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
+
+    log.info("IMAP server populated with messages")
+
+    await imap.logout()

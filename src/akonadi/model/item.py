@@ -7,10 +7,7 @@ class Item(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     id: int
-    name: str
     remote_id: str | None = None
-    parent_id: int
-    resource: str
     gid: str | None = None
     mime_type: str
     size: int

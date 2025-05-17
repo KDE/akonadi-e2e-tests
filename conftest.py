@@ -11,7 +11,7 @@ from src.akonadi.server import AkonadiServer
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.dbus.client import AkonadiDBus
-from src.imap.cyrus_server import CyrusServer
+from src.imap.cyrus_server import CyrusServer, prepare_test_environment
 
 
 @pytest.fixture()
@@ -34,6 +34,26 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
     dbus = AkonadiDBus(instance_id)
     yield dbus
     dbus.close()
+
+
+@pytest.fixture
+async def cyrus_server(instance_id: str) -> AsyncGenerator[CyrusServer, None]:
+    server = CyrusServer(Path(f"/tmp/{instance_id}"))
+    await server.start()
+    yield server
+    await server.stop()
+
+
+@pytest.fixture()
+async def cyrus_imap_credentials(
+    cyrus_server: CyrusServer,
+) -> AsyncGenerator[tuple[str, str], None]:
+    username = "test"
+    password = "test"
+
+    await prepare_test_environment(username, password, cyrus_server)
+
+    yield (username, password)
 
 
 @pytest.fixture()
@@ -62,20 +82,18 @@ async def akonadi_client(
 
 @pytest.fixture()
 async def imap_resource(
+    akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
-    akonadi_server: AkonadiServer,
+    cyrus_server: CyrusServer,
+    cyrus_imap_credentials: tuple[str, str],
 ) -> AsyncGenerator[ImapResource, None]:
-    # We need running Akonadi in order to create a new resource
-    assert await akonadi_server.is_running()
-
-    resource = await ImapResource.create(dbus_client)
+    resource = await ImapResource.create(akonadi_client, dbus_client)
+    await resource.configure(
+        host="127.0.0.1",
+        port=cyrus_server.port,
+        username=cyrus_imap_credentials[0],
+        password=cyrus_imap_credentials[1],
+    )
+    await resource.synchronize()
     yield resource
     # We don't really need to do anything here, Akonadi will stop the resource for us
-
-
-@pytest.fixture
-async def cyrus_server(instance_id: str) -> AsyncGenerator[CyrusServer, None]:
-    server = CyrusServer(Path(f"/tmp/{instance_id}"))
-    await server.start()
-    yield server
-    await server.stop()
