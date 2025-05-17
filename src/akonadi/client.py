@@ -44,9 +44,13 @@ class AkonadiClient:
             by_alias=True,
         )
 
-    async def list_collections(self, parent_id: int | None = None) -> list[Collection]:
+    async def list_collections(
+        self, parent_id: int | None = None, first_level: bool = False
+    ) -> list[Collection]:
         root = Collection.model_validate_json(
-            await self._execute_client(f"list -c -l -R --json {parent_id or 0}"),
+            await self._execute_client(
+                f"list -c -l {'-R' if not first_level else ''} --json {parent_id or 0}"
+            ),
             by_alias=True,
         )
 
