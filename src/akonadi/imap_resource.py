@@ -1,3 +1,7 @@
+# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from logging import getLogger
 import pytest
 from sdbus import DbusInterfaceCommonAsync, dbus_method_async, DbusUnprivilegedFlag

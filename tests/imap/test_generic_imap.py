@@ -1,3 +1,7 @@
+# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import pytest
 from src.akonadi.imap_resource import ImapResource
 from src.imap.client import ImapClient

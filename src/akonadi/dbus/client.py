@@ -1,3 +1,7 @@
+# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import asyncio
 from logging import getLogger
 from sdbus import SdBus, sd_bus_open

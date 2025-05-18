@@ -1,3 +1,7 @@
+# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from camel_converter import to_camel

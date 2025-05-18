@@ -1,3 +1,7 @@
+# SPDX-FileContributor: Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from dataclasses import dataclass
 from datetime import datetime
 from email.message import EmailMessage
@@ -18,6 +22,8 @@ class Mailbox:
 
     @classmethod
     def from_list_response(cls, response: str) -> "Mailbox":
+        # This is a rather naive parser - its purpose is to be able to parse enough
+        # of the response so that we can use it in the tests.
         pos = 0
         flags: list[str] = []
         if response[pos] == "(":
@@ -62,6 +68,8 @@ class MailboxInfo:
 
     @classmethod
     def from_select_response(cls, response: list[str]) -> "MailboxInfo":
+        # This is a rather naive and simplistic parser - its purpose is to be able to
+        # parse enough of the response so that we can use it in the tests.
         flags: list[str] = []
         permanent_flags: list[str] = []
         exists = 0
@@ -124,6 +132,8 @@ class Message:
 
     @classmethod
     def from_fetch_response(cls, lines: list[bytes]) -> "Message":
+        # This is a rather naive parser - its purpose is to be able to parse enough
+        # of the response so that we can use it in the tests.
         response = lines[0]
         if len(lines) > 1:
             response += lines[-1]
