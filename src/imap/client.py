@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-
+from datetime import datetime
+from email.message import EmailMessage
+from email.parser import BytesParser
 from aioimaplib import IMAP4, Response  # type: ignore
 
 
 class ImapError(Exception):
     def __init__(self, resp: Response):
-        super().__init__(f"IMAP error: {resp.result}: {resp.lines[0].encode('utf-8')}")
+        super().__init__(f"IMAP error: {resp.result}: {resp.lines[0].decode('utf-8')}")
 
 
 @dataclass
@@ -110,6 +112,78 @@ class MailboxInfo:
         )
 
 
+@dataclass
+class Message:
+    seq: int
+    uid: int
+    flags: list[str]
+    size: int
+    internaldate: datetime
+
+    body: EmailMessage | None = None
+
+    @classmethod
+    def from_fetch_response(cls, lines: list[bytes]) -> "Message":
+        response = lines[0]
+        if len(lines) > 1:
+            response += lines[-1]
+
+        pos = 0
+        sep = response.find(b" ")
+        seq = int(response[:sep])
+        pos = sep + 1
+        response = response[pos:].removeprefix(b"FETCH (")
+        response = response.removesuffix(b")")
+
+        flags: list[str] = []
+        size = 0
+        uid = 0
+        internaldate: datetime
+        body: EmailMessage | None = None
+        while True:
+            sep = response.find(b" ")
+            if sep == -1:
+                break
+            attr = response[:sep].strip()
+            response = response[sep + 1 :].strip()
+            if response.startswith(b"("):
+                pos = response.find(b")")
+                value = response[1:pos].strip()
+                response = response[pos + 1 :].strip()
+            elif response.startswith(b'"'):
+                pos = response.find(b'"', 1)
+                value = response[1:pos].strip()
+                response = response[pos + 1 :].strip()
+            elif response.startswith(b"{"):
+                pos = response.find(b"}")
+                value = response[1:pos].strip()
+                response = response[pos + 1 :].strip()
+            else:
+                sep = response.find(b" ")
+                if sep == -1:
+                    sep = len(response)
+                value = response[:sep].strip()
+                response = response[sep + 1 :].strip()
+
+            if attr == b"FLAGS":
+                if value:
+                    flags = list(map(lambda f: f.decode("utf-8"), value.split(b" ")))
+            elif attr == b"RFC822.SIZE":
+                size = int(value)
+            elif attr == b"INTERNALDATE":
+                internaldate = datetime.strptime(
+                    value.decode("utf-8"), "%d-%b-%Y %H:%M:%S %z"
+                )
+            elif attr == b"UID":
+                uid = int(value)
+            elif attr == b"BODY[]":
+                literal_size = int(value)
+                literal = lines[1][0:literal_size]
+                body = BytesParser(EmailMessage).parsebytes(literal)
+
+        return cls(seq, uid, flags, size, internaldate, body)
+
+
 class ImapClient:
     def __init__(self, host: str, port: int):
         self.host = host
@@ -128,7 +202,7 @@ class ImapClient:
     async def list_mailboxes(self) -> list[Mailbox]:
         assert self._client is not None
         resp = await self._client.list("", "*")
-        if resp.code != "OK":
+        if resp.result != "OK":
             raise ImapError(resp)
 
         return [Mailbox.from_list_response(r) for r in resp.data]
@@ -136,7 +210,87 @@ class ImapClient:
     async def select_mailbox(self, mailbox: str) -> MailboxInfo:
         assert self._client is not None
         resp = await self._client.select(mailbox)
-        if resp.code != "OK":
+        if resp.result != "OK":
             raise ImapError(resp)
 
         return MailboxInfo.from_select_response(resp.lines)
+
+    async def list_messages(
+        self, mailbox: Mailbox | str, with_body: bool = False
+    ) -> list[Message]:
+        assert self._client is not None
+        if isinstance(mailbox, Mailbox):
+            mailbox = mailbox.name
+
+        resp = await self._client.select(mailbox)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        parts = ["UID", "FLAGS", "INTERNALDATE", "RFC822.SIZE"]
+        if with_body:
+            parts.append("BODY.PEEK[]")
+
+        resp = await self._client.fetch("1:*", f"({' '.join(parts)})")
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        lines_per_msg = 3 if with_body else 1
+
+        messages: list[Message] = []
+        for i in range(0, len(resp.lines) - 1, lines_per_msg):
+            messages.append(
+                Message.from_fetch_response(resp.lines[i : i + lines_per_msg])
+            )
+
+        return messages
+
+    async def add_flag(self, mailbox: str, uid: int, flag: str) -> None:
+        assert self._client is not None
+        resp = await self._client.select(mailbox)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        resp = await self._client.uid("STORE", f"{uid}", "+FLAGS", flag)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+    async def remove_message(self, mailbox: str, uid: int) -> None:
+        assert self._client is not None
+        resp = await self._client.select(mailbox)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        resp = await self._client.uid("STORE", f"{uid}", "+FLAGS", "\\Deleted")
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        resp = await self._client.expunge()
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+    async def add_new_message(
+        self,
+        mailbox: str,
+        message: EmailMessage | None = None,
+        flags: list[str] | None = None,
+    ) -> None:
+        assert self._client is not None
+        resp = await self._client.select(mailbox)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        if message is None:
+            message = EmailMessage()
+            message.set_content("Test message")
+            message["From"] = "test2@example.com"
+            message["To"] = "test@example.com"
+            message["Subject"] = "Test message"
+            message["Date"] = datetime.now().isoformat()
+
+        resp = await self._client.append(
+            message.as_bytes().replace(b"\n", b"\r\n"),
+            mailbox,
+            flags=" ".join(flags) if flags else None,
+        )
+        if resp.result != "OK":
+            raise ImapError(resp)

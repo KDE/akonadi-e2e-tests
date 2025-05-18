@@ -1,5 +1,7 @@
 import pytest
-from src.imap.client import MailboxInfo, Mailbox
+from datetime import datetime, timezone, timedelta
+from email.message import EmailMessage
+from src.imap.client import MailboxInfo, Mailbox, Message
 
 
 @pytest.mark.parametrize(
@@ -123,3 +125,94 @@ def test_parse_mailbox_info(
     assert info.uidnext == uidnext
     assert info.highestmodseq == highestmodseq
     assert info.read_only == read_only
+
+
+def msg_1_body() -> EmailMessage:
+    msg = EmailMessage()
+    msg.set_content("Test Message")
+    msg["From"] = "test@example.com"
+    msg["To"] = "test2.example.com"
+    msg["Subject"] = "Test Message"
+    msg["Date"] = datetime(2025, 5, 18, 9, 29, 15, tzinfo=timezone(timedelta(hours=2)))
+    return msg
+
+
+@pytest.mark.parametrize(
+    (
+        "resp",
+        "seq",
+        "uid",
+        "flags",
+        "size",
+        "internaldate",
+        "body",
+    ),
+    [
+        pytest.param(
+            [
+                b'1 FETCH (UID 6 FLAGS (\\Seen $label1) INTERNALDATE "18-May-2025 09:29:08 +0200" RFC822.SIZE 2348 BODY[] {2348}',
+                b'Content-Type: text/plain; charset="utf-8"\r\n'
+                b"Content-Transfer-Encoding: 7bit\r\n"
+                b"MIME-Version: 1.0\r\n"
+                b"From: test@example.com\r\n"
+                b"To: test2.example.com\r\n"
+                b"Subject: Test Message\r\n"
+                b"Date: Sun, 18 May 2025 09:29:15 +0200\r\n"
+                b"\r\n"
+                b"Test Message\r\n",
+                b")",
+            ],
+            1,
+            6,
+            ["\\Seen", "$label1"],
+            2348,
+            datetime(2025, 5, 18, 9, 29, 8, tzinfo=timezone(timedelta(hours=2))),
+            msg_1_body(),
+            id="message with body",
+        ),
+        pytest.param(
+            [
+                b'45643 FETCH (UID 854323 FLAGS (\\Seen) INTERNALDATE "18-May-2025 09:29:08 +0200" RFC822.SIZE 2348)',
+            ],
+            45643,
+            854323,
+            ["\\Seen"],
+            2348,
+            datetime(2025, 5, 18, 9, 29, 8, tzinfo=timezone(timedelta(hours=2))),
+            None,
+            id="message without body",
+        ),
+        pytest.param(
+            [
+                b'1 FETCH (UID 1 FLAGS () INTERNALDATE "18-May-2025 09:29:08 +0200" RFC822.SIZE 2348',
+            ],
+            1,
+            1,
+            [],
+            2348,
+            datetime(2025, 5, 18, 9, 29, 8, tzinfo=timezone(timedelta(hours=2))),
+            None,
+            id="empty flags",
+        ),
+    ],
+)
+def test_parse_message(
+    resp: list[bytes],
+    seq: int,
+    uid: int,
+    flags: list[str],
+    size: int,
+    internaldate: datetime,
+    body: EmailMessage | None,
+):
+    msg = Message.from_fetch_response(resp)
+    assert msg.seq == seq
+    assert msg.uid == uid
+    assert msg.flags == flags
+    assert msg.size == size
+    assert msg.internaldate == internaldate
+    if body is None:
+        assert msg.body is None
+    else:
+        assert msg.body is not None
+        assert msg.body.as_string() == body.as_string()

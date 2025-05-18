@@ -11,6 +11,7 @@ from src.akonadi.server import AkonadiServer
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.dbus.client import AkonadiDBus
+from src.imap.client import ImapClient
 from src.imap.cyrus_server import CyrusServer, prepare_test_environment
 
 
@@ -97,3 +98,14 @@ async def imap_resource(
     await resource.synchronize()
     yield resource
     # We don't really need to do anything here, Akonadi will stop the resource for us
+
+
+@pytest.fixture()
+async def imap_client(
+    cyrus_server: CyrusServer,
+    cyrus_imap_credentials: tuple[str, str],
+) -> AsyncGenerator[ImapClient, None]:
+    client = ImapClient("127.0.0.1", cyrus_server.port)
+    await client.connect(cyrus_imap_credentials[0], cyrus_imap_credentials[1])
+    yield client
+    await client.disconnect()
