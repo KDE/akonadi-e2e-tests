@@ -35,7 +35,8 @@ class CyrusServer:
                 # to allow for this race condition, and honestly I don't see a better way to do this
                 # right now.
                 if not any(
-                    conn.laddr[1] == port for conn in psutil.net_connections(kind="tcp")
+                    conn.laddr.port == port  # type: ignore
+                    for conn in psutil.net_connections(kind="tcp")
                 ):
                     log.debug("Selected port %d for Cyrus-IMAP server", port)
                     self._port = port

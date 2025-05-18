@@ -30,10 +30,12 @@ dependencies = [
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "src"]
 pythonpath = ["src"]
 addopts = "--ruff --ruff-format --mypy -v"
 
+[tool.mypy]
+explicit_package_bases = true
 
 [tool.pylint.messages_control]
 disable = [
@@ -46,4 +48,5 @@ disable = [
 [dependency-groups]
 dev = [
     "jinja2>=3.1.6",
+    "types-psutil>=7.0.0.20250516",
 ]

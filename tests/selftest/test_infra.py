@@ -2,12 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""
-Meta-tests that check that the infrastructure for the tests is working as expected.
-"""
+from logging import getLogger
 
 from aioimaplib import aioimaplib  # type: ignore
-from logging import getLogger
 import pytest
 
 from src.akonadi.server import AkonadiServer

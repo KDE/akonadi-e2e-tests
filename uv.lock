@@ -35,6 +35,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "jinja2" },
+    { name = "types-psutil" },
 ]
 
 [package.metadata]
@@ -56,7 +57,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "jinja2", specifier = ">=3.1.6" }]
+dev = [
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "types-psutil", specifier = ">=7.0.0.20250516" },
+]
 
 [[package]]
 name = "annotated-types"
@@ -369,6 +373,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/de/cc625bd2c61a1ba917b7ef9f7bec5357e1d4f68ba204b3d71cf038facade/sdbus-0.14.0-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:9a5b9315090ffbe232c82edc3e6f1a449ed27c7ef7f3ebc81d73326057fba8f1", size = 767982, upload-time = "2025-04-06T20:17:06.853Z" },
     { url = "https://files.pythonhosted.org/packages/9f/68/47baafb1cc32ef18e45d6e1f0f8ca99864d582d59da855e035c1ce3fed13/sdbus-0.14.0-cp39-abi3-manylinux_2_28_armv7l.whl", hash = "sha256:46f60ee66f18f0a3b9cb19639bc8a9ada62cd7f89343bba8a3140c0563885561", size = 696782, upload-time = "2025-04-06T20:17:08.927Z" },
     { url = "https://files.pythonhosted.org/packages/b6/74/4a00d5dcf0037e132db404bcc770d0e49c9c088a373e8916ef8e9eb074cf/sdbus-0.14.0-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:d38597858490c2063dd3de508942688075089843ef851fb8c062cb393e8b99d5", size = 741140, upload-time = "2025-04-06T20:17:10.928Z" },
+]
+
+[[package]]
+name = "types-psutil"
+version = "7.0.0.20250516"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/de/86104aa3ed01e6665676ac40394fff22f7b998b78d9c7af10047e3845183/types_psutil-7.0.0.20250516.tar.gz", hash = "sha256:3d8aa8392ac4d1e5e9237d111cf9e59d8fce8f2bde3115e687623f5e1039a1ab", size = 20271, upload-time = "2025-05-16T03:08:08.488Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/cb/f8db311c793e40503c110dd821f5cdd851fcba419630f08c973adf323366/types_psutil-7.0.0.20250516-py3-none-any.whl", hash = "sha256:6a8a761c5161e4c9762ff4fb160af4491d08b67f3b1aebe85e1f2890e8378f23", size = 23100, upload-time = "2025-05-16T03:08:07.575Z" },
 ]
 
 [[package]]
