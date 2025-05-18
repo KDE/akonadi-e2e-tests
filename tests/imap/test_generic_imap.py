@@ -2,13 +2,25 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from logging import getLogger
+
+import asyncio
 import pytest
 from src.akonadi.imap_resource import ImapResource
 from src.imap.client import ImapClient
 
+log = getLogger(__name__)
+
 
 def compare_flags(flags1: list[str], flags2: list[str]) -> bool:
-    return {f.lower() for f in flags1} == {f.lower() for f in flags2}
+    # Ignore the \Recent flag, since it's special and is assigned dynamically
+    # by the server, so it's likely that only either Akonadi or the IMAP client
+    # in the test will see it.
+    # We don't interpret or treat it specially anyway, so it doesn't matter too much.
+    def to_set(flags: list[str]) -> set[str]:
+        return {f.lower() for f in flags if f != r"\Recent"}
+
+    return to_set(flags1) == to_set(flags2)
 
 
 async def check_collection_in_sync(
@@ -18,13 +30,15 @@ async def check_collection_in_sync(
     items = await imap_resource.list_items(name)
     items.sort(key=lambda i: i.id)
 
-    messages = await imap_client.list_messages("INBOX")
+    messages = await imap_client.list_messages(name)
     messages.sort(key=lambda m: m.seq)
 
     assert len(messages) == len(items)
 
     for msg, item in zip(messages, items):
+        log.info("Comparing message %s and item %s", msg.uid, item.remote_id)
         assert msg.uid == int(item.remote_id or -1)
+        log.info("Comparing flags: %s and %s", msg.flags, item.flags)
         assert compare_flags(msg.flags, item.flags)
 
 
@@ -32,66 +46,163 @@ async def check_collection_in_sync(
 async def test_initial_sync(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 @pytest.mark.asyncio
 async def test_sync_flag_change(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_client.add_flag("INBOX", 1, "$TestFlag")
-    await imap_resource.sync_collection("INBOX")
+    await imap_client.add_flag("Test", 1, "$TestFlag")
+    await imap_resource.sync_collection("Test")
 
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 @pytest.mark.asyncio
 async def test_sync_removed_message(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_client.remove_message("INBOX", 1)
-    await imap_resource.sync_collection("INBOX")
+    await imap_client.remove_message("Test", 1)
+    await imap_resource.sync_collection("Test")
 
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 @pytest.mark.asyncio
 async def test_sync_added_message(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_client.add_new_message("INBOX")
-    await imap_resource.sync_collection("INBOX")
+    await imap_client.add_new_message("Test")
+    await imap_resource.sync_collection("Test")
 
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 @pytest.mark.asyncio
 async def test_sync_flag_change_and_removed_message(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_client.add_flag("INBOX", 2, "$TestFlag")
-    await imap_client.remove_message("INBOX", 1)
-    await imap_resource.sync_collection("INBOX")
+    await imap_client.add_flag("Test", 2, "$TestFlag")
+    await imap_client.remove_message("Test", 1)
+    await imap_resource.sync_collection("Test")
 
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 @pytest.mark.asyncio
 async def test_sync_flag_change_and_added_message(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_client.add_flag("INBOX", 2, "$TestFlag")
-    await imap_client.add_new_message("INBOX")
-    await imap_resource.sync_collection("INBOX")
+    await imap_client.add_flag("Test", 2, "$TestFlag")
+    await imap_client.add_new_message("Test")
+    await imap_resource.sync_collection("Test")
 
-    await check_collection_in_sync("INBOX", imap_resource, imap_client)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+
+@pytest.mark.asyncio
+async def test_sync_added_and_removed_message(
+    imap_resource: ImapResource, imap_client: ImapClient
+) -> None:
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+    await imap_client.add_new_message("Test")
+    await imap_client.remove_message("Test", 1)
+
+    await imap_resource.sync_collection("Test")
+
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+
+@pytest.mark.asyncio
+async def test_sync_flag_change_and_added_and_removed_message(
+    imap_resource: ImapResource, imap_client: ImapClient
+) -> None:
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+    await imap_client.add_flag("Test", 2, "$TestFlag")
+    await imap_client.add_new_message("Test")
+    await imap_client.remove_message("Test", 1)
+
+    await imap_resource.sync_collection("Test")
+
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+
+@pytest.mark.asyncio
+async def test_new_mailbox_on_server_is_synced(
+    imap_resource: ImapResource, imap_client: ImapClient
+) -> None:
+    await imap_client.create_mailbox("Test2")
+    await imap_resource.synchronize()
+
+    collections = await imap_resource.list_collections()
+    assert any(lambda c: c.name == "Test2" for c in collections)
+
+
+@pytest.mark.asyncio
+async def test_mailbox_deleted_on_server_is_synced(
+    imap_resource: ImapResource, imap_client: ImapClient
+) -> None:
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+    await imap_client.delete_mailbox("Test")
+    await imap_resource.synchronize()
+
+    collections = await imap_resource.list_collections()
+    assert "Test" not in list(map(lambda c: c.name, collections))
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(
+    reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change."
+)
+async def test_uidvalidity_change_detected(
+    imap_resource: ImapResource, imap_client: ImapClient
+) -> None:
+    log.info("Items before: %s", await imap_resource.list_items("Test"))
+
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+    await imap_client.delete_mailbox("Test")
+    await asyncio.sleep(1)
+    await imap_client.create_mailbox("Test")
+    await imap_client.add_new_message("Test")
+
+    await imap_resource.synchronize()
+
+    items = await imap_resource.list_items("Test")
+    log.info("Items after: %s", items)
+
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+
+# Ideas/plan
+# * Appending a message when offline and online
+# * Deleting a message when offline and online
+# * Changing flags of a message when offline and online
+# * Moving a message to another mailbox when offline and online
+# * Copying a message to another mailbox when offline and online
+# * Changing mailbox name when offline and online
+# * Deleting a mailbox when offline and online
+# * Creating a mailbox when offline and online
+# * Interruping sync in the middle
+# * IDLE support (email should appear in Akonadi without sync - will need akonadiclient
+#                 support to list items without triggering sync)
+# * Namespace support
+# * ACL handling
+# * Benchmark/slow tests
+#   * sync 10'000 messages
+#   * mark 10'000 messages as read/unread
+#   * move 10'000 messages to another mailbox

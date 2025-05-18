@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from email.message import EmailMessage
 from email.parser import BytesParser
+import uuid
+
 from aioimaplib import IMAP4, Response  # type: ignore
+
+MESSAGE_IDX_SUFFIX = 0
 
 
 class ImapError(Exception):
@@ -225,6 +229,18 @@ class ImapClient:
 
         return MailboxInfo.from_select_response(resp.lines)
 
+    async def create_mailbox(self, mailbox: str) -> None:
+        assert self._client is not None
+        resp = await self._client.create(mailbox)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+    async def delete_mailbox(self, mailbox: str) -> None:
+        assert self._client is not None
+        resp = await self._client.delete(mailbox)
+        if resp.result != "OK":
+            raise ImapError(resp)
+
     async def list_messages(
         self, mailbox: Mailbox | str, with_body: bool = False
     ) -> list[Message]:
@@ -291,11 +307,15 @@ class ImapClient:
 
         if message is None:
             message = EmailMessage()
-            message.set_content("Test message")
+            global MESSAGE_IDX_SUFFIX  # pylint: disable=global-statement
+            MESSAGE_IDX_SUFFIX += 1
+            suffix = "*" * MESSAGE_IDX_SUFFIX
+            message.set_content("Test message\r\nRandom suffix: " + suffix)
             message["From"] = "test2@example.com"
             message["To"] = "test@example.com"
-            message["Subject"] = "Test message"
+            message["Subject"] = f"Test message {MESSAGE_IDX_SUFFIX}"
             message["Date"] = datetime.now().isoformat()
+            message["Message-ID"] = f"<{uuid.uuid4()}@{self.host}>"
 
         resp = await self._client.append(
             message.as_bytes().replace(b"\n", b"\r\n"),

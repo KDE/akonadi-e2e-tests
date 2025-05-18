@@ -61,7 +61,7 @@ async def test_akonadi_client_list_agents(
 async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
     assert imap_resource.instance_id == "akonadi_imap_resource_0"
     collections = await imap_resource.list_collections()
-    assert len(collections) == 5
+    assert len(collections) == 6
 
     await imap_resource.sync_collection("INBOX")
     items = await imap_resource.list_items("INBOX")

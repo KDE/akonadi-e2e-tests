@@ -165,31 +165,32 @@ async def prepare_test_environment(
     resp = await imap.login(username, password)
     assert resp.result == "OK"
 
-    for name in ["INBOX", "Trash", "Sent", "Templates"]:
+    for name in ["INBOX", "Trash", "Sent", "Templates", "Test"]:
         resp = await imap.create(name)
         assert resp.result == "OK"
 
-    msg = EmailMessage()
-    msg.set_content("Hello, world!\r\n")
-    msg["Subject"] = "Test message"
-    msg["From"] = "test1@example.com"
-    msg["To"] = "test@example.com"
-    msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid()
-    resp = await imap.append(
-        msg.as_bytes().replace(b"\n", b"\r\n"), "INBOX", flags="\\Seen"
-    )
-    assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
+    for mailbox in ["INBOX", "Test"]:
+        msg = EmailMessage()
+        msg.set_content("Hello, world!\r\n")
+        msg["Subject"] = "Test message"
+        msg["From"] = "test1@example.com"
+        msg["To"] = "test@example.com"
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid()
+        resp = await imap.append(
+            msg.as_bytes().replace(b"\n", b"\r\n"), mailbox, flags="\\Seen"
+        )
+        assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
 
-    msg = EmailMessage()
-    msg.set_content("Hello, world!\r\n")
-    msg["Subject"] = "Test message 2"
-    msg["From"] = "test2@example.com"
-    msg["To"] = "test@example.com"
-    msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid()
-    resp = await imap.append(msg.as_bytes().replace(b"\n", b"\r\n"), "INBOX")
-    assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
+        msg = EmailMessage()
+        msg.set_content("Hello, world!\r\n")
+        msg["Subject"] = "Test message 2"
+        msg["From"] = "test2@example.com"
+        msg["To"] = "test@example.com"
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid()
+        resp = await imap.append(msg.as_bytes().replace(b"\n", b"\r\n"), mailbox)
+        assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
 
     log.info("IMAP server populated with messages")
 
