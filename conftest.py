@@ -38,8 +38,21 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
 
 
 @pytest.fixture
-async def cyrus_server(instance_id: str) -> AsyncGenerator[CyrusServer, None]:
+async def cyrus_server(
+    request: pytest.FixtureRequest, instance_id: str
+) -> AsyncGenerator[CyrusServer, None]:
     server = CyrusServer(Path(f"/tmp/{instance_id}"))
+    if hasattr(request, "param"):
+        assert isinstance(request.param, dict), (
+            "cyrus_fixture parameters must be a dictionary"
+        )
+        for key, value in request.param.items():
+            match key:
+                case "suppress_capabilities":
+                    server.suppress_capabilities(value)
+                case _:
+                    raise ValueError(f"Unknown cyrus_fixture parameter: {key}")
+
     await server.start()
     yield server
     await server.stop()

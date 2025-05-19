@@ -10,41 +10,21 @@ from src.akonadi.imap_resource import ImapResource
 from src.akonadi.client import AkonadiClient
 from src.imap.client import ImapClient
 from src.imap.email_utils import create_message
+from src.imap.test_utils import check_collection_in_sync
+
 from src.test import wait_until
 
 log = getLogger(__name__)
 
 
-def compare_flags(flags1: list[str], flags2: list[str]) -> bool:
-    # Ignore the \Recent flag, since it's special and is assigned dynamically
-    # by the server, so it's likely that only either Akonadi or the IMAP client
-    # in the test will see it.
-    # We don't interpret or treat it specially anyway, so it doesn't matter too much.
-    def to_set(flags: list[str]) -> set[str]:
-        return {f.lower() for f in flags if f != r"\Recent"}
-
-    return to_set(flags1) == to_set(flags2)
-
-
-async def check_collection_in_sync(
-    name: str, imap_resource: ImapResource, imap_client: ImapClient
-) -> None:
-    await imap_resource.sync_collection(name)
-    items = await imap_resource.list_items(name)
-    items.sort(key=lambda i: i.id)
-
-    messages = await imap_client.list_messages(name)
-    messages.sort(key=lambda m: m.seq)
-
-    assert len(messages) == len(items)
-
-    for msg, item in zip(messages, items):
-        log.info("Comparing message %s and item %s", msg.uid, item.remote_id)
-        assert msg.uid == int(item.remote_id or -1)
-        log.info("Comparing flags: %s and %s", msg.flags, item.flags)
-        assert compare_flags(msg.flags, item.flags)
-
-
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_initial_sync(
     imap_resource: ImapResource, imap_client: ImapClient
@@ -52,8 +32,22 @@ async def test_initial_sync(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param(
+            {"suppress_capabilities": ["CONDSTORE"]},
+            id="without CONDSTORE",
+            marks=pytest.mark.xfail(
+                reason="IMAP resource doesn't do flag sync when CONDSTORE is not available and no messages were added/removed."
+            ),
+        ),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
-async def test_sync_flag_change(
+async def test_sync_flag_only_change(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
@@ -64,6 +58,14 @@ async def test_sync_flag_change(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_sync_removed_message(
     imap_resource: ImapResource, imap_client: ImapClient
@@ -76,6 +78,14 @@ async def test_sync_removed_message(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_sync_added_message(
     imap_resource: ImapResource, imap_client: ImapClient
@@ -88,6 +98,14 @@ async def test_sync_added_message(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_sync_flag_change_and_removed_message(
     imap_resource: ImapResource, imap_client: ImapClient
@@ -101,6 +119,14 @@ async def test_sync_flag_change_and_removed_message(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_sync_flag_change_and_added_message(
     imap_resource: ImapResource, imap_client: ImapClient
@@ -114,6 +140,14 @@ async def test_sync_flag_change_and_added_message(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_sync_added_and_removed_message(
     imap_resource: ImapResource, imap_client: ImapClient
@@ -128,6 +162,14 @@ async def test_sync_added_and_removed_message(
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
+@pytest.mark.parametrize(
+    "cyrus_server",
+    [
+        pytest.param({}, id="with CONDSTORE"),
+        pytest.param({"suppress_capabilities": ["CONDSTORE"]}, id="without CONDSTORE"),
+    ],
+    indirect=["cyrus_server"],
+)
 @pytest.mark.asyncio
 async def test_sync_flag_change_and_added_and_removed_message(
     imap_resource: ImapResource, imap_client: ImapClient

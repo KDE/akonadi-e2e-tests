@@ -24,6 +24,7 @@ class CyrusServer:
         self._server = None
         self._root_dir = root_dir
         self._port = -1
+        self._suppress_capabilities: list[str] = []
 
     @property
     def port(self) -> int:
@@ -45,6 +46,9 @@ class CyrusServer:
                 pytest.fail("Failed to find a free port")
 
         return self._port
+
+    def suppress_capabilities(self, capabilities: list[str]):
+        self._suppress_capabilities = capabilities
 
     async def start(self):
         log.info("Starting Cyrus-IMAP server")
@@ -115,6 +119,10 @@ class CyrusServer:
             # Whatever the credentials are, they are accepted - we don't want to bother with setting
             # up users for our tests, so we just accept any and all credentials.
             sasl_pwcheck_method: alwaystrue
+
+            # Disable selected IMAP capabilities, if configured (otherwise omit the line completely)
+            {("suppress_capabilities:" + " ".join(self._suppress_capabilities)) if self._suppress_capabilities else ""}
+
             """)
             )
         return imapd_conf_path
