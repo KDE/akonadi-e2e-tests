@@ -7,7 +7,10 @@ from logging import getLogger
 import asyncio
 import pytest
 from src.akonadi.imap_resource import ImapResource
+from src.akonadi.client import AkonadiClient
 from src.imap.client import ImapClient
+from src.imap.email_utils import create_message
+from src.test import wait_until
 
 log = getLogger(__name__)
 
@@ -171,8 +174,6 @@ async def test_mailbox_deleted_on_server_is_synced(
 async def test_uidvalidity_change_detected(
     imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
-    log.info("Items before: %s", await imap_resource.list_items("Test"))
-
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
     await imap_client.delete_mailbox("Test")
@@ -182,15 +183,66 @@ async def test_uidvalidity_change_detected(
 
     await imap_resource.synchronize()
 
-    items = await imap_resource.list_items("Test")
-    log.info("Items after: %s", items)
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+
+@pytest.mark.asyncio
+async def test_append_message(
+    imap_resource: ImapResource,
+    imap_client: ImapClient,
+    akonadi_client: AkonadiClient,
+) -> None:
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+    collection = await imap_resource.resolve_collection("Test")
+
+    # Append the item to Akonadi
+    await akonadi_client.add_item(
+        collection.id,
+        create_message(subject="test_append_message").as_bytes(),
+        "message/rfc822",
+    )
+
+    # List items from Akonadi, there should be 3 now.
+    items = await akonadi_client.list_items(collection.id)
+    assert len(items) == 3
+
+    # Wait for it to be uploaded to the IMAP as well
+    # It may take a little bit for the change to propagate to the IMAP server, so try a few times
+    async def message_added() -> bool:
+        return await imap_client.fetch_message("Test", seq=3) is not None
+
+    await wait_until(message_added)
+
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+
+@pytest.mark.asyncio
+async def test_delete_message(
+    imap_resource: ImapResource,
+    imap_client: ImapClient,
+    akonadi_client: AkonadiClient,
+) -> None:
+    await check_collection_in_sync("Test", imap_resource, imap_client)
+
+    collection = await imap_resource.resolve_collection("Test")
+    items = await akonadi_client.list_items(collection.id)
+    assert len(items) == 2
+    item = items[0]
+
+    await akonadi_client.delete_item(item.id)
+
+    async def message_deleted() -> bool:
+        assert item.remote_id is not None
+        await imap_client.expunge("Test")
+        return await imap_client.fetch_message("Test", uid=int(item.remote_id)) is None
+
+    await wait_until(message_deleted)
 
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 # Ideas/plan
-# * Appending a message when offline and online
-# * Deleting a message when offline and online
+# * HIGHESTMODSEQ support disabled
 # * Changing flags of a message when offline and online
 # * Moving a message to another mailbox when offline and online
 # * Copying a message to another mailbox when offline and online

@@ -4,6 +4,8 @@
 
 import asyncio
 from logging import getLogger
+from tempfile import NamedTemporaryFile
+
 from src.akonadi.env import AkonadiEnv
 from src.akonadi.model import Collection, Item, Agent, AgentStatus, ListAgentsResult
 
@@ -32,7 +34,11 @@ class AkonadiClient:
         log.debug("Executing akonadiclient %s", args)
         client = await asyncio.create_subprocess_shell(
             f"akonadiclient {args}",
-            env=self._env.environ,
+            env={
+                **self._env.environ,
+                # dangerous operations (like deletion) must be allowed explicitly via envvar
+                "AKONADICLIENT_DANGEROUS": "enabled",
+            },
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -92,3 +98,14 @@ class AkonadiClient:
             by_alias=True,
         ).root
         return agents[0] if agents else None
+
+    async def add_item(self, collection_id: int, data: bytes, mime_type: str) -> None:
+        with NamedTemporaryFile(delete_on_close=False) as f:
+            f.write(data)
+            f.close()
+
+            # TODO: patch akonadiclient to return the ID of the inserted item
+            await self._execute_client(f"add -m {mime_type} {collection_id} {f.name}")
+
+    async def delete_item(self, item_id: int) -> None:
+        await self._execute_client(f"delete -i {item_id}")

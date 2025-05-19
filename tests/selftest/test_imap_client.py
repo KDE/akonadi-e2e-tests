@@ -46,16 +46,16 @@ def test_parse_mailbox(resp: str, name: str, flags: list[str], delim: str):
     [
         pytest.param(
             [
-                "[CLOSED] Previous mailbox closed.",
-                "FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft $label1 $MDNSent $REPLIED receipt-handled $ATTACHMENT $ENCRYPTED $SIGNED $JUNK $FORWARDED $has_cal $TODO $SENT)",
-                "[PERMANENTFLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft $label1 $MDNSent $REPLIED receipt-handled $ATTACHMENT $ENCRYPTED $SIGNED $JUNK $FORWARDED $has_cal $TODO $SENT \\*)] Flags permitted.",
-                "6465 EXISTS",
-                "0 RECENT",
-                "[UNSEEN 5926] First unseen.",
-                "[UIDVALIDITY 1656617207] UIDs valid",
-                "[UIDNEXT 24889] Predicted next UID",
-                "[HIGHESTMODSEQ 44860] Highest",
-                "[READ-WRITE] Select completed (0.005 + 0.000 + 0.004 secs).",
+                b"[CLOSED] Previous mailbox closed.",
+                b"FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft $label1 $MDNSent $REPLIED receipt-handled $ATTACHMENT $ENCRYPTED $SIGNED $JUNK $FORWARDED $has_cal $TODO $SENT)",
+                b"[PERMANENTFLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft $label1 $MDNSent $REPLIED receipt-handled $ATTACHMENT $ENCRYPTED $SIGNED $JUNK $FORWARDED $has_cal $TODO $SENT \\*)] Flags permitted.",
+                b"6465 EXISTS",
+                b"0 RECENT",
+                b"[UNSEEN 5926] First unseen.",
+                b"[UIDVALIDITY 1656617207] UIDs valid",
+                b"[UIDNEXT 24889] Predicted next UID",
+                b"[HIGHESTMODSEQ 44860] Highest",
+                b"[READ-WRITE] Select completed (0.005 + 0.000 + 0.004 secs).",
             ],
             [
                 "\\Answered",
@@ -108,7 +108,7 @@ def test_parse_mailbox(resp: str, name: str, flags: list[str], delim: str):
     ],
 )
 def test_parse_mailbox_info(
-    resp: list[str],
+    resp: list[bytes],
     flags: list[str],
     perm_flags: list[str],
     exists: int,

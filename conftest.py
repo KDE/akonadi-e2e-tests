@@ -83,6 +83,7 @@ async def akonadi_client(
 
 @pytest.fixture()
 async def imap_resource(
+    request: pytest.FixtureRequest,
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
     cyrus_server: CyrusServer,

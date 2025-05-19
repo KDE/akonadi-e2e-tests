@@ -5,12 +5,11 @@
 from dataclasses import dataclass
 from datetime import datetime
 from email.message import EmailMessage
-from email.parser import BytesParser
-import uuid
+from typing import Optional
 
 from aioimaplib import IMAP4, Response  # type: ignore
 
-MESSAGE_IDX_SUFFIX = 0
+from src.imap.email_utils import create_message, parse_message
 
 
 class ImapError(Exception):
@@ -71,7 +70,7 @@ class MailboxInfo:
     read_only: bool = False
 
     @classmethod
-    def from_select_response(cls, response: list[str]) -> "MailboxInfo":
+    def from_select_response(cls, response: list[bytes]) -> "MailboxInfo":
         # This is a rather naive and simplistic parser - its purpose is to be able to
         # parse enough of the response so that we can use it in the tests.
         flags: list[str] = []
@@ -85,31 +84,36 @@ class MailboxInfo:
         read_only = False
 
         for line in response:
-            if line.endswith("EXISTS"):
-                exists = int(line.split(" ")[0])
-            elif line.endswith("RECENT"):
-                recent = int(line.split(" ")[0])
-            elif line.startswith("FLAGS"):
-                line = line.removeprefix("FLAGS (")
-                line = line.removesuffix(")")
-                flags = line.split(" ")
-            elif line.startswith("[READ-ONLY"):
+            if line.endswith(b"EXISTS"):
+                exists = int(line.split(b" ")[0])
+            elif line.endswith(b"RECENT"):
+                recent = int(line.split(b" ")[0])
+            elif line.startswith(b"FLAGS"):
+                line = line.removeprefix(b"FLAGS (")
+                line = line.removesuffix(b")")
+                flags = list(map(lambda f: f.decode("utf-8"), line.split(b" ")))
+            elif line.startswith(b"[READ-ONLY"):
                 read_only = True
-            elif line.startswith("[PERMANENTFLAGS ("):
-                line = line.removeprefix("[PERMANENTFLAGS (")
-                permanent_flags = line[: line.find(")]")].split(" ")
-            elif line.startswith("[UIDVALIDITY"):
-                line = line.removeprefix("[UIDVALIDITY ")
-                uidvalidity = int(line[: line.find("]")])
-            elif line.startswith("[UIDNEXT"):
-                line = line.removeprefix("[UIDNEXT ")
-                uidnext = int(line[: line.find("]")])
-            elif line.startswith("[HIGHESTMODSEQ"):
-                line = line.removeprefix("[HIGHESTMODSEQ ")
-                highestmodseq = int(line[: line.find("]")])
-            elif line.startswith("[UNSEEN"):
-                line = line.removeprefix("[UNSEEN ")
-                unseen = int(line[: line.find("]")])
+            elif line.startswith(b"[PERMANENTFLAGS ("):
+                line = line.removeprefix(b"[PERMANENTFLAGS (")
+                permanent_flags = list(
+                    map(
+                        lambda f: f.decode("utf-8"),
+                        line[: line.find(b")]")].split(b" "),
+                    )
+                )
+            elif line.startswith(b"[UIDVALIDITY"):
+                line = line.removeprefix(b"[UIDVALIDITY ")
+                uidvalidity = int(line[: line.find(b"]")])
+            elif line.startswith(b"[UIDNEXT"):
+                line = line.removeprefix(b"[UIDNEXT ")
+                uidnext = int(line[: line.find(b"]")])
+            elif line.startswith(b"[HIGHESTMODSEQ"):
+                line = line.removeprefix(b"[HIGHESTMODSEQ ")
+                highestmodseq = int(line[: line.find(b"]")])
+            elif line.startswith(b"[UNSEEN"):
+                line = line.removeprefix(b"[UNSEEN ")
+                unseen = int(line[: line.find(b"]")])
 
         return MailboxInfo(
             flags,
@@ -193,7 +197,7 @@ class Message:
             elif attr == b"BODY[]":
                 literal_size = int(value)
                 literal = lines[1][0:literal_size]
-                body = BytesParser(EmailMessage).parsebytes(literal)
+                body = parse_message(literal)
 
         return cls(seq, uid, flags, size, internaldate, body)
 
@@ -248,9 +252,7 @@ class ImapClient:
         if isinstance(mailbox, Mailbox):
             mailbox = mailbox.name
 
-        resp = await self._client.select(mailbox)
-        if resp.result != "OK":
-            raise ImapError(resp)
+        await self.select_mailbox(mailbox)
 
         parts = ["UID", "FLAGS", "INTERNALDATE", "RFC822.SIZE"]
         if with_body:
@@ -270,11 +272,49 @@ class ImapClient:
 
         return messages
 
-    async def add_flag(self, mailbox: str, uid: int, flag: str) -> None:
+    async def expunge(self, mailbox: str) -> None:
         assert self._client is not None
-        resp = await self._client.select(mailbox)
+        await self.select_mailbox(mailbox)
+        resp = await self._client.expunge()
         if resp.result != "OK":
             raise ImapError(resp)
+
+    async def fetch_message(
+        self,
+        mailbox: str,
+        *,
+        uid: Optional[int] = None,
+        seq: Optional[int] = None,
+        with_body: bool = False,
+    ) -> Optional[Message]:
+        if uid is None and seq is None:
+            raise ValueError("Either uid or seq must be provided")
+
+        assert self._client is not None
+
+        await self.select_mailbox(mailbox)
+
+        parts = ["UID", "FLAGS", "INTERNALDATE", "RFC822.SIZE"]
+        if with_body:
+            parts.append("BODY.PEEK[]")
+
+        if uid is not None:
+            resp = await self._client.uid("FETCH", f"{uid}", f"({' '.join(parts)})")
+        else:
+            resp = await self._client.fetch(f"{seq}", f"({' '.join(parts)})")
+
+        if resp.result != "OK":
+            raise ImapError(resp)
+
+        lines = resp.lines[:-1]
+        if not lines:
+            return None
+
+        return Message.from_fetch_response(lines)
+
+    async def add_flag(self, mailbox: str, uid: int, flag: str) -> None:
+        assert self._client is not None
+        await self.select_mailbox(mailbox)
 
         resp = await self._client.uid("STORE", f"{uid}", "+FLAGS", flag)
         if resp.result != "OK":
@@ -282,9 +322,7 @@ class ImapClient:
 
     async def remove_message(self, mailbox: str, uid: int) -> None:
         assert self._client is not None
-        resp = await self._client.select(mailbox)
-        if resp.result != "OK":
-            raise ImapError(resp)
+        await self.select_mailbox(mailbox)
 
         resp = await self._client.uid("STORE", f"{uid}", "+FLAGS", "\\Deleted")
         if resp.result != "OK":
@@ -301,21 +339,10 @@ class ImapClient:
         flags: list[str] | None = None,
     ) -> None:
         assert self._client is not None
-        resp = await self._client.select(mailbox)
-        if resp.result != "OK":
-            raise ImapError(resp)
+        await self.select_mailbox(mailbox)
 
         if message is None:
-            message = EmailMessage()
-            global MESSAGE_IDX_SUFFIX  # pylint: disable=global-statement
-            MESSAGE_IDX_SUFFIX += 1
-            suffix = "*" * MESSAGE_IDX_SUFFIX
-            message.set_content("Test message\r\nRandom suffix: " + suffix)
-            message["From"] = "test2@example.com"
-            message["To"] = "test@example.com"
-            message["Subject"] = f"Test message {MESSAGE_IDX_SUFFIX}"
-            message["Date"] = datetime.now().isoformat()
-            message["Message-ID"] = f"<{uuid.uuid4()}@{self.host}>"
+            message = create_message()
 
         resp = await self._client.append(
             message.as_bytes().replace(b"\n", b"\r\n"),
