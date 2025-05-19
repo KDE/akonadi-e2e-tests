@@ -38,6 +38,10 @@ uv sync
 uv run pytest
 ```
 
+Optionally, pass `-n <number>` to run `<number>` tests in parallel (using `pytest-xdist`).
+
+To see debug output from Akonadi and the test itself, pass `--log-cli-level=debug`.
+
 **Add new dependency**
 ```shell
 uv add <package>
