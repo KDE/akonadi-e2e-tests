@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
+import os
 from logging import getLogger
 from sdbus import SdBus, sd_bus_open
 from sdbus.exceptions import DbusNameHasNoOwnerError
@@ -33,12 +34,13 @@ class AkonadiDBus:
     def __init__(self, instance_id: str) -> None:
         self._instance_id = instance_id
         self._client = sd_bus_open()
+        self._client.method_call_timeout_usec = 30 * 1000 * 1000 * 1000 # 30'000 seconds
 
     def close(self) -> None:
         self._client.close()
 
     async def wait_for_service(
-        self, service_name: str, timeout_secs: float = 10
+        self, service_name: str, timeout_secs: float | None = 10
     ) -> None:
         await asyncio.wait_for(
             self._wait_for_name_owner(service_name),
@@ -122,7 +124,8 @@ class AkonadiDBus:
         try:
             resp = await dbus.get_name_owner(service_name)
         except DbusNameHasNoOwnerError:
+            timeout = None if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10
             log.debug("Service %s has no owner, waiting for it...", service_name)
-            await asyncio.wait_for(name_owner_changed(), timeout=10)
+            await asyncio.wait_for(name_owner_changed(), timeout=timeout)
         else:
             log.debug("Service %s has owner %s, continuing", service_name, resp)

@@ -7,12 +7,15 @@ from typing import AsyncGenerator
 import tempfile
 import pytest
 
+from src.akonadi.dav_resource import DAVResource
 from src.akonadi.server import AkonadiServer
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.dbus.client import AkonadiDBus
 from src.imap.client import ImapClient
 from src.imap.cyrus_server import CyrusServer, prepare_test_environment
+from src.dav.nextcloud_server import NextCloudServer
+from src.dav.client import DavClient
 
 
 @pytest.fixture()
@@ -96,7 +99,6 @@ async def akonadi_client(
 
 @pytest.fixture()
 async def imap_resource(
-    request: pytest.FixtureRequest,
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
     cyrus_server: CyrusServer,
@@ -111,7 +113,9 @@ async def imap_resource(
     )
     await resource.synchronize()
     yield resource
-    # We don't really need to do anything here, Akonadi will stop the resource for us
+
+    # Remove the resource after the test - this cleans up useless secrets from the keychain
+    await resource.remove()
 
 
 @pytest.fixture()
@@ -123,3 +127,36 @@ async def imap_client(
     await client.connect(cyrus_imap_credentials[0], cyrus_imap_credentials[1])
     yield client
     await client.disconnect()
+
+
+@pytest.fixture()
+async def nextcloud_server() -> AsyncGenerator[NextCloudServer, None]:
+    server = NextCloudServer()
+    await server.start()
+    yield server
+    await server.stop()
+
+
+@pytest.fixture()
+async def dav_client(
+    nextcloud_server: NextCloudServer,
+) -> AsyncGenerator[DavClient, None]:
+    host, port = nextcloud_server.get_host_and_port()
+    client = DavClient(host, port, "test", "testtest")
+    yield client
+
+
+@pytest.fixture()
+async def groupware_resource(
+    akonadi_client: AkonadiClient,
+    dbus_client: AkonadiDBus,
+    nextcloud_server: NextCloudServer,
+) -> AsyncGenerator[DAVResource, None]:
+    resource = await DAVResource.create(akonadi_client, dbus_client)
+    host, port = nextcloud_server.get_host_and_port()
+    await resource.configure(host, port, username="test", password="testtest")
+    await resource.synchronize()
+
+    yield resource
+
+    await resource.remove()

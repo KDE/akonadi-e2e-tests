@@ -30,6 +30,10 @@ class AkonadiClient:
     def __init__(self, env: AkonadiEnv) -> None:
         self._env = env
 
+    @property
+    def akonadi_instance_name(self) -> str:
+        return self._env.instance_id
+
     async def _execute_client(self, args: str) -> bytes:
         log.debug("Executing akonadiclient %s", args)
         client = await asyncio.create_subprocess_shell(
