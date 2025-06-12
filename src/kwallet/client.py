@@ -46,6 +46,29 @@ class KWalletClient:
             self._handle, self.SERVICE_NAME, name, password, self.SERVICE_NAME
         )
 
+    async def get_password(self, name: str) -> str | None:
+        if self._handle is None:
+            raise RuntimeError("Wallet not open")
+
+        log.debug("Getting password '%s' from KWallet", name)
+        try:
+            return await self._wallet.read_password(
+                self._handle, self.SERVICE_NAME, name, self.SERVICE_NAME
+            )
+        except Exception as e:
+            log.warning("Password '%s' not found in KWallet: %s", name, e)
+            return None
+
+    async def remove_password(self, name: str) -> None:
+        if self._handle is None:
+            raise RuntimeError("Wallet not open")
+
+        log.debug("Removing password '%s' from KWallet", name)
+        result = await self._wallet.remove_entry(
+            self._handle, self.SERVICE_NAME, name, self.SERVICE_NAME
+        )
+        log.debug("Remove entry result: %s", result)
+
     async def __aenter__(self) -> "KWalletClient":
         await self.open()
         return self

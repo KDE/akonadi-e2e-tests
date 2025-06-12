@@ -6,6 +6,8 @@ from logging import getLogger
 
 from typing_extensions import override
 
+from src.akonadi.client import AkonadiClient
+from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.dbus.interfaces.org_kde_akonadi_davgroupware_settings import (
     OrgKdeAkonadiDavGroupwareSettingsInterface,
 )
@@ -17,6 +19,12 @@ log = getLogger(__name__)
 
 class DAVResource(Resource):
     RESOURCE_TYPE = "akonadi_davgroupware_resource"
+
+    def __init__(
+        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, instance_id: str
+    ) -> None:
+        super().__init__(akonadi_client, dbus, instance_id)
+        self._kwallet_key = f"{self._instance_id}_{self._akonadi_client.akonadi_instance_name},$default$"
 
     @override
     async def configure(
@@ -32,8 +40,8 @@ class DAVResource(Resource):
         # store it into KWallet ourselves under the name that the resource expects.
         async with KWalletClient() as kwallet:
             await kwallet.store_password(
-                f"{self._instance_id}_{self._akonadi_client.akonadi_instance_name},$default$",
-                "testtest"
+                self._kwallet_key,
+                "testtest",
             )
 
         await settings.set_settings_version(3)
@@ -48,3 +56,17 @@ class DAVResource(Resource):
 
         await self._dbus.agent_interface(self._instance_id).reconfigure()
 
+    @override
+    async def remove(self) -> None:
+        await super().remove()
+
+        async with KWalletClient() as kwallet:
+            password_exists = await kwallet.get_password(self._kwallet_key) is not None
+            if password_exists:
+                # Remove the KWallet entry
+                await kwallet.remove_password(
+                    self._kwallet_key,
+                )
+
+            # FIXME: Enable this once the DAV resource is fixed to clean up after itself
+            #assert not password_exists

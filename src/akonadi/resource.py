@@ -39,14 +39,13 @@ class Resource:
         return cls(akonadi_client, dbus, instance_id)
 
     async def remove(self) -> None:
-        log.debug("Removing %s resource via D-Bus", self.RESOURCE_TYPE)
+        log.debug("Removing %s resource via D-Bus", self.instance_id)
         await self._dbus.agent_manager_interface.remove_agent_instance(
-            self._instance_id
+            self.instance_id
         )
 
         # Give time to shut down the resource fully
         await asyncio.sleep(0.5)
-
 
     @abstractmethod
     async def configure(
