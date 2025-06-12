@@ -36,10 +36,11 @@ class DAVResource(Resource):
                 "testtest"
             )
 
-
         await settings.set_settings_version(3)
         # FIXME: This is nextcloud specific - make it more generic over different DAV servers
-        await settings.set_remote_urls([f"$default$|CalDav|http://{host}:{port}/remote.php/dav/"])
+        await settings.set_remote_urls(
+            [f"$default$|CalDav|http://{host}:{port}/remote.php/dav/"]
+        )
         await settings.set_default_username(username)
         await settings.set_display_name(f"akonadi-e2e-test {host}:{port}")
 

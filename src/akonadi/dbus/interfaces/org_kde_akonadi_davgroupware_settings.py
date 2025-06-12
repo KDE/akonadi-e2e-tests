@@ -284,4 +284,3 @@ class OrgKdeAkonadiDavGroupwareSettingsInterface(
         arg_0: list[str],
     ) -> None:
         raise NotImplementedError
-

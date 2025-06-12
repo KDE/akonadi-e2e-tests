@@ -8,6 +8,7 @@ from src.kwallet.interfaces.org_kde_kwallet import OrgKdeKWalletInterface
 
 log = getLogger(__name__)
 
+
 class KWalletClient:
     KWALLET_SERVICE_NAME = "org.kde.kwalletd6"
     KWALLET_SERVICE_OBJECT_PATH = "/modules/kwalletd6"

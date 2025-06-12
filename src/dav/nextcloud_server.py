@@ -5,6 +5,7 @@ from logging import getLogger
 
 log = getLogger(__name__)
 
+
 class NextCloudServer:
     container: DockerContainer
 

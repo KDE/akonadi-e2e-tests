@@ -625,7 +625,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="s",
-        signal_args_names=('wallet',),
+        signal_args_names=("wallet",),
         signal_name="walletCreated",
     )
     def wallet_created(self) -> str:
@@ -633,7 +633,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="s",
-        signal_args_names=('wallet',),
+        signal_args_names=("wallet",),
         signal_name="walletOpened",
     )
     def wallet_opened(self) -> str:
@@ -641,7 +641,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="ii",
-        signal_args_names=('tId', 'handle'),
+        signal_args_names=("tId", "handle"),
         signal_name="walletAsyncOpened",
     )
     def wallet_async_opened(self) -> tuple[int, int]:
@@ -649,7 +649,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="s",
-        signal_args_names=('wallet',),
+        signal_args_names=("wallet",),
         signal_name="walletDeleted",
     )
     def wallet_deleted(self) -> str:
@@ -657,7 +657,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="s",
-        signal_args_names=('wallet',),
+        signal_args_names=("wallet",),
         signal_name="walletClosed",
     )
     def wallet_closed(self) -> str:
@@ -665,7 +665,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="i",
-        signal_args_names=('handle',),
+        signal_args_names=("handle",),
         flags=DbusDeprecatedFlag,
         signal_name="walletClosedId",
     )
@@ -674,7 +674,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="i",
-        signal_args_names=('handle',),
+        signal_args_names=("handle",),
         signal_name="walletClosedId",
     )
     def wallet_closed_id(self) -> int:
@@ -689,7 +689,7 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="s",
-        signal_args_names=('wallet',),
+        signal_args_names=("wallet",),
         signal_name="folderListUpdated",
     )
     def folder_list_updated(self) -> str:
@@ -704,9 +704,8 @@ class OrgKdeKWalletInterface(
 
     @dbus_signal_async(
         signal_signature="ss",
-        signal_args_names=('wallet', 'application'),
+        signal_args_names=("wallet", "application"),
         signal_name="applicationDisconnected",
     )
     def application_disconnected(self) -> tuple[str, str]:
         raise NotImplementedError
-

@@ -34,7 +34,9 @@ class AkonadiDBus:
     def __init__(self, instance_id: str) -> None:
         self._instance_id = instance_id
         self._client = sd_bus_open()
-        self._client.method_call_timeout_usec = 30 * 1000 * 1000 * 1000 # 30'000 seconds
+        self._client.method_call_timeout_usec = (
+            30 * 1000 * 1000 * 1000
+        )  # 30'000 seconds
 
     def close(self) -> None:
         self._client.close()
