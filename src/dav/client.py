@@ -11,7 +11,9 @@ async def run_async[T](func: Callable[..., T]) -> T:
 
 class DavClient:
     def __init__(self, host: str, port: int, username: str, password: str):
-        self.client = DAVClient(f"http://{host}:{port}", username=username, password=password)
+        self.client = DAVClient(
+            f"http://{host}:{port}/remote.php/dav", username=username, password=password
+        )
 
     async def list_calendars(self) -> list[Calendar]:
         return await run_async(self.client.principal().calendars)
