@@ -4,28 +4,32 @@
 
 import asyncio
 import random
-from email.message import EmailMessage
-from email.utils import formatdate, make_msgid
 import grp
 from logging import getLogger
 import os
 from pathlib import Path
 from textwrap import dedent
+from typing import override
 
-from aioimaplib import IMAP4  # type: ignore
 import psutil
 import pytest
+
+from src.imap.imap_server import ImapServer
 
 log = getLogger(__name__)
 
 
-class CyrusServer:
+class CyrusServer(ImapServer):
+    USERNAME = "test"
+    PASSWORD = "test"
+
     def __init__(self, root_dir: Path):
         self._server = None
         self._root_dir = root_dir
         self._port = -1
         self._suppress_capabilities: list[str] = []
 
+    @override
     @property
     def port(self) -> int:
         if self._port == -1:
@@ -47,9 +51,25 @@ class CyrusServer:
 
         return self._port
 
+    @override
+    @property
+    def host_or_ip(self) -> str:
+        return "127.0.0.1"
+
+    @override
+    @property
+    def username(self) -> str:
+        return self.USERNAME
+
+    @override
+    @property
+    def password(self) -> str:
+        return self.PASSWORD
+
     def suppress_capabilities(self, capabilities: list[str]):
         self._suppress_capabilities = capabilities
 
+    @override
     async def start(self):
         log.info("Starting Cyrus-IMAP server")
         os.makedirs(Path(f"/tmp/{self._root_dir}/cyrus/etc"), exist_ok=True)
@@ -77,6 +97,7 @@ class CyrusServer:
 
         log.info("Cyrus-IMAP server started on port %d", self.port)
 
+    @override
     async def stop(self):
         log.info("Stopping Cyrus-IMAP server")
         try:
@@ -163,43 +184,3 @@ class CyrusServer:
             except OSError:
                 await asyncio.sleep(0.1)
 
-
-async def prepare_test_environment(
-    username: str, password: str, server: CyrusServer
-) -> None:
-    log.info("Populating IMAP server for user %s", username)
-    imap = IMAP4(host="127.0.0.1", port=server.port)
-    await imap.wait_hello_from_server()
-    resp = await imap.login(username, password)
-    assert resp.result == "OK"
-
-    for name in ["INBOX", "Trash", "Sent", "Templates", "Test"]:
-        resp = await imap.create(name)
-        assert resp.result == "OK"
-
-    for mailbox in ["INBOX", "Test"]:
-        msg = EmailMessage()
-        msg.set_content("Hello, world!\r\n")
-        msg["Subject"] = "Test message"
-        msg["From"] = "test1@example.com"
-        msg["To"] = "test@example.com"
-        msg["Date"] = formatdate(localtime=True)
-        msg["Message-ID"] = make_msgid()
-        resp = await imap.append(
-            msg.as_bytes().replace(b"\n", b"\r\n"), mailbox, flags="\\Seen"
-        )
-        assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
-
-        msg = EmailMessage()
-        msg.set_content("Hello, world!\r\n")
-        msg["Subject"] = "Test message 2"
-        msg["From"] = "test2@example.com"
-        msg["To"] = "test@example.com"
-        msg["Date"] = formatdate(localtime=True)
-        msg["Message-ID"] = make_msgid()
-        resp = await imap.append(msg.as_bytes().replace(b"\n", b"\r\n"), mailbox)
-        assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
-
-    log.info("IMAP server populated with messages")
-
-    await imap.logout()

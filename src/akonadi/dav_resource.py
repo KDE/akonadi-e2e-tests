@@ -21,17 +21,16 @@ class DAVResource(Resource):
     RESOURCE_TYPE = "akonadi_davgroupware_resource"
 
     def __init__(
-        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, instance_id: str
+        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str
     ) -> None:
-        super().__init__(akonadi_client, dbus, instance_id)
-        self._kwallet_key = f"{self._instance_id}_{self._akonadi_client.akonadi_instance_name},$default$"
+        super().__init__(akonadi_client, dbus, identifier)
+        self._kwallet_key = (
+            f"{self._identifier}_{self.akonadi_client.akonadi_instance_name},$default$"
+        )
 
-    @override
-    async def configure(
-        self, host: str, port: int, username: str, password: str
-    ) -> None:
+    async def configure(self, base_url: str, username: str, password: str) -> None:
         settings = OrgKdeAkonadiDavGroupwareSettingsInterface.new_proxy(
-            self._dbus.resource_service_name(self._instance_id),
+            self._dbus.resource_service_name(self._identifier),
             "/Settings",
             self._dbus.client,
         )
@@ -39,22 +38,18 @@ class DAVResource(Resource):
         # The DAV resource doesn't expose means to set password externally, so we instead
         # store it into KWallet ourselves under the name that the resource expects.
         async with KWalletClient() as kwallet:
-            await kwallet.store_password(
-                self._kwallet_key,
-                "testtest",
-            )
+            await kwallet.store_password(self._kwallet_key, password)
 
         await settings.set_settings_version(3)
-        # FIXME: This is nextcloud specific - make it more generic over different DAV servers
-        await settings.set_remote_urls(
-            [f"$default$|CalDav|http://{host}:{port}/remote.php/dav/"]
-        )
+        await settings.set_remote_urls([f"$default$|CalDav|{base_url}"])
         await settings.set_default_username(username)
-        await settings.set_display_name(f"akonadi-e2e-test {host}:{port}")
+        await settings.set_display_name(
+            f"akonadi-e2e-test - {self.akonadi_client.akonadi_instance_name}"
+        )
 
         await settings.save()
 
-        await self._dbus.agent_interface(self._instance_id).reconfigure()
+        await self._dbus.agent_interface(self._identifier).reconfigure()
 
     @override
     async def remove(self) -> None:
@@ -69,4 +64,4 @@ class DAVResource(Resource):
                 )
 
             # FIXME: Enable this once the DAV resource is fixed to clean up after itself
-            #assert not password_exists
+            # assert not password_exists

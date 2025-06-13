@@ -32,12 +32,11 @@ class WalletIface(
 class ImapResource(Resource):
     RESOURCE_TYPE = "akonadi_imap_resource"
 
-    @override
     async def configure(
         self, host: str, port: int, username: str, password: str
     ) -> None:
         settings = OrgKdeAkonadiImapSettingsInterface.new_proxy(
-            self._dbus.resource_service_name(self._instance_id),
+            self._dbus.resource_service_name(self._identifier),
             "/Settings",
             self._dbus.client,
         )
@@ -49,7 +48,7 @@ class ImapResource(Resource):
         await settings.set_user_name(username)
 
         wallet = WalletIface.new_proxy(
-            self._dbus.resource_service_name(self._instance_id),
+            self._dbus.resource_service_name(self._identifier),
             "/Settings",
             self._dbus.client,
         )
@@ -58,4 +57,4 @@ class ImapResource(Resource):
         await settings.save()
 
         # Force-reload the config
-        await self._dbus.agent_interface(self._instance_id).reconfigure()
+        await self._dbus.agent_interface(self._identifier).reconfigure()

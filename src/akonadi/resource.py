@@ -20,11 +20,11 @@ class Resource:
     RESOURCE_TYPE: ClassVar[str]
 
     def __init__(
-        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, instance_id: str
+        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str
     ) -> None:
         self._dbus = dbus
-        self._instance_id = instance_id
-        self._akonadi_client = akonadi_client
+        self._identifier = identifier
+        self.akonadi_client = akonadi_client
 
     @classmethod
     async def create(cls, akonadi_client: AkonadiClient, dbus: AkonadiDBus) -> Self:
@@ -39,22 +39,17 @@ class Resource:
         return cls(akonadi_client, dbus, instance_id)
 
     async def remove(self) -> None:
-        log.debug("Removing %s resource via D-Bus", self.instance_id)
+        log.debug("Removing %s resource via D-Bus", self.identifier)
         await self._dbus.agent_manager_interface.remove_agent_instance(
-            self.instance_id
+            self.identifier
         )
 
         # Give time to shut down the resource fully
         await asyncio.sleep(0.5)
 
-    @abstractmethod
-    async def configure(
-        self, host: str, port: int, username: str, password: str
-    ) -> None: ...
-
     async def synchronize(self) -> None:
         log.debug("Synchronizing %s resource via D-Bus", self.RESOURCE_TYPE)
-        resource = self._dbus.resource_interface(self._instance_id)
+        resource = self._dbus.resource_interface(self._identifier)
         await resource.synchronize_collection_tree()
         await anext(resource.collection_tree_synchronized.catch())
 
@@ -63,17 +58,17 @@ class Resource:
         log.debug("%s resource synchronized", self.RESOURCE_TYPE)
 
     @property
-    def instance_id(self) -> str:
-        return self._instance_id
+    def identifier(self) -> str:
+        return self._identifier
 
     async def resolve_collection(self, collection_name: str) -> Collection:
         path = collection_name.split("/")
 
-        collections = await self._akonadi_client.list_collections(
+        collections = await self.akonadi_client.list_collections(
             parent_id=0, first_level=True
         )
         resource_root = next(
-            filter(lambda c: c.resource == self.instance_id, collections), None
+            filter(lambda c: c.resource == self.identifier, collections), None
         )
         if not resource_root:
             pytest.fail("Resource root collection not found")
@@ -82,7 +77,7 @@ class Resource:
             if not path:
                 return parent
 
-            collections = await self._akonadi_client.list_collections(
+            collections = await self.akonadi_client.list_collections(
                 parent_id=parent.id, first_level=True
             )
             collection = next(filter(lambda c: c.name == path[0], collections), None)
@@ -97,21 +92,21 @@ class Resource:
 
     async def sync_collection(self, collection_name: str) -> None:
         collection = await self.resolve_collection(collection_name)
-        await self._dbus.resource_interface(self._instance_id).synchronize_collection(
+        await self._dbus.resource_interface(self._identifier).synchronize_collection(
             collection.id, recursive=False
         )
 
     async def list_collections(self) -> list[Collection]:
-        collections = await self._akonadi_client.list_collections(
+        collections = await self.akonadi_client.list_collections(
             parent_id=0, first_level=True
         )
         resource_root = next(
-            filter(lambda c: c.resource == self.instance_id, collections), None
+            filter(lambda c: c.resource == self.identifier, collections), None
         )
         if not resource_root:
             pytest.fail("Resource root collection not found")
 
-        return await self._akonadi_client.list_collections(parent_id=resource_root.id)
+        return await self.akonadi_client.list_collections(parent_id=resource_root.id)
 
     async def list_items(self, collection_name_or_id: str | int) -> list[Item]:
         if isinstance(collection_name_or_id, str):
@@ -123,4 +118,4 @@ class Resource:
         else:
             collection_id = int(collection_name_or_id)
 
-        return await self._akonadi_client.list_items(collection_id=collection_id)
+        return await self.akonadi_client.list_items(collection_id=collection_id)

@@ -7,13 +7,15 @@ from typing import AsyncGenerator
 import tempfile
 import pytest
 
+from src.dav.dav_server import DAVServerType, DAVServer
+from src.imap.imap_server import ImapServer, ImapServerType
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.server import AkonadiServer
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.dbus.client import AkonadiDBus
 from src.imap.client import ImapClient
-from src.imap.cyrus_server import CyrusServer, prepare_test_environment
+from src.imap.cyrus_server import CyrusServer
 from src.dav.nextcloud_server import NextCloudServer
 from src.dav.client import DavClient
 
@@ -40,37 +42,32 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
     dbus.close()
 
 
-@pytest.fixture
-async def cyrus_server(
-    request: pytest.FixtureRequest, instance_id: str
-) -> AsyncGenerator[CyrusServer, None]:
-    server = CyrusServer(Path(f"/tmp/{instance_id}"))
-    if hasattr(request, "param"):
-        assert isinstance(request.param, dict), (
-            "cyrus_fixture parameters must be a dictionary"
-        )
-        for key, value in request.param.items():
-            match key:
-                case "suppress_capabilities":
-                    server.suppress_capabilities(value)
-                case _:
-                    raise ValueError(f"Unknown cyrus_fixture parameter: {key}")
+@pytest.fixture()
+@pytest.mark.parametrize("server_type", [ImapServerType.CYRUS])
+async def imap_server(
+    request: pytest.FixtureRequest, instance_id: str, server_type: ImapServerType
+) -> AsyncGenerator[ImapServer, None]:
+    match server_type:
+        case ImapServerType.CYRUS:
+            server = CyrusServer(Path(f"/tmp/{instance_id}"))
+            if param := getattr(request, "param", None):
+                assert isinstance(param, dict), (
+                    "imap_server fixture parameters must be a dictionary"
+                )
+                for key, value in param.items():
+                    match key:
+                        case "suppress_capabilities":
+                            server.suppress_capabilities(value)
+                        case _:
+                            raise ValueError(f"Unknown imap_server parameter: {key}")
+        case _:
+            pytest.fail(f"Unknown IMAP server type: {server_type}")
 
     await server.start()
+    await server.prepare_test_environment()
+
     yield server
     await server.stop()
-
-
-@pytest.fixture()
-async def cyrus_imap_credentials(
-    cyrus_server: CyrusServer,
-) -> AsyncGenerator[tuple[str, str], None]:
-    username = "test"
-    password = "test"
-
-    await prepare_test_environment(username, password, cyrus_server)
-
-    yield (username, password)
 
 
 @pytest.fixture()
@@ -101,15 +98,14 @@ async def akonadi_client(
 async def imap_resource(
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
-    cyrus_server: CyrusServer,
-    cyrus_imap_credentials: tuple[str, str],
+    imap_server: ImapServer,
 ) -> AsyncGenerator[ImapResource, None]:
     resource = await ImapResource.create(akonadi_client, dbus_client)
     await resource.configure(
-        host="127.0.0.1",
-        port=cyrus_server.port,
-        username=cyrus_imap_credentials[0],
-        password=cyrus_imap_credentials[1],
+        host=imap_server.host_or_ip,
+        port=imap_server.port,
+        username=imap_server.username,
+        password=imap_server.password,
     )
     await resource.synchronize()
     yield resource
@@ -120,29 +116,31 @@ async def imap_resource(
 
 @pytest.fixture()
 async def imap_client(
-    cyrus_server: CyrusServer,
-    cyrus_imap_credentials: tuple[str, str],
+    imap_server: ImapServer,
 ) -> AsyncGenerator[ImapClient, None]:
-    client = ImapClient("127.0.0.1", cyrus_server.port)
-    await client.connect(cyrus_imap_credentials[0], cyrus_imap_credentials[1])
+    client = ImapClient(imap_server.host_or_ip, imap_server.port)
+    await client.connect(imap_server.username, imap_server.password)
     yield client
     await client.disconnect()
 
 
 @pytest.fixture()
-async def nextcloud_server() -> AsyncGenerator[NextCloudServer, None]:
-    server = NextCloudServer()
+@pytest.mark.parametrize("server_type", [DAVServerType.NEXTCLOUD])
+async def dav_server(server_type: DAVServerType) -> AsyncGenerator[DAVServer, None]:
+    match server_type:
+        case DAVServerType.NEXTCLOUD:
+            server = NextCloudServer()
+        case _:
+            pytest.fail(f"Unknown DAV server type: {dav_server}")
+
     await server.start()
     yield server
     await server.stop()
 
 
 @pytest.fixture()
-async def dav_client(
-    nextcloud_server: NextCloudServer,
-) -> AsyncGenerator[DavClient, None]:
-    host, port = nextcloud_server.get_host_and_port()
-    client = DavClient(host, port, "test", "testtest")
+async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient, None]:
+    client = DavClient(dav_server.base_url, dav_server.username, dav_server.password)
     yield client
 
 
@@ -150,11 +148,12 @@ async def dav_client(
 async def groupware_resource(
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
-    nextcloud_server: NextCloudServer,
+    dav_server: DAVServer,
 ) -> AsyncGenerator[DAVResource, None]:
     resource = await DAVResource.create(akonadi_client, dbus_client)
-    host, port = nextcloud_server.get_host_and_port()
-    await resource.configure(host, port, username="test", password="testtest")
+    await resource.configure(
+        dav_server.base_url, username=dav_server.username, password=dav_server.password
+    )
     await resource.synchronize()
 
     yield resource
