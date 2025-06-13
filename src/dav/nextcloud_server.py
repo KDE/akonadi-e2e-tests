@@ -23,9 +23,7 @@ class NextCloudServer(DAVServer):
     async def start(self) -> None:
         log.debug("Starting NextCloud server")
         # FIXME: This assumes image already exists!
-        self.container = DockerContainer(
-            "akonadi-e2e-nextcloud:latest"
-        ).with_exposed_ports(80)
+        self.container = DockerContainer("akonadi-e2e-nextcloud:latest").with_exposed_ports(80)
         await asyncio.get_running_loop().run_in_executor(None, self.container.start)
         log.debug(
             "NextCloud server started at %s:%s",

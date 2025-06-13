@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
-from typing import Callable
+from collections.abc import Callable
 
 from caldav.davclient import DAVClient
 from caldav.objects import Calendar, Event

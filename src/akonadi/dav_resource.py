@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from logging import getLogger
-
-from typing_extensions import override
+from typing import override
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
@@ -20,9 +19,7 @@ log = getLogger(__name__)
 class DAVResource(Resource):
     RESOURCE_TYPE = "akonadi_davgroupware_resource"
 
-    def __init__(
-        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str
-    ) -> None:
+    def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str) -> None:
         super().__init__(akonadi_client, dbus, identifier)
         self._kwallet_key = (
             f"{self._identifier}_{self.akonadi_client.akonadi_instance_name},$default$"

@@ -12,38 +12,33 @@ from aioimaplib import IMAP4  # type: ignore
 
 log = getLogger(__name__)
 
+
 class ImapServerType(Enum):
     CYRUS = "cyrus"
 
 
 class ImapServer:
     @abstractmethod
-    async def start(self) -> None:
-        ...
+    async def start(self) -> None: ...
 
     @abstractmethod
-    async def stop(self) -> None:
-        ...
-
-    @abstractmethod
-    @property
-    def port(self) -> int:
-        ...
+    async def stop(self) -> None: ...
 
     @abstractmethod
     @property
-    def host_or_ip(self) -> str:
-        ...
+    def port(self) -> int: ...
 
     @abstractmethod
     @property
-    def username(self) -> str:
-        ...
+    def host_or_ip(self) -> str: ...
 
     @abstractmethod
     @property
-    def password(self) -> str:
-        ...
+    def username(self) -> str: ...
+
+    @abstractmethod
+    @property
+    def password(self) -> str: ...
 
     async def prepare_test_environment(self):
         log.info("Populating IMAP server for user %s", self.username)

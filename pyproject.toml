@@ -47,6 +47,23 @@ disable = [
     "redefined-outer-name",
 ]
 
+[tool.ruff]
+line-length = 100
+output-format = "full"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "PERF", "ARG", "W", "UP", "B", "SIM"]
+ignore = [
+    "E1", # handled by formatter
+    "E4", # handled by formatter
+    "E5", # handled by formatter
+    "PERF203", # Too many false positives
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 99
+
 [dependency-groups]
 dev = [
     "jinja2>=3.1.6",

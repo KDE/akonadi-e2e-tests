@@ -5,9 +5,9 @@
 import asyncio
 import os
 from logging import getLogger
+from typing import ClassVar, Self
 
 import pytest
-from typing_extensions import ClassVar, Self
 
 from src.akonadi.client import AkonadiClient, Collection, Item
 from src.akonadi.dbus.client import AkonadiDBus
@@ -18,9 +18,7 @@ log = getLogger(__name__)
 class Resource:
     RESOURCE_TYPE: ClassVar[str]
 
-    def __init__(
-        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str
-    ) -> None:
+    def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str) -> None:
         self._dbus = dbus
         self._identifier = identifier
         self.akonadi_client = akonadi_client
@@ -28,9 +26,7 @@ class Resource:
     @classmethod
     async def create(cls, akonadi_client: AkonadiClient, dbus: AkonadiDBus) -> Self:
         log.debug("Creating %s resource via D-Bus", cls.RESOURCE_TYPE)
-        instance_id = await dbus.agent_manager_interface.create_agent_instance(
-            cls.RESOURCE_TYPE
-        )
+        instance_id = await dbus.agent_manager_interface.create_agent_instance(cls.RESOURCE_TYPE)
 
         timeout = None if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10
         await dbus.wait_for_service(dbus.agent_service_name(instance_id), timeout)
@@ -39,9 +35,7 @@ class Resource:
 
     async def remove(self) -> None:
         log.debug("Removing %s resource via D-Bus", self.identifier)
-        await self._dbus.agent_manager_interface.remove_agent_instance(
-            self.identifier
-        )
+        await self._dbus.agent_manager_interface.remove_agent_instance(self.identifier)
 
         # Give time to shut down the resource fully
         await asyncio.sleep(0.5)
@@ -63,12 +57,8 @@ class Resource:
     async def resolve_collection(self, collection_name: str) -> Collection:
         path = collection_name.split("/")
 
-        collections = await self.akonadi_client.list_collections(
-            parent_id=0, first_level=True
-        )
-        resource_root = next(
-            filter(lambda c: c.resource == self.identifier, collections), None
-        )
+        collections = await self.akonadi_client.list_collections(parent_id=0, first_level=True)
+        resource_root = next(filter(lambda c: c.resource == self.identifier, collections), None)
         if not resource_root:
             pytest.fail("Resource root collection not found")
 
@@ -81,9 +71,7 @@ class Resource:
             )
             collection = next(filter(lambda c: c.name == path[0], collections), None)
             if not collection:
-                pytest.fail(
-                    f"Collection {collection_name} not found: {path[0]} does not exist!"
-                )
+                pytest.fail(f"Collection {collection_name} not found: {path[0]} does not exist!")
 
             return await resolve_recursive(collection, path[1:])
 
@@ -96,12 +84,8 @@ class Resource:
         )
 
     async def list_collections(self) -> list[Collection]:
-        collections = await self.akonadi_client.list_collections(
-            parent_id=0, first_level=True
-        )
-        resource_root = next(
-            filter(lambda c: c.resource == self.identifier, collections), None
-        )
+        collections = await self.akonadi_client.list_collections(parent_id=0, first_level=True)
+        resource_root = next(filter(lambda c: c.resource == self.identifier, collections), None)
         if not resource_root:
             pytest.fail("Resource root collection not found")
 

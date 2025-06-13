@@ -9,26 +9,22 @@ from enum import Enum
 class DAVServerType(Enum):
     NEXTCLOUD = "nextcloud"
 
+
 class DAVServer:
     @abstractmethod
-    async def start(self) -> None:
-        ...
+    async def start(self) -> None: ...
 
     @abstractmethod
-    async def stop(self) -> None:
-        ...
-    
-    @abstractmethod
-    @property
-    def base_url(self) -> str:
-        ...
+    async def stop(self) -> None: ...
 
     @abstractmethod
     @property
-    def username(self) -> str:
-        ...
+    def base_url(self) -> str: ...
 
     @abstractmethod
     @property
-    def password(self) -> str:
-        ...
+    def username(self) -> str: ...
+
+    @abstractmethod
+    @property
+    def password(self) -> str: ...

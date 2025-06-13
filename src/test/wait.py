@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
+from collections.abc import Callable, Coroutine
 from inspect import iscoroutinefunction
 from time import time
-from typing import Any, Callable, Coroutine, cast
+from typing import Any, cast
 
 
 async def wait_until(
@@ -31,8 +32,6 @@ async def wait_until(
             return
 
         if time() - start > timeout:
-            assert await check_condition(), (
-                f"Condition not met within {timeout} seconds"
-            )
+            assert await check_condition(), f"Condition not met within {timeout} seconds"
 
         await asyncio.sleep(interval)

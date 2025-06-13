@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import tempfile
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 
@@ -22,7 +22,7 @@ from src.imap.imap_server import ImapServer, ImapServerType
 
 
 @pytest.fixture()
-async def instance_id() -> AsyncGenerator[str, None]:
+async def instance_id() -> AsyncGenerator[str]:
     """Pytest fixture that creates a temporary directory for an Akonadi instance.
 
     Returns:
@@ -33,7 +33,7 @@ async def instance_id() -> AsyncGenerator[str, None]:
 
 
 @pytest.fixture()
-async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
+async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus]:
     """A pytest fixture that creates a new AkonadiDBus client.
 
     Depends on the `instance_id` fixture.
@@ -47,7 +47,7 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus, None]:
 @pytest.mark.parametrize("server_type", [ImapServerType.CYRUS])
 async def imap_server(
     request: pytest.FixtureRequest, instance_id: str, server_type: ImapServerType
-) -> AsyncGenerator[ImapServer, None]:
+) -> AsyncGenerator[ImapServer]:
     match server_type:
         case ImapServerType.CYRUS:
             server = CyrusServer(Path(f"/tmp/{instance_id}"))
@@ -74,7 +74,7 @@ async def imap_server(
 @pytest.fixture()
 async def akonadi_server(
     instance_id: str, dbus_client: AkonadiDBus
-) -> AsyncGenerator[AkonadiServer, None]:
+) -> AsyncGenerator[AkonadiServer]:
     """Pytest fixture that creates an Akonadi server.
 
     Returns:
@@ -90,7 +90,7 @@ async def akonadi_server(
 @pytest.fixture()
 async def akonadi_client(
     akonadi_server: AkonadiServer,
-) -> AsyncGenerator[AkonadiClient, None]:
+) -> AsyncGenerator[AkonadiClient]:
     client = AkonadiClient(akonadi_server.env)
     yield client
 
@@ -100,7 +100,7 @@ async def imap_resource(
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
     imap_server: ImapServer,
-) -> AsyncGenerator[ImapResource, None]:
+) -> AsyncGenerator[ImapResource]:
     resource = await ImapResource.create(akonadi_client, dbus_client)
     await resource.configure(
         host=imap_server.host_or_ip,
@@ -118,7 +118,7 @@ async def imap_resource(
 @pytest.fixture()
 async def imap_client(
     imap_server: ImapServer,
-) -> AsyncGenerator[ImapClient, None]:
+) -> AsyncGenerator[ImapClient]:
     client = ImapClient(imap_server.host_or_ip, imap_server.port)
     await client.connect(imap_server.username, imap_server.password)
     yield client
@@ -127,7 +127,7 @@ async def imap_client(
 
 @pytest.fixture()
 @pytest.mark.parametrize("server_type", [DAVServerType.NEXTCLOUD])
-async def dav_server(server_type: DAVServerType) -> AsyncGenerator[DAVServer, None]:
+async def dav_server(server_type: DAVServerType) -> AsyncGenerator[DAVServer]:
     match server_type:
         case DAVServerType.NEXTCLOUD:
             server = NextCloudServer()
@@ -140,7 +140,7 @@ async def dav_server(server_type: DAVServerType) -> AsyncGenerator[DAVServer, No
 
 
 @pytest.fixture()
-async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient, None]:
+async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:
     client = DavClient(dav_server.base_url, dav_server.username, dav_server.password)
     yield client
 
@@ -150,7 +150,7 @@ async def groupware_resource(
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
     dav_server: DAVServer,
-) -> AsyncGenerator[DAVResource, None]:
+) -> AsyncGenerator[DAVResource]:
     resource = await DAVResource.create(akonadi_client, dbus_client)
     await resource.configure(
         dav_server.base_url, username=dav_server.username, password=dav_server.password

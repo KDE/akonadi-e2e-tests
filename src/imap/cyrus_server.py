@@ -88,10 +88,8 @@ class CyrusServer(ImapServer):
 
         try:
             await asyncio.wait_for(self._try_connect(), timeout=10.0)
-        except asyncio.TimeoutError:
-            log.error(
-                "Timeout while waiting for Cyrus-IMAP server to start accepting connections"
-            )
+        except TimeoutError:
+            log.error("Timeout while waiting for Cyrus-IMAP server to start accepting connections")
             self._server.kill()
             raise
 
@@ -179,8 +177,7 @@ class CyrusServer(ImapServer):
                     timeout=0.5,
                 )
                 return
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await asyncio.sleep(0.1)
             except OSError:
                 await asyncio.sleep(0.1)
-

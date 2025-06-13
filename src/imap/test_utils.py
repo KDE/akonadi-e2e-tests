@@ -33,7 +33,7 @@ async def check_collection_in_sync(
 
     assert len(messages) == len(items)
 
-    for msg, item in zip(messages, items):
+    for msg, item in zip(messages, items, strict=False):
         log.info("Comparing message %s and item %s", msg.uid, item.remote_id)
         assert msg.uid == int(item.remote_id or -1)
         log.info("Comparing flags: %s and %s", msg.flags, item.flags)

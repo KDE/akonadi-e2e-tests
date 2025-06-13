@@ -35,16 +35,12 @@ class AkonadiDBus:
     def __init__(self, instance_id: str) -> None:
         self._instance_id = instance_id
         self._client = sd_bus_open()
-        self._client.method_call_timeout_usec = (
-            30 * 1000 * 1000 * 1000
-        )  # 30'000 seconds
+        self._client.method_call_timeout_usec = 30 * 1000 * 1000 * 1000  # 30'000 seconds
 
     def close(self) -> None:
         self._client.close()
 
-    async def wait_for_service(
-        self, service_name: str, timeout_secs: float | None = 10
-    ) -> None:
+    async def wait_for_service(self, service_name: str, timeout_secs: float | None = 10) -> None:
         await asyncio.wait_for(
             self._wait_for_name_owner(service_name),
             timeout=timeout_secs,
@@ -92,18 +88,14 @@ class AkonadiDBus:
             self._client,
         )
 
-    def agent_interface(
-        self, instance_name: str
-    ) -> OrgFreedesktopAkonadiAgentControlInterface:
+    def agent_interface(self, instance_name: str) -> OrgFreedesktopAkonadiAgentControlInterface:
         return OrgFreedesktopAkonadiAgentControlInterface.new_proxy(
             self.agent_service_name(instance_name),
             "/",
             self._client,
         )
 
-    def resource_interface(
-        self, instance_name: str
-    ) -> OrgFreedesktopAkonadiResourceInterface:
+    def resource_interface(self, instance_name: str) -> OrgFreedesktopAkonadiResourceInterface:
         return OrgFreedesktopAkonadiResourceInterface.new_proxy(
             self.resource_service_name(instance_name),
             "/",

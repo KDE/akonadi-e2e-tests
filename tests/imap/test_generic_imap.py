@@ -26,9 +26,7 @@ log = getLogger(__name__)
     indirect=["cyrus_server"],
 )
 @pytest.mark.asyncio
-async def test_initial_sync(
-    imap_resource: ImapResource, imap_client: ImapClient
-) -> None:
+async def test_initial_sync(imap_resource: ImapResource, imap_client: ImapClient) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
 
@@ -47,9 +45,7 @@ async def test_initial_sync(
     indirect=["cyrus_server"],
 )
 @pytest.mark.asyncio
-async def test_sync_flag_only_change(
-    imap_resource: ImapResource, imap_client: ImapClient
-) -> None:
+async def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: ImapClient) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
     await imap_client.add_flag("Test", 1, "$TestFlag")
@@ -67,9 +63,7 @@ async def test_sync_flag_only_change(
     indirect=["cyrus_server"],
 )
 @pytest.mark.asyncio
-async def test_sync_removed_message(
-    imap_resource: ImapResource, imap_client: ImapClient
-) -> None:
+async def test_sync_removed_message(imap_resource: ImapResource, imap_client: ImapClient) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
     await imap_client.remove_message("Test", 1)
@@ -87,9 +81,7 @@ async def test_sync_removed_message(
     indirect=["cyrus_server"],
 )
 @pytest.mark.asyncio
-async def test_sync_added_message(
-    imap_resource: ImapResource, imap_client: ImapClient
-) -> None:
+async def test_sync_added_message(imap_resource: ImapResource, imap_client: ImapClient) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
     await imap_client.add_new_message("Test")

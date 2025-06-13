@@ -63,10 +63,8 @@ class AkonadiServer:
         )
 
         try:
-            await self._dbus.wait_for_service(
-                self._dbus.akonadi_control_service_name, 10
-            )
-        except asyncio.TimeoutError:
+            await self._dbus.wait_for_service(self._dbus.akonadi_control_service_name, 10)
+        except TimeoutError:
             stdout, stderr = await self._akonadi_control.communicate()
             log.error("akonadi_control did not start")
             log.error("stdout: %s", stdout)
@@ -96,11 +94,9 @@ class AkonadiServer:
             True if the Akonadi server is running, False otherwise.
         """
         try:
-            await self._dbus.wait_for_service(
-                self._dbus.akonadi_server_service_name, 0.1
-            )
+            await self._dbus.wait_for_service(self._dbus.akonadi_server_service_name, 0.1)
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
     def _prepare_environment(self) -> dict[str, str]:
@@ -137,9 +133,7 @@ class AkonadiServer:
             )
 
     def _write_first_run_config(self) -> None:
-        with open(
-            self._env.xdg_config_home / "akonadi-firstrunc", "w", encoding="utf-8"
-        ) as f:
+        with open(self._env.xdg_config_home / "akonadi-firstrunc", "w", encoding="utf-8") as f:
             f.write(
                 dedent("""
                 [ProcessedDefaults]

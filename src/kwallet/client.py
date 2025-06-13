@@ -35,9 +35,7 @@ class KWalletClient:
         if self._handle is None:
             return
         log.debug("Closing KWallet %s", self._handle)
-        await self._wallet.close_handle(
-            self._handle, force=False, appid=self.SERVICE_NAME
-        )
+        await self._wallet.close_handle(self._handle, force=False, appid=self.SERVICE_NAME)
         self._handle = None
 
     async def store_password(self, name: str, password: str) -> None:

@@ -13,9 +13,7 @@ from src.imap.client import Mailbox, MailboxInfo, Message
 @pytest.mark.parametrize(
     ("resp", "name", "flags", "delim"),
     [
-        pytest.param(
-            '(\\HasNoChildren) "." INBOX', "INBOX", ["\\HasNoChildren"], ".", id="INBOX"
-        ),
+        pytest.param('(\\HasNoChildren) "." INBOX', "INBOX", ["\\HasNoChildren"], ".", id="INBOX"),
         pytest.param(
             '(\\HasChildren \\UnMarked) "." KDE.bugs',
             "KDE.bugs",

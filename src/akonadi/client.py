@@ -68,9 +68,7 @@ class AkonadiClient:
             by_alias=True,
         )
 
-        def flatten(
-            collections: list[Collection], parent: Collection
-        ) -> list[Collection]:
+        def flatten(collections: list[Collection], parent: Collection) -> list[Collection]:
             r = [parent]
             for child in parent.child_collections:
                 r.extend(flatten(collections, child))

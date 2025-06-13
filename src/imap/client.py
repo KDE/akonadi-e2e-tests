@@ -5,7 +5,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from email.message import EmailMessage
-from typing import Optional
 
 from aioimaplib import IMAP4, Response  # type: ignore
 
@@ -189,9 +188,7 @@ class Message:
             elif attr == b"RFC822.SIZE":
                 size = int(value)
             elif attr == b"INTERNALDATE":
-                internaldate = datetime.strptime(
-                    value.decode("utf-8"), "%d-%b-%Y %H:%M:%S %z"
-                )
+                internaldate = datetime.strptime(value.decode("utf-8"), "%d-%b-%Y %H:%M:%S %z")
             elif attr == b"UID":
                 uid = int(value)
             elif attr == b"BODY[]":
@@ -245,9 +242,7 @@ class ImapClient:
         if resp.result != "OK":
             raise ImapError(resp)
 
-    async def list_messages(
-        self, mailbox: Mailbox | str, with_body: bool = False
-    ) -> list[Message]:
+    async def list_messages(self, mailbox: Mailbox | str, with_body: bool = False) -> list[Message]:
         assert self._client is not None
         if isinstance(mailbox, Mailbox):
             mailbox = mailbox.name
@@ -264,13 +259,10 @@ class ImapClient:
 
         lines_per_msg = 3 if with_body else 1
 
-        messages: list[Message] = []
-        for i in range(0, len(resp.lines) - 1, lines_per_msg):
-            messages.append(
-                Message.from_fetch_response(resp.lines[i : i + lines_per_msg])
-            )
-
-        return messages
+        return [
+            Message.from_fetch_response(resp.lines[i : i + lines_per_msg])
+            for i in range(0, len(resp.lines) - 1, lines_per_msg)
+        ]
 
     async def expunge(self, mailbox: str) -> None:
         assert self._client is not None
@@ -283,10 +275,10 @@ class ImapClient:
         self,
         mailbox: str,
         *,
-        uid: Optional[int] = None,
-        seq: Optional[int] = None,
+        uid: int | None = None,
+        seq: int | None = None,
         with_body: bool = False,
-    ) -> Optional[Message]:
+    ) -> Message | None:
         if uid is None and seq is None:
             raise ValueError("Either uid or seq must be provided")
 

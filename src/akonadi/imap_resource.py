@@ -15,9 +15,7 @@ from src.akonadi.resource import Resource
 log = getLogger(__name__)
 
 
-class WalletIface(
-    DbusInterfaceCommonAsync, interface_name="org.kde.Akonadi.Imap.Wallet"
-):
+class WalletIface(DbusInterfaceCommonAsync, interface_name="org.kde.Akonadi.Imap.Wallet"):
     @dbus_method_async(
         input_signature="s",
         result_signature="",
@@ -32,9 +30,7 @@ class WalletIface(
 class ImapResource(Resource):
     RESOURCE_TYPE = "akonadi_imap_resource"
 
-    async def configure(
-        self, host: str, port: int, username: str, password: str
-    ) -> None:
+    async def configure(self, host: str, port: int, username: str, password: str) -> None:
         settings = OrgKdeAkonadiImapSettingsInterface.new_proxy(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
