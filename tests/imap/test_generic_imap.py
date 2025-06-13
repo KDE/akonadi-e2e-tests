@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import asyncio
 from logging import getLogger
 
-import asyncio
 import pytest
-from src.akonadi.imap_resource import ImapResource
+
 from src.akonadi.client import AkonadiClient
+from src.akonadi.imap_resource import ImapResource
 from src.imap.client import ImapClient
 from src.imap.email_utils import create_message
 from src.imap.test_utils import check_collection_in_sync
-
 from src.test import wait_until
 
 log = getLogger(__name__)

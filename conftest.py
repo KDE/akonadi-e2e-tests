@@ -2,22 +2,23 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import tempfile
 from pathlib import Path
 from typing import AsyncGenerator
-import tempfile
+
 import pytest
 
-from src.dav.dav_server import DAVServerType, DAVServer
-from src.imap.imap_server import ImapServer, ImapServerType
-from src.akonadi.dav_resource import DAVResource
-from src.akonadi.server import AkonadiServer
 from src.akonadi.client import AkonadiClient
-from src.akonadi.imap_resource import ImapResource
+from src.akonadi.dav_resource import DAVResource
 from src.akonadi.dbus.client import AkonadiDBus
+from src.akonadi.imap_resource import ImapResource
+from src.akonadi.server import AkonadiServer
+from src.dav.client import DavClient
+from src.dav.dav_server import DAVServer, DAVServerType
+from src.dav.nextcloud_server import NextCloudServer
 from src.imap.client import ImapClient
 from src.imap.cyrus_server import CyrusServer
-from src.dav.nextcloud_server import NextCloudServer
-from src.dav.client import DavClient
+from src.imap.imap_server import ImapServer, ImapServerType
 
 
 @pytest.fixture()

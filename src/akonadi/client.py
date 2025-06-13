@@ -7,7 +7,7 @@ from logging import getLogger
 from tempfile import NamedTemporaryFile
 
 from src.akonadi.env import AkonadiEnv
-from src.akonadi.model import Collection, Item, Agent, AgentStatus, ListAgentsResult
+from src.akonadi.model import Agent, AgentStatus, Collection, Item, ListAgentsResult
 
 log = getLogger(__name__)
 

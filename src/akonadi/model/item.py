@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+
 from camel_converter import to_camel
+from pydantic import BaseModel, ConfigDict
 
 
 class Item(BaseModel):

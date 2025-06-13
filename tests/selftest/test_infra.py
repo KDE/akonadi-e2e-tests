@@ -4,14 +4,13 @@
 
 from logging import getLogger
 
-from aioimaplib import aioimaplib  # type: ignore
 import pytest
+from aioimaplib import aioimaplib  # type: ignore
 
-from src.akonadi.server import AkonadiServer
-from src.akonadi.client import AkonadiClient
-from src.akonadi.imap_resource import ImapResource
+from src.akonadi.client import AgentStatus, AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
-from src.akonadi.client import AgentStatus
+from src.akonadi.imap_resource import ImapResource
+from src.akonadi.server import AkonadiServer
 from src.imap import CyrusServer
 
 log = getLogger(__name__)

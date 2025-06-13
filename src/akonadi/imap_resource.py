@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+
 from logging import getLogger
 
 from sdbus import DbusInterfaceCommonAsync, DbusUnprivilegedFlag, dbus_method_async
-from typing_extensions import override
 
 from src.akonadi.dbus.interfaces.org_kde_akonadi_imap_settings import (
     OrgKdeAkonadiImapSettingsInterface,

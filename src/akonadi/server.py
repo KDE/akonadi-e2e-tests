@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
-from asyncio.subprocess import Process
-from asyncio.streams import StreamReader
-from logging import getLogger
 import os
+from asyncio.streams import StreamReader
+from asyncio.subprocess import Process
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 

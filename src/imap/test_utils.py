@@ -1,6 +1,7 @@
 from logging import getLogger
-from src.imap.client import ImapClient
+
 from src.akonadi.imap_resource import ImapResource
+from src.imap.client import ImapClient
 
 log = getLogger(__name__)
 

@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
-from abc import abstractmethod
-from logging import getLogger
 import os
+from logging import getLogger
 
 import pytest
 from typing_extensions import ClassVar, Self

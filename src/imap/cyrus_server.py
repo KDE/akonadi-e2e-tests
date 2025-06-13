@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import asyncio
-import random
 import grp
-from logging import getLogger
 import os
+import random
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import override

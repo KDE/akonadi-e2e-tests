@@ -1,7 +1,7 @@
 import asyncio
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Coroutine, cast
 from time import time
+from typing import Any, Callable, Coroutine, cast
 
 
 async def wait_until(

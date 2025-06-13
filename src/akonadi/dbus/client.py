@@ -5,12 +5,16 @@
 import asyncio
 import os
 from logging import getLogger
+
 from sdbus import SdBus, sd_bus_open
 from sdbus.exceptions import DbusNameHasNoOwnerError
 from sdbus_async.dbus_daemon import FreedesktopDbus
 
 from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_agent_control import (
     OrgFreedesktopAkonadiAgentControlInterface,
+)
+from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_agent_manager import (
+    OrgFreedesktopAkonadiAgentManagerInterface,
 )
 from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_controlmanager import (
     OrgFreedesktopAkonadiControlManagerInterface,
@@ -20,9 +24,6 @@ from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_resource import (
 )
 from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_server import (
     OrgFreedesktopAkonadiServerInterface,
-)
-from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_agent_manager import (
-    OrgFreedesktopAkonadiAgentManagerInterface,
 )
 
 log = getLogger(__name__)

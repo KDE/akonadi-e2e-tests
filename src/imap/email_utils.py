@@ -1,7 +1,7 @@
+import uuid
 from datetime import datetime
 from email.message import EmailMessage
 from email.parser import BytesParser
-import uuid
 
 MESSAGE_IDX_SUFFIX = 0
 

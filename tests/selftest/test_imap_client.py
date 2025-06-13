@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
-from src.imap.client import MailboxInfo, Mailbox, Message
+
+import pytest
+
+from src.imap.client import Mailbox, MailboxInfo, Message
 
 
 @pytest.mark.parametrize(

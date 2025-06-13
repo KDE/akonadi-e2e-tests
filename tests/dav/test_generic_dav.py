@@ -1,8 +1,9 @@
+from urllib.parse import unquote_plus
+
 import pytest
 
 from src.akonadi.dav_resource import DAVResource
 from src.dav.client import DavClient
-from urllib.parse import unquote_plus
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,5 @@
-from types import TracebackType
-
 from logging import getLogger
+from types import TracebackType
 
 from sdbus import sd_bus_open
 

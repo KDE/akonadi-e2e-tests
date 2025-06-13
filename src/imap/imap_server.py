@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
-from logging import getLogger
 from enum import Enum
+from logging import getLogger
 
 from aioimaplib import IMAP4  # type: ignore
 
