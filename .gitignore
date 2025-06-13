@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 ### KDevelop4 ###
 *.kdev4
 .kdev4/
@@ -60,3 +64,6 @@ tags
 
 # Local History for Visual Studio Code
 .history/
+
+# gdb_history
+.gdb_history

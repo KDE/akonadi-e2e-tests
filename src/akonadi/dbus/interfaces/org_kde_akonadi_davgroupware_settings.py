@@ -1,3 +1,14 @@
+# SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+# Generated using `sdbus` with some manual edits.
+# ```
+# python3 -m sdbus gen-from-connection \
+#   org.freedesktop.Akonadi.Agent.akonadi_davgroupware_resource_0 \
+#   /Settings
+# ```
+
 from __future__ import annotations
 
 from sdbus import (

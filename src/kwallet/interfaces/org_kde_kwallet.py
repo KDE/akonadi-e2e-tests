@@ -1,3 +1,13 @@
+# SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+
+# Generated using `sdbus` with some manual edits.
+# ```
+# python3 -m sdbus gen-from-connection org.kde.KWallet /modules/kwalletd6
+# ```
+
 from __future__ import annotations
 
 from typing import Any

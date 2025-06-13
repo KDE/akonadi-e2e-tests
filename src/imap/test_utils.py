@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from logging import getLogger
 
 from src.akonadi.imap_resource import ImapResource
