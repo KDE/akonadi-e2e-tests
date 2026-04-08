@@ -141,6 +141,10 @@ RUN php occ config:app:set core backgroundjobs_mode --value="cron" \
 # DO. NOT. DO. THIS.
 RUN php occ app:disable password_policy
 
+RUN php occ app:install calendar \
+    && php occ app:install contacts \
+    && php occ app:install tasks
+
 # Setup users for testing
 RUN OC_PASS=testtest php occ user:add --password-from-env --display-name="Test User" test \
     && php occ dav:create-addressbook test "Default Address Book" \
