@@ -5,6 +5,8 @@
 from logging import getLogger
 from typing import override
 
+from AkonadiCore import Akonadi  # type: ignore
+
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.dbus.interfaces.org_kde_akonadi_davgroupware_settings import (
@@ -22,7 +24,7 @@ class DAVResource(Resource):
     def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str) -> None:
         super().__init__(akonadi_client, dbus, identifier)
         self._kwallet_key = (
-            f"{self._identifier}_{self.akonadi_client.akonadi_instance_name},$default$"
+            f"{self._identifier}_{self.akonadi_client.akonadi_instance_name}rc,$default$"
         )
 
     async def configure(self, base_url: str, username: str, password: str) -> None:
@@ -46,7 +48,10 @@ class DAVResource(Resource):
 
         await settings.save()
 
-        await self._dbus.agent_interface(self._identifier).reconfigure()
+        instance = Akonadi.AgentManager.self().instance(self._identifier)
+        instance.reconfigure()
+
+        await self.wait_for_status(0)
 
     @override
     async def remove(self) -> None:

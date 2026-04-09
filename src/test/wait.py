@@ -4,9 +4,8 @@
 
 import asyncio
 from collections.abc import Callable, Coroutine
-from inspect import iscoroutinefunction
 from time import time
-from typing import Any, cast
+from typing import Any
 
 
 async def wait_until(
@@ -18,20 +17,21 @@ async def wait_until(
 
     If the condition is not met before the timeout expires, an assertion is raised.
     """
-
-    async def check_condition() -> bool:
-        if iscoroutinefunction(condition):
-            return await condition()
-        else:
-            return cast(bool, condition())
-
     start = time()
 
     while True:
-        if await check_condition():
+        result = condition()
+
+        if asyncio.iscoroutine(result):
+            result = await result
+
+        if result:
             return
 
         if time() - start > timeout:
-            assert await check_condition(), f"Condition not met within {timeout} seconds"
+            result = condition()
+            if asyncio.iscoroutine(result):
+                result = await result
+            assert result, f"Condition not met within {timeout} seconds"
 
         await asyncio.sleep(interval)

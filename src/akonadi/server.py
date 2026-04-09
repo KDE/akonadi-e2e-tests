@@ -4,25 +4,19 @@
 
 import asyncio
 import os
-from asyncio.streams import StreamReader
-from asyncio.subprocess import Process
 from logging import getLogger
-from pathlib import Path
 from textwrap import dedent
 
-from src.akonadi.dbus.client import AkonadiDBus
+from AkonadiCore import Akonadi  # type: ignore
+
 from src.akonadi.env import AkonadiEnv
 
 log = getLogger(__name__)
 
 
 class AkonadiServer:
-    def __init__(self, instance_id: str, dbus: AkonadiDBus) -> None:
-        self._tempdir = Path(os.environ.get("TMPDIR", "/tmp")) / instance_id
-        self._instance_id = instance_id
-        self._env = AkonadiEnv(self._tempdir, self._instance_id)
-        self._dbus = dbus
-        self._akonadi_control: Process | None = None
+    def __init__(self, akonadi_env: AkonadiEnv) -> None:
+        self._env = akonadi_env
 
     @property
     def env(self) -> AkonadiEnv:
@@ -31,60 +25,28 @@ class AkonadiServer:
     async def start(self) -> None:
         """Start the Akonadi server.
 
-        This will start the Akonadi server and wait for it to be ready.
-
-        This manually starts akonadi_control and akonadiserver processes. While it
-        would be better to use akonadictl or D-Bus activation to make the tests more
-        realistic, it's hard to propagate the environment.
-        Maybe if we can eventually run Akonadi in a container, we can use akonadictl,
-        because we won't have to bother with isolation from the default Akonadi.
+        This will start the Akonadi server.
         """
         log.info("Starting Akonadi Server")
-        environ = self._prepare_environment()
+        self._prepare_environment()
 
-        self._akonadi_control = await asyncio.create_subprocess_shell(
-            "akonadi_control",
-            env=environ,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        Akonadi.Control.start()
 
-        async def read_stdout(stream: StreamReader | None) -> None:
-            while stream is not None:
-                line = await stream.readline()
-                if line:
-                    log.debug("akonadi_control: %s", line.decode().strip())
-                else:
-                    log.debug("akonadi_control stdout closed")
-                    break
+        for _ in range(50):
+            if Akonadi.ServerManager.isRunning():
+                log.info("Akonadi Server started")
+                return
+            await asyncio.sleep(0.1)
 
-        self._akonadi_control_reader = asyncio.create_task(
-            read_stdout(self._akonadi_control.stderr)
-        )
-
-        try:
-            await self._dbus.wait_for_service(self._dbus.akonadi_control_service_name, 10)
-        except TimeoutError:
-            stdout, stderr = await self._akonadi_control.communicate()
-            log.error("akonadi_control did not start")
-            log.error("stdout: %s", stdout)
-            log.error("stderr: %s", stderr)
-            raise
-
-        await self._dbus.wait_for_service(self._dbus.akonadi_server_service_name, 10)
-
-        log.info("Akonadi Server started")
+        raise RuntimeError("Akonadi server failed to start in time")
 
     async def stop(self) -> None:
         """Stop the Akonadi server.
 
-        This will stop the Akonadi server and wait for it to be stopped.
+        This will stop the Akonadi server.
         """
         log.info("Stopping Akonadi Server")
-        if self._akonadi_control is not None:
-            await self._dbus.control_interface.shutdown()
-
-            await self._akonadi_control.wait()
+        Akonadi.Control.stop()
         log.info("Akonadi Server stopped")
 
     async def is_running(self) -> bool:
@@ -93,29 +55,29 @@ class AkonadiServer:
         Returns:
             True if the Akonadi server is running, False otherwise.
         """
-        try:
-            await self._dbus.wait_for_service(self._dbus.akonadi_server_service_name, 0.1)
-            return True
-        except TimeoutError:
-            return False
+        return Akonadi.ServerManager.isRunning()
 
-    def _prepare_environment(self) -> dict[str, str]:
-        """Prepare the environment for the Akonadi server.
-
-        Returns:
-            The environment variables to be used for the Akonadi server.
-        """
-        environ = self._env.environ
-        environ["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
-        environ["QT_LOGGING_RULES"] = "*.debug=true;qt.*.debug=false"
+    def _prepare_environment(self) -> None:
+        """Prepare the environment for the Akonadi server."""
+        log.debug(
+            "Command to launch akonadiconsole for debug purposes: ".join(
+                [
+                    "env",
+                    f"XDG_CONFIG_HOME={self._env.xdg_config_home}",
+                    f"XDG_DATA_HOME={self._env.xdg_data_home}",
+                    f"XDG_CACHE_HOME={self._env.xdg_cache_home}",
+                    f"HOME={self._env.home_dir}",
+                    f"AKONADI_INSTANCE={self._env.instance_id}",
+                    "akonadiconsole",
+                ]
+            )
+        )
 
         os.makedirs(self._env.akonadi_config_dir, exist_ok=True)
         os.makedirs(self._env.akonadi_data_dir, exist_ok=True)
 
         self._write_server_config()
         self._write_first_run_config()
-
-        return environ
 
     def _write_server_config(self) -> None:
         with open(self._env.akonadiserverrc_path, "w", encoding="utf-8") as f:

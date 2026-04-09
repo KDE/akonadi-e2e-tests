@@ -2,23 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
 from logging import getLogger
-from tempfile import NamedTemporaryFile
+
+from AkonadiCore import Akonadi  # type: ignore
+from PySide6.QtCore import QEventLoop  # type: ignore
 
 from src.akonadi.env import AkonadiEnv
-from src.akonadi.model import Agent, AgentStatus, Collection, Item, ListAgentsResult
 
 log = getLogger(__name__)
 
 __all__ = [
     "AkonadiClient",
     "ClientError",
-    "Collection",
-    "Item",
-    "Agent",
-    "AgentStatus",
-    "ListAgentsResult",
 ]
 
 
@@ -34,80 +29,117 @@ class AkonadiClient:
     def akonadi_instance_name(self) -> str:
         return self._env.instance_id
 
-    async def _execute_client(self, args: str) -> bytes:
-        log.debug("Executing akonadiclient %s", args)
-        client = await asyncio.create_subprocess_shell(
-            f"akonadiclient {args}",
-            env={
-                **self._env.environ,
-                # dangerous operations (like deletion) must be allowed explicitly via envvar
-                "AKONADICLIENT_DANGEROUS": "enabled",
-            },
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await client.communicate()
-        if client.returncode != 0:
-            raise ClientError(stderr.decode())
+    def wait_for_job(self, job):
+        loop = QEventLoop()
+        job.result.connect(loop.quit)
+        loop.exec()
 
-        return stdout
+        if job.error():
+            raise ClientError(job.errorString())
 
-    async def collection_by_id(self, collection_id: int) -> Collection | None:
-        return Collection.model_validate_json(
-            await self._execute_client(f"info -c --json {collection_id}"),
-            by_alias=True,
-        )
+    def collection_by_id(self, collection_id: int) -> Akonadi.Collection | None:
+        if collection_id <= 0:
+            return Akonadi.Collection.root()
 
-    async def list_collections(
+        else:
+            job = Akonadi.CollectionFetchJob([collection_id])
+            self.wait_for_job(job)
+
+            if len(job.collections()) != 1:
+                raise ClientError(f"Found {len(job.collections())} collections when expecting 1")
+
+            return job.collections()[0]
+
+    def list_collections(
         self, parent_id: int | None = None, first_level: bool = False
-    ) -> list[Collection]:
-        root = Collection.model_validate_json(
-            await self._execute_client(
-                f"list -c -l {'-R' if not first_level else ''} --json {parent_id or 0}"
-            ),
-            by_alias=True,
+    ) -> list[Akonadi.Collection]:
+        fetched_collections = [self.collection_by_id(parent_id or 0)]
+
+        collection = Akonadi.Collection()
+        collection.setId(parent_id or 0)
+        type = (
+            Akonadi.CollectionFetchJob.FirstLevel
+            if first_level
+            else Akonadi.CollectionFetchJob.Recursive
         )
+        job = Akonadi.CollectionFetchJob(collection, type)
+        self.wait_for_job(job)
 
-        def flatten(collections: list[Collection], parent: Collection) -> list[Collection]:
-            r = [parent]
-            for child in parent.child_collections:
-                r.extend(flatten(collections, child))
-            return r
+        fetched_collections.extend(job.collections())
 
-        return flatten(root.child_collections, root)
+        return fetched_collections
 
-    async def item_by_id(self, item_id: int) -> Item | None:
-        return Item.model_validate_json(
-            await self._execute_client(f"info -i --json {item_id}"),
-            by_alias=True,
-        )
+    def delete_collection(self, collection_id: int) -> None:
+        collection = Akonadi.Collection()
+        collection.setId(collection_id)
 
-    async def list_items(self, collection_id: int) -> list[Item]:
-        return Collection.model_validate_json(
-            await self._execute_client(f"list -i -l --json {collection_id}"),
-            by_alias=True,
-        ).child_items
+        job = Akonadi.CollectionDeleteJob(collection)
 
-    async def list_agents(self) -> list[Agent]:
-        return ListAgentsResult.model_validate_json(
-            await self._execute_client("agents --list --json"),
-            by_alias=True,
-        ).root
+        self.wait_for_job(job)
 
-    async def agent_by_identifier(self, identifier: str) -> Agent | None:
-        agents = ListAgentsResult.model_validate_json(
-            await self._execute_client(f"agents --info --json {identifier}"),
-            by_alias=True,
-        ).root
-        return agents[0] if agents else None
+    def item_by_id(self, item_id: int) -> Akonadi.Item:
+        item = Akonadi.Item()
+        item.setId(item_id)
 
-    async def add_item(self, collection_id: int, data: bytes, mime_type: str) -> None:
-        with NamedTemporaryFile(delete_on_close=False) as f:
-            f.write(data)
-            f.close()
+        job = Akonadi.ItemFetchJob(item)
+        self.wait_for_job(job)
 
-            # TODO: patch akonadiclient to return the ID of the inserted item
-            await self._execute_client(f"add -m {mime_type} {collection_id} {f.name}")
+        if len(job.items()) != 1:
+            raise ClientError(f"Found {len(job.items())} items when expecting 1")
+        return job.items()[0]
 
-    async def delete_item(self, item_id: int) -> None:
-        await self._execute_client(f"delete -i {item_id}")
+    def list_items(self, collection_id: int) -> list[Akonadi.Item]:
+        collection = Akonadi.Collection()
+        collection.setId(collection_id)
+
+        job = Akonadi.ItemFetchJob(collection)
+        self.wait_for_job(job)
+
+        return job.items()
+
+    def list_agents(self) -> list[Akonadi.AgentInstance]:
+        return Akonadi.AgentManager.self().instances()
+
+    def agent_by_identifier(self, identifier: str) -> Akonadi.AgentInstance | None:
+        agent = Akonadi.AgentManager.self().instance(identifier)
+        return agent if agent.isValid() else None
+
+    def add_item(self, collection_id: int, data: bytes, mime_type: str) -> None:
+        item = Akonadi.Item()
+        item.setMimeType(mime_type)
+        item.setPayloadFromData(data)
+
+        collection = Akonadi.Collection()
+        collection.setId(collection_id)
+
+        job = Akonadi.ItemCreateJob(item, collection)
+        self.wait_for_job(job)
+
+    def delete_item(self, item_id: int) -> None:
+        item = Akonadi.Item()
+        item.setId(item_id)
+
+        job = Akonadi.ItemDeleteJob(item)
+        self.wait_for_job(job)
+
+    def move_item(self, item_id: int, destination_id: int) -> None:
+        item = Akonadi.Item()
+        item.setId(item_id)
+
+        destination = Akonadi.Collection()
+        destination.setId(destination_id)
+
+        job = Akonadi.ItemMoveJob(item, destination)
+
+        self.wait_for_job(job)
+
+    def copy_item(self, item_id: int, destination_id: int) -> None:
+        item = Akonadi.Item()
+        item.setId(item_id)
+
+        destination = Akonadi.Collection()
+        destination.setId(destination_id)
+
+        job = Akonadi.ItemCopyJob(item, destination)
+
+        self.wait_for_job(job)

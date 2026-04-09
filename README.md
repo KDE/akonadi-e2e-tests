@@ -27,6 +27,26 @@ and teardown.
 
 This project uses the [`uv`][uv] Python project manager.
 
+
+This project also use akonadiCore python bindings created with the ECMGeneratePythonBindings module.
+For now, you must use the instalation of Pyside that is installed on your system
+Even if it is the same version, adding it to the virtual environment will result in a `version Qt_6.10.2_PRIVATE_API' not found (required by /lib64/libQt6Gui.so.6)` error when trying to import the bindings library.
+
+**Create the virtual environment**
+```shell
+uv venv --system-site-packages
+```
+
+**Add your bindings paths to pyproject**
+For your project to have access to python bindings, you must add the path of the `.so` bindings file to your `pyproject.toml`. Edit the pythonpath line like this :
+```toml
+pythonpath = ["src", {bindings_path}]
+```
+The path were the files are may vary depending on your distro / where kde installed the files. On OpenSuse Tumbleweed, they should be found in :
+```shell
+path/to/kde/usr/lib64/python3.xx/site-packages
+```
+
 **Install dependencies**
 ```shell
 uv sync

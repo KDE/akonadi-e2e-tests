@@ -204,6 +204,8 @@ class ImapClient:
         self.host = host
         self.port = port
         self._client: IMAP4 | None = None
+        # default mailbox to select after operations like fetch, list_messages; ect...
+        self.default_mailbox = "INBOX"
 
     async def connect(self, username: str, password: str):
         self._client = IMAP4(host=self.host, port=self.port)
@@ -214,6 +216,7 @@ class ImapClient:
         if self._client is not None:
             await self._client.logout()
 
+    # FIXME: self._client.list with empty reference_name produces an error with both cyrus and imap servers. This renders listing mailboxes at top level impossible, and should be investigated
     async def list_mailboxes(self) -> list[Mailbox]:
         assert self._client is not None
         resp = await self._client.list("", "*")
@@ -221,6 +224,12 @@ class ImapClient:
             raise ImapError(resp)
 
         return [Mailbox.from_list_response(r) for r in resp.data]
+
+    # Workaround to check if a mailbox exists or not, since list_mailboxes does not work
+    async def mailbox_exists(self, mailbox: str) -> bool:
+        assert self._client is not None
+        resp = await self._client.status(mailbox, "(MESSAGES)")
+        return resp.result == "OK"
 
     async def select_mailbox(self, mailbox: str) -> MailboxInfo:
         assert self._client is not None
@@ -254,7 +263,11 @@ class ImapClient:
             parts.append("BODY.PEEK[]")
 
         resp = await self._client.fetch("1:*", f"({' '.join(parts)})")
+        await self.select_mailbox(self.default_mailbox)
         if resp.result != "OK":
+            # case no messages in mailbox
+            if "No matching messages" in str(resp) or "Invalid messageset" in str(resp):
+                return []
             raise ImapError(resp)
 
         lines_per_msg = 3 if with_body else 1
@@ -268,6 +281,7 @@ class ImapClient:
         assert self._client is not None
         await self.select_mailbox(mailbox)
         resp = await self._client.expunge()
+        await self.select_mailbox(self.default_mailbox)
         if resp.result != "OK":
             raise ImapError(resp)
 
@@ -295,8 +309,10 @@ class ImapClient:
         else:
             resp = await self._client.fetch(f"{seq}", f"({' '.join(parts)})")
 
+        await self.select_mailbox(self.default_mailbox)
+
         if resp.result != "OK":
-            raise ImapError(resp)
+            return None
 
         lines = resp.lines[:-1]
         if not lines:
@@ -309,6 +325,7 @@ class ImapClient:
         await self.select_mailbox(mailbox)
 
         resp = await self._client.uid("STORE", f"{uid}", "+FLAGS", flag)
+        await self.select_mailbox(self.default_mailbox)
         if resp.result != "OK":
             raise ImapError(resp)
 
@@ -318,9 +335,11 @@ class ImapClient:
 
         resp = await self._client.uid("STORE", f"{uid}", "+FLAGS", "\\Deleted")
         if resp.result != "OK":
+            await self.select_mailbox(self.default_mailbox)
             raise ImapError(resp)
 
         resp = await self._client.expunge()
+        await self.select_mailbox(self.default_mailbox)
         if resp.result != "OK":
             raise ImapError(resp)
 
@@ -341,5 +360,6 @@ class ImapClient:
             mailbox,
             flags=" ".join(flags) if flags else None,
         )
+        await self.select_mailbox(self.default_mailbox)
         if resp.result != "OK":
             raise ImapError(resp)

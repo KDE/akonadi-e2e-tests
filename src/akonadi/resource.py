@@ -4,15 +4,22 @@
 
 import asyncio
 import os
+import time
 from logging import getLogger
 from typing import ClassVar, Self
 
 import pytest
+from AkonadiCore import Akonadi  # type: ignore
+from PySide6.QtCore import QEventLoop  # type: ignore
 
-from src.akonadi.client import AkonadiClient, Collection, Item
+from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
 
 log = getLogger(__name__)
+
+
+class ResourceError(Exception):
+    pass
 
 
 class Resource:
@@ -23,82 +30,155 @@ class Resource:
         self._identifier = identifier
         self.akonadi_client = akonadi_client
 
+    @staticmethod
+    def wait_for_job(job):
+        loop = QEventLoop()
+        job.result.connect(loop.quit)
+        loop.exec()
+
+        if job.error():
+            raise ResourceError(job.errorString())
+
+    # Waits for the resource to go back into given status
+    async def wait_for_status(self, status, timeout: float = 30.0):
+        loop = QEventLoop()
+        done = {"status": False}
+
+        def on_status_changed(instance):
+            if instance.identifier() == self._identifier and instance.status() == status:
+                done["status"] = True
+                loop.quit()
+
+        manager = Akonadi.AgentManager.self()
+        manager.instanceStatusChanged.connect(on_status_changed)
+
+        if manager.instance(self._identifier).status() == status:
+            return
+
+        start = time.time()
+        while not done["status"]:
+            if time.time() - start > timeout:
+                raise TimeoutError(f"Resource did not achieve status {status} in time")
+            loop.processEvents()
+            await asyncio.sleep(0.5)
+
+        manager.instanceStatusChanged.disconnect(on_status_changed)
+
     @classmethod
     async def create(cls, akonadi_client: AkonadiClient, dbus: AkonadiDBus) -> Self:
         log.debug("Creating %s resource via D-Bus", cls.RESOURCE_TYPE)
-        instance_id = await dbus.agent_manager_interface.create_agent_instance(cls.RESOURCE_TYPE)
 
-        timeout = None if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10
-        await dbus.wait_for_service(dbus.agent_service_name(instance_id), timeout)
+        createJob = Akonadi.AgentInstanceCreateJob(cls.RESOURCE_TYPE)
+        createJob.start()
+        Resource.wait_for_job(createJob)
+
+        instance_id = createJob.instance().identifier()
+
+        timeout = 0.0 if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10.0
+        start = time.time()
+        while not createJob.instance().isValid():
+            if time.time() - start > timeout:
+                raise ResourceError(f"Resource did not become valid in time: {instance_id}")
+            await asyncio.sleep(0.5)
 
         return cls(akonadi_client, dbus, instance_id)
 
     async def remove(self) -> None:
-        log.debug("Removing %s resource via D-Bus", self.identifier)
-        await self._dbus.agent_manager_interface.remove_agent_instance(self.identifier)
+        log.debug("Removing %s resource via Agent Manager", self.identifier)
+
+        instance = Akonadi.AgentManager.self().instance(self._identifier)
+        Akonadi.AgentManager.self().removeInstance(instance)
 
         # Give time to shut down the resource fully
         await asyncio.sleep(0.5)
 
     async def synchronize(self) -> None:
-        log.debug("Synchronizing %s resource via D-Bus", self.RESOURCE_TYPE)
-        resource = self._dbus.resource_interface(self._identifier)
-        await resource.synchronize_collection_tree()
-        await anext(resource.collection_tree_synchronized.catch())
+        log.debug("Synchronizing %s resource via Agent Manager", self.RESOURCE_TYPE)
 
-        await resource.synchronize()
-        await anext(resource.synchronized.catch())
+        instance = Akonadi.AgentManager.self().instance(self._identifier)
+
+        resourceSynchroJob = Akonadi.ResourceSynchronizationJob(instance)
+        resourceSynchroJob.start()
+        Resource.wait_for_job(resourceSynchroJob)
+
+        await self.wait_for_status(0)
+
         log.debug("%s resource synchronized", self.RESOURCE_TYPE)
 
     @property
     def identifier(self) -> str:
         return self._identifier
 
-    async def resolve_collection(self, collection_name: str) -> Collection:
+    def resolve_collection(self, collection_name: str) -> Akonadi.Collection:
         path = collection_name.split("/")
 
-        collections = await self.akonadi_client.list_collections(parent_id=0, first_level=True)
-        resource_root = next(filter(lambda c: c.resource == self.identifier, collections), None)
+        collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
+        resource_root = next(filter(lambda c: c.resource() == self.identifier, collections), None)
         if not resource_root:
             pytest.fail("Resource root collection not found")
 
-        async def resolve_recursive(parent: Collection, path: list[str]):
+        def resolve_recursive(parent: Akonadi.Collection, path: list[str]):
             if not path:
                 return parent
 
-            collections = await self.akonadi_client.list_collections(
-                parent_id=parent.id, first_level=True
+            collections = self.akonadi_client.list_collections(
+                parent_id=parent.id(), first_level=True
             )
-            collection = next(filter(lambda c: c.name == path[0], collections), None)
+            collection = next(filter(lambda c: c.name() == path[0], collections), None)
             if not collection:
                 pytest.fail(f"Collection {collection_name} not found: {path[0]} does not exist!")
 
-            return await resolve_recursive(collection, path[1:])
+            return resolve_recursive(collection, path[1:])
 
-        return await resolve_recursive(resource_root, path)
+        return resolve_recursive(resource_root, path)
 
     async def sync_collection(self, collection_name: str) -> None:
-        collection = await self.resolve_collection(collection_name)
-        await self._dbus.resource_interface(self._identifier).synchronize_collection(
-            collection.id, recursive=False
-        )
+        collection = self.resolve_collection(collection_name)
+        Akonadi.AgentManager.self().synchronizeCollection(collection, False)
 
-    async def list_collections(self) -> list[Collection]:
-        collections = await self.akonadi_client.list_collections(parent_id=0, first_level=True)
-        resource_root = next(filter(lambda c: c.resource == self.identifier, collections), None)
+        # to be sure that the collection has been synchronized correctly, we must wait for the instance to be running, then idle again
+        # because there isn't a job we can wait, the instance may be idle at first without actually being synced (sync not triggered yet / status not changed yet)
+        await self.wait_for_status(1)
+        await self.wait_for_status(0)
+
+    def list_collections(self) -> list[Akonadi.Collection]:
+        collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
+        resource_root = next(filter(lambda c: c.resource() == self.identifier, collections), None)
         if not resource_root:
             pytest.fail("Resource root collection not found")
 
-        return await self.akonadi_client.list_collections(parent_id=resource_root.id)
+        return self.akonadi_client.list_collections(parent_id=resource_root.id())
 
-    async def list_items(self, collection_name_or_id: str | int) -> list[Item]:
+    def list_items(self, collection_name_or_id: str | int) -> list[Akonadi.Item]:
         if isinstance(collection_name_or_id, str):
-            collection = await self.resolve_collection(collection_name_or_id)
+            collection = self.resolve_collection(collection_name_or_id)
             if not collection:
                 pytest.fail(f"Collection {collection_name_or_id} not found")
 
-            collection_id = collection.id
+            collection_id = collection.id()
         else:
             collection_id = int(collection_name_or_id)
 
-        return await self.akonadi_client.list_items(collection_id=collection_id)
+        return self.akonadi_client.list_items(collection_id=collection_id)
+
+    def delete_collection(self, collection_name: str) -> None:
+        collection = self.resolve_collection(collection_name)
+        self.akonadi_client.delete_collection(collection.id())
+
+    def add_flag(self, item_id: int, flag: str) -> None:
+        item = self.akonadi_client.item_by_id(item_id)
+        item.setFlag(flag.encode())
+
+    async def connect(self) -> None:
+        """
+        Pass the ressource to online status, effectively connecting it to any imap/dav server it was configured for
+        """
+        instance = Akonadi.AgentManager.self().instance(self._identifier)
+        instance.setIsOnline(True)
+
+    async def disconnect(self) -> None:
+        """
+        Pass the ressource to offline status, effectively disconnecting it to any imap/dav server it was configured for
+        """
+        instance = Akonadi.AgentManager.self().instance(self._identifier)
+        instance.setIsOnline(False)

@@ -2,27 +2,32 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import os
 import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import QCoreApplication  # type: ignore
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.dbus.client import AkonadiDBus
+from src.akonadi.env import AkonadiEnv
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.server import AkonadiServer
 from src.dav.client import DavClient
 from src.dav.dav_server import DAVServer, DAVServerType
 from src.dav.nextcloud_server import NextCloudServer
+from src.dav.radicale_server import RadicaleServer
 from src.imap.client import ImapClient
 from src.imap.cyrus_server import CyrusServer
+from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
 
 
-@pytest.fixture()
-async def instance_id() -> AsyncGenerator[str]:
+@pytest.fixture(scope="session")
+def instance_id() -> str:
     """Pytest fixture that creates a temporary directory for an Akonadi instance.
 
     Returns:
@@ -32,7 +37,7 @@ async def instance_id() -> AsyncGenerator[str]:
         yield Path(tempdir).name
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus]:
     """A pytest fixture that creates a new AkonadiDBus client.
 
@@ -43,48 +48,79 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus]:
     dbus.close()
 
 
-@pytest.fixture()
-@pytest.mark.parametrize("server_type", [ImapServerType.CYRUS])
-async def imap_server(
-    request: pytest.FixtureRequest, instance_id: str, server_type: ImapServerType
-) -> AsyncGenerator[ImapServer]:
-    match server_type:
-        case ImapServerType.CYRUS:
-            server = CyrusServer(Path(f"/tmp/{instance_id}"))
-            if param := getattr(request, "param", None):
-                assert isinstance(param, dict), (
-                    "imap_server fixture parameters must be a dictionary"
-                )
-                for key, value in param.items():
-                    match key:
-                        case "suppress_capabilities":
-                            server.suppress_capabilities(value)
-                        case _:
-                            raise ValueError(f"Unknown imap_server parameter: {key}")
-        case _:
-            pytest.fail(f"Unknown IMAP server type: {server_type}")
-
-    await server.start()
-    await server.prepare_test_environment()
-
-    yield server
-    await server.stop()
+@pytest.fixture(scope="session")
+def _akonadi_env(instance_id: str) -> AkonadiEnv:
+    tempdir = Path(os.environ.get("TMPDIR", "/tmp")) / instance_id
+    env = AkonadiEnv(tempdir, instance_id)
+    os.environ.update(env.environ)
+    yield env
 
 
-@pytest.fixture()
-async def akonadi_server(
-    instance_id: str, dbus_client: AkonadiDBus
-) -> AsyncGenerator[AkonadiServer]:
+@pytest.fixture(scope="session")
+async def akonadi_server(_akonadi_env: AkonadiEnv) -> AsyncGenerator[AkonadiServer]:
     """Pytest fixture that creates an Akonadi server.
 
     Returns:
         The Akonadi server.
     """
-
-    server = AkonadiServer(instance_id, dbus_client)
+    server = AkonadiServer(_akonadi_env)
     await server.start()
     yield server
     await server.stop()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def qcore_app(_akonadi_env: AkonadiEnv):
+    app = QCoreApplication.instance()
+    if app is None:
+        app = QCoreApplication([])
+    yield app
+
+
+@pytest.fixture(scope="session", params=list(DAVServerType))
+async def dav_server(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer]:
+    server_type = request.param
+    match server_type:
+        case DAVServerType.NEXTCLOUD:
+            server = NextCloudServer()
+        case DAVServerType.RADICALE:
+            server = RadicaleServer()
+        case _:
+            pytest.fail(f"Unknown DAV server type: {dav_server}")
+
+    await server.start()
+    yield server
+    await server.stop()
+
+
+@pytest.fixture(scope="session", params=list(ImapServerType))
+def server_type(request):
+    return request.param
+
+
+@pytest.fixture(scope="session")
+async def imap_server_session(server_type: ImapServerType) -> AsyncGenerator[ImapServer]:
+    match server_type:
+        case ImapServerType.CYRUS:
+            server = CyrusServer()
+        case ImapServerType.DOVECOT:
+            server = DovecotServer()
+        case _:
+            pytest.fail(f"Unknown IMAP server type: {server_type}")
+
+    await server.start()
+
+    yield server
+    await server.stop()
+
+
+@pytest.fixture
+async def imap_server(imap_server_session: ImapServer) -> AsyncGenerator[ImapServer]:
+    await imap_server_session.prepare_test_environment()
+
+    yield imap_server_session
+
+    await imap_server_session.cleanup_test_environment()
 
 
 @pytest.fixture()
@@ -126,20 +162,6 @@ async def imap_client(
 
 
 @pytest.fixture()
-@pytest.mark.parametrize("server_type", [DAVServerType.NEXTCLOUD])
-async def dav_server(server_type: DAVServerType) -> AsyncGenerator[DAVServer]:
-    match server_type:
-        case DAVServerType.NEXTCLOUD:
-            server = NextCloudServer()
-        case _:
-            pytest.fail(f"Unknown DAV server type: {dav_server}")
-
-    await server.start()
-    yield server
-    await server.stop()
-
-
-@pytest.fixture()
 async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:
     client = DavClient(dav_server.base_url, dav_server.username, dav_server.password)
     yield client
@@ -147,9 +169,7 @@ async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:
 
 @pytest.fixture()
 async def groupware_resource(
-    akonadi_client: AkonadiClient,
-    dbus_client: AkonadiDBus,
-    dav_server: DAVServer,
+    akonadi_client: AkonadiClient, dbus_client: AkonadiDBus, dav_server: DAVServer
 ) -> AsyncGenerator[DAVResource]:
     resource = await DAVResource.create(akonadi_client, dbus_client)
     await resource.configure(

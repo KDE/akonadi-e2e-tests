@@ -6,21 +6,22 @@ from logging import getLogger
 
 import pytest
 from aioimaplib import aioimaplib  # type: ignore
+from AkonadiCore import Akonadi  # type: ignore
 
-from src.akonadi.client import AgentStatus, AkonadiClient
+from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.server import AkonadiServer
-from src.imap import CyrusServer
+from src.imap.imap_server import ImapServer
 
 log = getLogger(__name__)
 
 
 @pytest.mark.asyncio
-async def test_cyrus_ready(cyrus_server: CyrusServer):
-    client = aioimaplib.IMAP4(host="127.0.0.1", port=cyrus_server.port, timeout=10.0)
+async def test_imap_ready(imap_server: ImapServer):
+    client = aioimaplib.IMAP4(host=imap_server.host_or_ip, port=imap_server.port, timeout=10.0)
     await client.wait_hello_from_server()
-    resp = await client.login("test", "test")
+    resp = await client.login("admin", "admin")
     assert resp.result.startswith("OK")
     await client.logout()
 
@@ -36,32 +37,32 @@ async def test_akonadi_server_starts(
 
 @pytest.mark.asyncio
 async def test_akonadi_client_list_collections(akonadi_client: AkonadiClient) -> None:
-    collections = await akonadi_client.list_collections()
+    collections = akonadi_client.list_collections()
     assert len(collections) == 2
-    assert collections[0].id == 0  # root collection
-    assert collections[1].id == 1  # search collection
-    assert collections[1].name == "Search"
+    assert collections[0].id() == 0  # root collection
+    assert collections[1].id() == 1  # search collection
+    assert collections[1].name() == "Search"
 
 
 @pytest.mark.asyncio
 async def test_akonadi_client_list_agents(
     akonadi_client: AkonadiClient, imap_resource: ImapResource
 ) -> None:
-    assert imap_resource.identifier == "akonadi_imap_resource_0"
-    agents = await akonadi_client.list_agents()
+    assert imap_resource.identifier.startswith("akonadi_imap_resource_")
+    agents = akonadi_client.list_agents()
     assert len(agents) == 1
-    assert agents[0].identifier == "akonadi_imap_resource_0"
-    assert agents[0].name == "IMAP Account"
-    assert agents[0].status == AgentStatus.IDLE
-    assert agents[0].type == "akonadi_imap_resource"
+    assert agents[0].identifier().startswith("akonadi_imap_resource_")
+    assert agents[0].name() == "IMAP Account"
+    assert agents[0].status() == Akonadi.AgentInstance.Idle
+    assert agents[0].type().identifier() == "akonadi_imap_resource"
 
 
 @pytest.mark.asyncio
 async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
-    assert imap_resource.identifier == "akonadi_imap_resource_0"
-    collections = await imap_resource.list_collections()
-    assert len(collections) == 6
+    assert imap_resource.identifier.startswith("akonadi_imap_resource_")
+    collections = imap_resource.list_collections()
+    assert len(collections) == 7
 
     await imap_resource.sync_collection("INBOX")
-    items = await imap_resource.list_items("INBOX")
+    items = imap_resource.list_items("INBOX")
     assert len(items) == 2

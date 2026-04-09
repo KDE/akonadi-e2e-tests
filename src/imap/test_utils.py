@@ -4,6 +4,8 @@
 
 from logging import getLogger
 
+from AkonadiCore import Akonadi  # type: ignore
+
 from src.akonadi.imap_resource import ImapResource
 from src.imap.client import ImapClient
 
@@ -25,16 +27,26 @@ async def check_collection_in_sync(
     name: str, imap_resource: ImapResource, imap_client: ImapClient
 ) -> None:
     await imap_resource.sync_collection(name)
-    items = await imap_resource.list_items(name)
-    items.sort(key=lambda i: i.id)
+    items = imap_resource.list_items(name)
+    items.sort(key=lambda i: int(i.remoteId() or -1))
 
     messages = await imap_client.list_messages(name)
-    messages.sort(key=lambda m: m.seq)
+    messages.sort(key=lambda m: m.uid)
 
     assert len(messages) == len(items)
 
     for msg, item in zip(messages, items, strict=False):
-        log.info("Comparing message %s and item %s", msg.uid, item.remote_id)
-        assert msg.uid == int(item.remote_id or -1)
-        log.info("Comparing flags: %s and %s", msg.flags, item.flags)
-        assert compare_flags(msg.flags, item.flags)
+        log.info("Comparing message %s and item %s", msg.uid, item.remoteId())
+        assert msg.uid == int(item.remoteId() or -1)
+        log.info("Comparing flags: %s and %s", msg.flags, item.flags())
+        assert compare_flags(msg.flags, [bytes(f).decode() for f in item.flags()])
+
+
+async def message_added(imap_client: ImapClient, mailbox: str, seq: int) -> bool:
+    return await imap_client.fetch_message(mailbox, seq=seq) is not None
+
+
+async def message_deleted(imap_client: ImapClient, item: Akonadi.Item, mailbox: str) -> bool:
+    assert item.remoteId() is not None
+    await imap_client.expunge(mailbox)
+    return await imap_client.fetch_message(mailbox, uid=int(item.remoteId())) is None

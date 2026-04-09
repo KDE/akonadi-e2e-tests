@@ -17,7 +17,8 @@ class KWalletClient:
     KWALLET_SERVICE_OBJECT_PATH = "/modules/kwalletd6"
     SERVICE_NAME = "Passwords"
 
-    def __init__(self) -> None:
+    def __init__(self, service_name: str = "Passwords") -> None:
+        self.SERVICE_NAME = service_name
         self._bus = sd_bus_open()
         self._wallet = OrgKdeKWalletInterface.new_proxy(
             self.KWALLET_SERVICE_NAME,
