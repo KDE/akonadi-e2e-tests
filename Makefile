@@ -1,4 +1,4 @@
-.PHONY: docker init bindings
+.PHONY: docker init bindings test lint
 
 ALL: init docker
 
@@ -15,3 +15,6 @@ test:
 
 docker:
 	make -C docker
+
+lint:
+	uv run pytest --ignore-glob='test_*.py' --ignore-glob='*_test.py' --ignore-glob='tests/*' --ruff --ruff-format --mypy

@@ -36,7 +36,7 @@ asyncio_default_test_loop_scope = "session"
 asyncio_mode = "auto"
 testpaths = ["tests", "src"]
 pythonpath = ["src"]
-addopts = "--ruff --ruff-format --mypy -v"
+addopts = "-v"
 
 [tool.mypy]
 explicit_package_bases = true
