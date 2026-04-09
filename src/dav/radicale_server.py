@@ -13,7 +13,7 @@ from src.dav.dav_server import DAVServer
 log = getLogger(__name__)
 
 
-class NextCloudServer(DAVServer):
+class RadicaleServer(DAVServer):
     container: DockerContainer
 
     def __init__(self):
@@ -21,20 +21,20 @@ class NextCloudServer(DAVServer):
 
     @override
     async def start(self) -> None:
-        log.debug("Starting NextCloud server")
+        log.debug("Starting Radicale server")
         # FIXME: This assumes image already exists!
-        self.container = DockerContainer("akonadi-e2e-nextcloud:latest").with_exposed_ports(80)
+        self.container = DockerContainer("akonadi-e2e-radicale:latest").with_exposed_ports(5232)
         await asyncio.get_running_loop().run_in_executor(None, self.container.start)
         log.debug(
-            "NextCloud server started at %s:%s",
+            "Radicale server started at %s:%s",
             self.container.get_container_host_ip(),
-            self.container.get_exposed_port(80),
+            self.container.get_exposed_port(5232),
         )
 
-        await self.wait_for_server(f"{self.base_url}/calendars/{self.username}/")
+        await self.wait_for_server(f"{self.base_url}/{self.username}/")
 
     async def stop(self) -> None:
-        log.info("Stopping NextCloud container")
+        log.info("Stopping Radicale container")
         if self.container:
             await asyncio.get_running_loop().run_in_executor(None, self.container.stop)
 
@@ -42,9 +42,9 @@ class NextCloudServer(DAVServer):
     @property
     def base_url(self) -> str:
         host = self.container.get_container_host_ip()
-        port = self.container.get_exposed_port(80)
+        port = self.container.get_exposed_port(5232)
 
-        return f"http://{host}:{port}/remote.php/dav"
+        return f"http://{host}:{port}"
 
     @override
     @property

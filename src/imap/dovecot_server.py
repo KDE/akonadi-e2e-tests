@@ -10,7 +10,8 @@ from src.imap.imap_server import ImapServer
 log = getLogger(__name__)
 
 
-class CyrusServer(ImapServer):
+class DovecotServer(ImapServer):
+    # Default user created by the image
     USERNAME = "admin"
     PASSWORD = "admin"
 
@@ -39,23 +40,21 @@ class CyrusServer(ImapServer):
 
     @override
     async def start(self):
-        log.info("Starting Cyrus IMAP container")
+        log.info("Starting Dovecot IMAP container")
         # FIXME: This assumes image already exists!
-        self.container = DockerContainer("akonadi-e2e-cyrus:latest").with_exposed_ports(143)
+        self.container = DockerContainer("akonadi-e2e-dovecot:latest").with_exposed_ports(143)
 
         await asyncio.get_running_loop().run_in_executor(None, self.container.start)
 
         client = await self._wait_ready()
 
-        # Create INBOX mailbox : this mailbox is special and cannot be deleted, so we create it globally for the entire test session
-        resp = await client.create("INBOX")
-        assert resp.result == "OK"
+        # DOVECOT image already has INBOX mailbox, so no need to create it manually
 
         await client.logout()
 
     @override
     async def stop(self):
-        log.info("Stopping Cyrus IMAP container")
+        log.info("Stopping Dovecot IMAP container")
         if self.container:
             await asyncio.get_running_loop().run_in_executor(None, self.container.stop)
 
@@ -64,10 +63,11 @@ class CyrusServer(ImapServer):
         for _ in range(5):
             try:
                 client = IMAP4(host=self.host_or_ip, port=self.port)
+                # default timeout for the client is 10 seconds
                 await client.wait_hello_from_server()
                 resp = await client.login(self.username, self.password)
                 if resp.result.startswith("OK"):
                     return client
             except Exception:
                 await asyncio.sleep(0.5)
-        raise TimeoutError("Cyrus IMAP not ready after 50s")
+        raise TimeoutError("Dovecot IMAP not ready after 50s")
