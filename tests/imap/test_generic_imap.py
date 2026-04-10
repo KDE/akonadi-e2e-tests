@@ -247,6 +247,10 @@ def test_delete_message(
 
     wait_until(lambda: message_deleted(imap_client, item, "Test"), timeout=10.0)
 
+    items = akonadi_client.list_items(collection.id())
+    assert len(items) == 1
+    assert item.id() not in [i.id() for i in items]
+
     check_collection_in_sync("Test", imap_resource, imap_client)
 
 
