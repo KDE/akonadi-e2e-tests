@@ -12,6 +12,8 @@ from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.dbus.interfaces.org_kde_akonadi_davgroupware_settings import (
     OrgKdeAkonadiDavGroupwareSettingsInterface,
 )
+
+from akonadi.utils import AkonadiUtils
 from src.akonadi.resource import Resource
 from src.kwallet.client import KWalletClient
 
@@ -51,7 +53,7 @@ class DAVResource(Resource):
         instance = Akonadi.AgentManager.self().instance(self._identifier)
         instance.reconfigure()
 
-        await self.wait_for_status(0)
+        await AkonadiUtils.wait_for_status(self._identifier, 0)
 
     @override
     async def remove(self) -> None:

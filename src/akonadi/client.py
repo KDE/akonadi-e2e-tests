@@ -5,9 +5,9 @@
 from logging import getLogger
 
 from AkonadiCore import Akonadi  # type: ignore
-from PySide6.QtCore import QEventLoop  # type: ignore
 
 from src.akonadi.env import AkonadiEnv
+from akonadi.utils import AkonadiUtils
 
 log = getLogger(__name__)
 
@@ -29,21 +29,13 @@ class AkonadiClient:
     def akonadi_instance_name(self) -> str:
         return self._env.instance_id
 
-    def wait_for_job(self, job):
-        loop = QEventLoop()
-        job.result.connect(loop.quit)
-        loop.exec()
-
-        if job.error():
-            raise ClientError(job.errorString())
-
     def collection_by_id(self, collection_id: int) -> Akonadi.Collection | None:
         if collection_id <= 0:
             return Akonadi.Collection.root()
 
         else:
             job = Akonadi.CollectionFetchJob([collection_id])
-            self.wait_for_job(job)
+            AkonadiUtils.wait_for_job(job)
 
             if len(job.collections()) != 1:
                 raise ClientError(f"Found {len(job.collections())} collections when expecting 1")
@@ -63,7 +55,7 @@ class AkonadiClient:
             else Akonadi.CollectionFetchJob.Recursive
         )
         job = Akonadi.CollectionFetchJob(collection, type)
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
         fetched_collections.extend(job.collections())
 
@@ -75,14 +67,14 @@ class AkonadiClient:
 
         job = Akonadi.CollectionDeleteJob(collection)
 
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
     def item_by_id(self, item_id: int) -> Akonadi.Item:
         item = Akonadi.Item()
         item.setId(item_id)
 
         job = Akonadi.ItemFetchJob(item)
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
         if len(job.items()) != 1:
             raise ClientError(f"Found {len(job.items())} items when expecting 1")
@@ -93,7 +85,7 @@ class AkonadiClient:
         collection.setId(collection_id)
 
         job = Akonadi.ItemFetchJob(collection)
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
         return job.items()
 
@@ -113,14 +105,14 @@ class AkonadiClient:
         collection.setId(collection_id)
 
         job = Akonadi.ItemCreateJob(item, collection)
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
     def delete_item(self, item_id: int) -> None:
         item = Akonadi.Item()
         item.setId(item_id)
 
         job = Akonadi.ItemDeleteJob(item)
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
     def move_item(self, item_id: int, destination_id: int) -> None:
         item = Akonadi.Item()
@@ -131,7 +123,7 @@ class AkonadiClient:
 
         job = Akonadi.ItemMoveJob(item, destination)
 
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)
 
     def copy_item(self, item_id: int, destination_id: int) -> None:
         item = Akonadi.Item()
@@ -142,4 +134,4 @@ class AkonadiClient:
 
         job = Akonadi.ItemCopyJob(item, destination)
 
-        self.wait_for_job(job)
+        AkonadiUtils.wait_for_job(job)

@@ -10,10 +10,10 @@ from typing import ClassVar, Self
 
 import pytest
 from AkonadiCore import Akonadi  # type: ignore
-from PySide6.QtCore import QEventLoop  # type: ignore
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
+from akonadi.utils import AkonadiUtils
 
 log = getLogger(__name__)
 
@@ -30,47 +30,13 @@ class Resource:
         self._identifier = identifier
         self.akonadi_client = akonadi_client
 
-    @staticmethod
-    def wait_for_job(job):
-        loop = QEventLoop()
-        job.result.connect(loop.quit)
-        loop.exec()
-
-        if job.error():
-            raise ResourceError(job.errorString())
-
-    # Waits for the resource to go back into given status
-    async def wait_for_status(self, status, timeout: float = 30.0):
-        loop = QEventLoop()
-        done = {"status": False}
-
-        def on_status_changed(instance):
-            if instance.identifier() == self._identifier and instance.status() == status:
-                done["status"] = True
-                loop.quit()
-
-        manager = Akonadi.AgentManager.self()
-        manager.instanceStatusChanged.connect(on_status_changed)
-
-        if manager.instance(self._identifier).status() == status:
-            return
-
-        start = time.time()
-        while not done["status"]:
-            if time.time() - start > timeout:
-                raise TimeoutError(f"Resource did not achieve status {status} in time")
-            loop.processEvents()
-            await asyncio.sleep(0.5)
-
-        manager.instanceStatusChanged.disconnect(on_status_changed)
-
     @classmethod
     async def create(cls, akonadi_client: AkonadiClient, dbus: AkonadiDBus) -> Self:
         log.debug("Creating %s resource via D-Bus", cls.RESOURCE_TYPE)
 
         createJob = Akonadi.AgentInstanceCreateJob(cls.RESOURCE_TYPE)
         createJob.start()
-        Resource.wait_for_job(createJob)
+        AkonadiUtils.wait_for_job(createJob)
 
         instance_id = createJob.instance().identifier()
 
@@ -99,9 +65,9 @@ class Resource:
 
         resourceSynchroJob = Akonadi.ResourceSynchronizationJob(instance)
         resourceSynchroJob.start()
-        Resource.wait_for_job(resourceSynchroJob)
+        AkonadiUtils.wait_for_job(resourceSynchroJob)
 
-        await self.wait_for_status(0)
+        await AkonadiUtils.wait_for_status(self._identifier, 0)
 
         log.debug("%s resource synchronized", self.RESOURCE_TYPE)
 
@@ -138,8 +104,8 @@ class Resource:
 
         # to be sure that the collection has been synchronized correctly, we must wait for the instance to be running, then idle again
         # because there isn't a job we can wait, the instance may be idle at first without actually being synced (sync not triggered yet / status not changed yet)
-        await self.wait_for_status(1)
-        await self.wait_for_status(0)
+        await AkonadiUtils.wait_for_status(self._identifier, 1)
+        await AkonadiUtils.wait_for_status(self._identifier, 0)
 
     def list_collections(self) -> list[Akonadi.Collection]:
         collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
