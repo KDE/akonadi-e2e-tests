@@ -37,15 +37,14 @@ class AkonadiClient:
             job = Akonadi.CollectionFetchJob([collection_id])
             AkonadiUtils.wait_for_job(job)
 
-            if len(job.collections()) != 1:
-                raise ClientError(f"Found {len(job.collections())} collections when expecting 1")
-
-            return job.collections()[0]
+            if len(job.collections()) > 1:
+                raise ClientError(f"Found {len(job.collections())} collections whith id {collection_id}")
+            return None if len(job.collections()) == 0 else job.collections()[0]
 
     def list_collections(
-        self, parent_id: int | None = None, first_level: bool = False
+        self, parent_id: int = 0, first_level: bool = False
     ) -> list[Akonadi.Collection]:
-        fetched_collections = [self.collection_by_id(parent_id or 0)]
+        fetched_collections = [self.collection_by_id(parent_id)]
 
         collection = Akonadi.Collection()
         collection.setId(parent_id or 0)
