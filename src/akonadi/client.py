@@ -76,9 +76,10 @@ class AkonadiClient:
         job = Akonadi.ItemFetchJob(item)
         AkonadiUtils.wait_for_job(job)
 
-        if len(job.items()) != 1:
-            raise ClientError(f"Found {len(job.items())} items when expecting 1")
-        return job.items()[0]
+        if len(job.items()) > 1:
+            raise ClientError(f"Found {len(job.items())} items whith id {item_id}")
+        return None if len(job.items()) == 0 else job.items()[0]
+
 
     def list_items(self, collection_id: int) -> list[Akonadi.Item]:
         collection = Akonadi.Collection()
