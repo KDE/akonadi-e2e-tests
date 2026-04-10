@@ -135,6 +135,9 @@ class Resource:
         item = self.akonadi_client.item_by_id(item_id)
         item.setFlag(flag.encode())
 
+        modifyJob = Akonadi.ItemModifyJob(item)
+        AkonadiUtils.wait_for_job(modifyJob)
+
     async def connect(self) -> None:
         """
         Pass the ressource to online status, effectively connecting it to any imap/dav server it was configured for
