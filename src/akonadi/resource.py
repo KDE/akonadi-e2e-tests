@@ -40,12 +40,7 @@ class Resource:
 
         instance_id = createJob.instance().identifier()
 
-        timeout = 0.0 if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10.0
-        start = time.time()
-        while not createJob.instance().isValid():
-            if time.time() - start > timeout:
-                raise ResourceError(f"Resource did not become valid in time: {instance_id}")
-            await asyncio.sleep(0.5)
+        assert not createJob.instance().isValid()
 
         return cls(akonadi_client, dbus, instance_id)
 
