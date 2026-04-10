@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from logging import getLogger
 
 from AkonadiCore import Akonadi  # type: ignore
-from imap_tools import A, BaseMailBox
+from imap_tools import AND, A, BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
 from src.imap.mailbox_with_original_payload import MailMessageWithOriginalPayload
@@ -56,6 +56,13 @@ def message_deleted(imap_client: BaseMailBox, item: Akonadi.Item, mailbox: str) 
     imap_client.folder.set(mailbox)
     imap_client.expunge()
     return not bool(list(imap_client.fetch(A(uid=item.remoteId()), mark_seen=False)))
+
+
+def has_flag(imap_client: BaseMailBox, item: Akonadi.Item, mailbox: str, flag: str) -> bool:
+    assert item.remoteId() is not None
+    imap_client.folder.set(mailbox)
+    [imap_mail] = imap_client.fetch(AND(uid=item.remoteId()), mark_seen=False)
+    return flag in imap_mail.flags
 
 
 def assert_payload_are_equal(

@@ -11,6 +11,7 @@ from AkonadiCore import Akonadi
 from imap_tools import BaseMailBox, MailboxFolderDeleteError
 
 from akonadi.utils import AkonadiUtils
+from imap.test_utils import has_flag
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.imap.email_utils import create_message
@@ -112,6 +113,36 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     imap_resource.set_online(True)
     imap_resource.sync_collection("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug ? Flag disappear from akonadi server, maybe sync issues with imap server ?",
+)
+def test_akonadi_sync_add_flags(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    When changing flags of an item in the akonadi server, the change is replayed on the server
+    """
+    imap_client.folder.set("Test")
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+    items = imap_resource.list_items("Test")
+    item = items[0]
+
+    flags = ["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
+    for flag in flags:
+        imap_resource.add_flag(item.id(), flag)
+
+        imap_resource.sync_collection("Test")
+        wait_until(lambda: has_flag(imap_client, item, "Test", flag))  # noqa: B023
+        assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+    for flag in flags:
+        imap_resource.clear_flag(item.id(), flag)
+
+        imap_resource.sync_collection("Test")
+        wait_until(lambda: not has_flag(imap_client, item, "Test", flag))  # noqa: B023
+
+        assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_removed_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
