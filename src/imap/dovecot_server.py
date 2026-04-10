@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Noham Devillers <nde@enioka.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import asyncio
 from logging import getLogger
 from typing import override

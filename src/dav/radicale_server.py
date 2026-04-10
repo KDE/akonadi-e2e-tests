@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+# SPDX-FileCopyrightText: 2026 Noham Devillers <nde@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
