@@ -138,16 +138,9 @@ class Resource:
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
 
-    async def connect(self) -> None:
+    async def setOnline(self, online: bool) -> None:
         """
-        Pass the ressource to online status, effectively connecting it to any imap/dav server it was configured for
-        """
-        instance = Akonadi.AgentManager.self().instance(self._identifier)
-        instance.setIsOnline(True)
-
-    async def disconnect(self) -> None:
-        """
-        Pass the ressource to offline status, effectively disconnecting it to any imap/dav server it was configured for
+        Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
         """
         instance = Akonadi.AgentManager.self().instance(self._identifier)
-        instance.setIsOnline(False)
+        instance.setIsOnline(online)

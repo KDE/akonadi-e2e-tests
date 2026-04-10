@@ -38,7 +38,7 @@ async def test_offline_flag_only_change(
 ) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_resource.disconnect()
+    await imap_resource.setOnline(False)
 
     collection = imap_resource.resolve_collection("Test")
     items = imap_resource.list_items(collection.id())
@@ -48,7 +48,7 @@ async def test_offline_flag_only_change(
     await imap_client.add_flag("Test", imap_uid, "$TestFlag")
     imap_resource.add_flag(item.id(), "$TestFlag2")
 
-    await imap_resource.connect()
+    await imap_resource.setOnline(True)
     await imap_resource.sync_collection("Test")
 
     await check_collection_in_sync("Test", imap_resource, imap_client)
@@ -159,7 +159,7 @@ async def test_mailbox_deleted_on_server_is_unsynced(
 ) -> None:
     await check_collection_in_sync("Test", imap_resource, imap_client)
 
-    await imap_resource.disconnect()
+    await imap_resource.setOnline(False)
 
     await imap_client.delete_mailbox("Test")
     imap_resource.delete_collection("Test2")
@@ -170,7 +170,7 @@ async def test_mailbox_deleted_on_server_is_unsynced(
     assert await imap_client.mailbox_exists("Test2")
 
     # reconnect
-    await imap_resource.connect()
+    await imap_resource.setOnline(True)
     await imap_resource.synchronize()
 
     # check that both imap and akonadi server are properly synchronised
