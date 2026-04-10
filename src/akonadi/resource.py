@@ -13,7 +13,7 @@ from AkonadiCore import Akonadi  # type: ignore
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
-from akonadi.utils import AkonadiUtils
+from src.akonadi.utils import AkonadiUtils
 
 log = getLogger(__name__)
 
@@ -138,7 +138,7 @@ class Resource:
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
 
-    async def setOnline(self, online: bool) -> None:
+    async def set_online(self, online: bool) -> None:
         """
         Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
         """

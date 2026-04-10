@@ -7,7 +7,7 @@ from logging import getLogger
 from AkonadiCore import Akonadi  # type: ignore
 
 from src.akonadi.env import AkonadiEnv
-from akonadi.utils import AkonadiUtils
+from src.akonadi.utils import AkonadiUtils
 
 log = getLogger(__name__)
 
@@ -38,7 +38,9 @@ class AkonadiClient:
             AkonadiUtils.wait_for_job(job)
 
             if len(job.collections()) > 1:
-                raise ClientError(f"Found {len(job.collections())} collections whith id {collection_id}")
+                raise ClientError(
+                    f"Found {len(job.collections())} collections whith id {collection_id}"
+                )
             return None if len(job.collections()) == 0 else job.collections()[0]
 
     def list_collections(
@@ -78,7 +80,6 @@ class AkonadiClient:
         if len(job.items()) > 1:
             raise ClientError(f"Found {len(job.items())} items whith id {item_id}")
         return None if len(job.items()) == 0 else job.items()[0]
-
 
     def list_items(self, collection_id: int) -> list[Akonadi.Item]:
         collection = Akonadi.Collection()

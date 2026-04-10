@@ -12,9 +12,8 @@ from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.dbus.interfaces.org_kde_akonadi_davgroupware_settings import (
     OrgKdeAkonadiDavGroupwareSettingsInterface,
 )
-
-from akonadi.utils import AkonadiUtils
 from src.akonadi.resource import Resource
+from src.akonadi.utils import AkonadiUtils
 from src.kwallet.client import KWalletClient
 
 log = getLogger(__name__)

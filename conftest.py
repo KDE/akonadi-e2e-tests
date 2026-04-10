@@ -32,7 +32,7 @@ def fix_locale():
     Sets the locale to 'C' to ensure consistent behavior across different systems
     LC_TIME is used for date from RFC 822 that use month names abbr. in English
     """
-    locale.setlocale(locale.LC_ALL, 'C')
+    locale.setlocale(locale.LC_ALL, "C")
 
 
 @pytest.fixture(scope="session")

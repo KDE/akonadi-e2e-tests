@@ -8,8 +8,10 @@ import time
 from AkonadiCore import Akonadi  # type: ignore
 from PySide6.QtCore import QEventLoop  # type: ignore
 
+
 class WaitJobError(Exception):
     pass
+
 
 class AkonadiUtils:
     @staticmethod
@@ -20,7 +22,7 @@ class AkonadiUtils:
 
         if job.error():
             raise WaitJobError(job.errorString())
-        
+
     # Waits for the resource to go back into given status
     @staticmethod
     async def wait_for_status(identifier, status, timeout: float = 30.0):
@@ -47,4 +49,3 @@ class AkonadiUtils:
             await asyncio.sleep(0.5)
 
         manager.instanceStatusChanged.disconnect(on_status_changed)
-        
