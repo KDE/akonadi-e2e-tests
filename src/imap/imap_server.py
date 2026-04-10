@@ -98,7 +98,11 @@ class ImapServer:
         resp = await imap.select()
         assert resp.result == "OK"
 
-        for name in ["Trash", "Sent", "Templates", "Test", "Test2", "Test3"]:
+        imap_list_response = await imap.list('""', "*")
+        folder_list = [l.decode().split(" ")[-1] for l in imap_list_response.lines][:-1]
+        for name in folder_list:
+            if name == "INBOX":
+                continue
             # check that the mailbox exists:
             resp = await imap.status(name, "(MESSAGES)")
             if resp.result == "OK":
