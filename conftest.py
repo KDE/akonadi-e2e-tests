@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
+import locale
 import os
 import tempfile
 from collections.abc import AsyncGenerator
@@ -24,6 +24,11 @@ from src.imap.client import ImapClient
 from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
+
+
+@pytest.fixture(autouse=True)
+def fix_locale():
+    locale.setlocale(locale.LC_ALL, 'C')
 
 
 @pytest.fixture(scope="session")
