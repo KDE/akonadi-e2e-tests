@@ -40,7 +40,7 @@ class Resource:
 
         instance_id = createJob.instance().identifier()
 
-        assert not createJob.instance().isValid()
+        assert createJob.instance().isValid()
 
         return cls(akonadi_client, dbus, instance_id)
 
