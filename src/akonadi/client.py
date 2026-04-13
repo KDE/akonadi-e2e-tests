@@ -70,6 +70,15 @@ class AkonadiClient:
 
         AkonadiUtils.wait_for_job(job)
 
+    def rename_collection(self, collection_id: int, new_name: str) -> None:
+        collection = Akonadi.Collection()
+        collection.setId(collection_id)
+        collection.setName(new_name)
+
+        job = Akonadi.CollectionModifyJob(collection)
+
+        AkonadiUtils.wait_for_job(job)
+
     def item_by_id(self, item_id: int) -> Akonadi.Item:
         item = Akonadi.Item()
         item.setId(item_id)

@@ -125,6 +125,10 @@ class Resource:
         collection = self.resolve_collection(collection_name)
         self.akonadi_client.delete_collection(collection.id())
 
+    def rename_collection(self, collection_name: str, new_name: str) -> None:
+        collection = self.resolve_collection(collection_name)
+        self.akonadi_client.rename_collection(collection.id(), new_name)
+
     def add_flag(self, item_id: int, flag: str) -> None:
         item = self.akonadi_client.item_by_id(item_id)
         item.setFlag(flag.encode())

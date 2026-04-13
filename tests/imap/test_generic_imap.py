@@ -316,6 +316,36 @@ def test_delete_message(
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
+def test_rename_collection(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+) -> None:
+    """
+    Test renaming a collection in akonadi side when online and verifying the change in both Akonadi and IMAP server.
+    """
+    check_collection_in_sync("Test", imap_resource, imap_client)
+    initial_collections = imap_resource.list_collections()
+
+    assert "Test" in [c.name() for c in initial_collections]
+    assert "Test3" not in [c.name() for c in initial_collections]
+
+    imap_resource.rename_collection("Test", "Test3")
+
+    updated_collections = imap_resource.list_collections()
+
+    assert "Test3" in [c.name() for c in updated_collections]
+    assert "Test" not in [c.name() for c in updated_collections]
+
+    # Check in imap server that the new collection exists and the old one is deleted
+    wait_until(lambda: not imap_client.folder.exists("Test"))
+    check_collection_in_sync("Test3", imap_resource, imap_client)
+
+    # Check that the renamed collection has the same items as the original one
+    initial_collection = [collection for collection in initial_collections if collection.name() == "Test"]
+    updated_collection = [collection for collection in updated_collections if collection.name() == "Test3"]
+    assert sorted(initial_collection) == sorted(updated_collection)
+
+
 def test_move_message_on_server_is_synced(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
