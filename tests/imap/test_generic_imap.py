@@ -369,6 +369,9 @@ def test_offline_delete_message(
     wait_until(lambda: message_deleted(imap_client, item, "Test"), timeout=10.0)
 
     imap_client.folder.set("Test")
+    messages = list(imap_client.fetch(mark_seen=False))
+    assert len(messages) == 1
+
     check_collection_in_sync("Test", imap_resource, imap_client)
 
 """"
