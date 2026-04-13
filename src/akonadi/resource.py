@@ -68,13 +68,15 @@ class Resource:
     def identifier(self) -> str:
         return self._identifier
 
-    def resolve_collection(self, collection_name: str) -> Akonadi.Collection:
-        path = collection_name.split("/")
-
+    def get_root_collection(self) -> Akonadi.Collection:
         collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
         resource_root = next(filter(lambda c: c.resource() == self.identifier, collections), None)
         if not resource_root:
             pytest.fail("Resource root collection not found")
+        return resource_root
+
+    def resolve_collection(self, collection_name: str) -> Akonadi.Collection:
+        path = collection_name.split("/")
 
         def resolve_recursive(parent: Akonadi.Collection, path: list[str]):
             if not path:
@@ -89,7 +91,7 @@ class Resource:
 
             return resolve_recursive(collection, path[1:])
 
-        return resolve_recursive(resource_root, path)
+        return resolve_recursive(self.get_root_collection(), path)
 
     def sync_collection(self, collection_name: str) -> None:
         collection = self.resolve_collection(collection_name)
@@ -101,12 +103,7 @@ class Resource:
         AkonadiUtils.wait_for_status(self._identifier, 0)
 
     def list_collections(self) -> list[Akonadi.Collection]:
-        collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
-        resource_root = next(filter(lambda c: c.resource() == self.identifier, collections), None)
-        if not resource_root:
-            pytest.fail("Resource root collection not found")
-
-        return self.akonadi_client.list_collections(parent_id=resource_root.id())
+        return self.akonadi_client.list_collections(parent_id=self.get_root_collection().id())
 
     def list_items(
         self, collection_name_or_id: str | int, full_payload: bool = True

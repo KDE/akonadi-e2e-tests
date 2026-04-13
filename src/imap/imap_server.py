@@ -109,11 +109,8 @@ class ImapServer:
 
     def cleanup_test_environment(self):
         """
-        Currently, aioimaplib does not include a way to list mailboxes at top level (list method does not work with empty string as reference_name, contrary to imaplib2)
-        So we just delete every mailbox created in the setup and empty INBOX mailbox of all its messages
-        Additional mailboxes created inside of the tests must be deleted at the end of said tests, or added to the list of deleted mailboxes here, to guarantee test isolation
-
-        This could be fixed by using imaplib2 package (and coupling it manually with asyncio) instead of aioimaplib
+        Some IMAP servers don't allow deleting the INBOX mailbox or deleting mailboxes containing other mailboxes.
+        To circumvent this, we only empty the INBOX mailbox of it's messages and delete child mailboxes first.
         """
         log.info("Cleaning IMAP server for user %s", self.username)
 
@@ -121,6 +118,8 @@ class ImapServer:
         client.login(self.username, self.password, initial_folder="INBOX")
 
         folder_list = client.folder.list()
+        # Some IMAP servers require to delete child mailboxes first
+        folder_list.sort(key=lambda f: len(f.name.split(f.delim)), reverse=True)
         for folder in folder_list:
             if folder.name == "INBOX":
                 continue

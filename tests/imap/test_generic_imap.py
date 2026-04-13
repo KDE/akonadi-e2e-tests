@@ -7,8 +7,10 @@ import time
 from logging import getLogger
 
 import pytest
+from AkonadiCore import Akonadi
 from imap_tools import BaseMailBox, MailboxFolderDeleteError
 
+from akonadi.utils import AkonadiUtils
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.imap.email_utils import create_message
@@ -20,6 +22,40 @@ log = getLogger(__name__)
 
 def test_initial_sync(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+def test_akonadi_sync_add_collections(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Adding a collection in the akonadi server, the change is replayed on the server
+    """
+    root_collection = imap_resource.get_root_collection()
+    mime_types = ["inode/directory", "message/rfc822"]
+
+    assert not imap_client.folder.exists("TestTopLevel")
+    assert not imap_client.folder.list("", "TestTopLevel*TestChild")
+
+    # Create toplevel collection
+    toplevel_collection = Akonadi.Collection()
+    toplevel_collection.setName("TestTopLevel")
+    toplevel_collection.setContentMimeTypes(mime_types)
+    toplevel_collection.setParentCollection(root_collection)
+    job = Akonadi.CollectionCreateJob(toplevel_collection)
+
+    AkonadiUtils.wait_for_job(job)
+    wait_until(lambda: imap_client.folder.exists("TestTopLevel"))
+
+    # Creat child collection
+    toplevel_collection = imap_resource.resolve_collection("TestTopLevel")
+    child_collection = Akonadi.Collection()
+    child_collection.setName("TestChild")
+    child_collection.setContentMimeTypes(mime_types)
+    child_collection.setParentCollection(toplevel_collection)
+    job = Akonadi.CollectionCreateJob(child_collection)
+
+    AkonadiUtils.wait_for_job(job)
+    wait_until(lambda: len(imap_client.folder.list("", "TestTopLevel*TestChild")) > 0)
 
 
 def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
@@ -227,7 +263,6 @@ def test_append_message(
     # It may take a little bit for the change to propagate to the IMAP server, so try a few times
     wait_until(lambda: message_added(imap_client, "Test", "3"))
 
-
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
@@ -308,6 +343,7 @@ def test_copy_message_on_server_is_synced(
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
+
 def test_offline_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
@@ -343,6 +379,7 @@ def test_offline_append_message(
 
     assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
 
+
 def test_offline_delete_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
@@ -377,6 +414,7 @@ def test_offline_delete_message(
     assert len(messages) == 1
 
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
 
 """"
 @pytest.mark.asyncio
