@@ -1,0 +1,10 @@
+version = 1
+SPDX-PackageName = "Akonadi e2e testing"
+SPDX-PackageSupplier = "KDE <kde-community@kde.org>"
+SPDX-PackageDownloadLocation = "https://invent.kde.org/pim/akonadi-e2e-testing"
+
+[[annotations]]
+path = ["uv.lock"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Node"
+SPDX-License-Identifier = "CC0-1.0"
