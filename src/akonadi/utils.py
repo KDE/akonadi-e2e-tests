@@ -14,10 +14,32 @@ class WaitJobError(Exception):
 
 class AkonadiUtils:
     @staticmethod
-    def wait_for_job(job):
+    def wait_for_job(job, timeout_ms: int = 30000):
         loop = QEventLoop()
-        job.result.connect(loop.quit)
+
+        timer = QTimer()
+        timer.setSingleShot(True)
+
+        timed_out = False
+
+        def on_timeout():
+            nonlocal timed_out
+            timed_out = True
+            job.kill()
+            loop.quit()
+
+        def on_job_finished():
+            timer.stop()
+            loop.quit()
+
+        timer.timeout.connect(on_timeout)
+        job.result.connect(on_job_finished)
+
+        timer.start(timeout_ms)
         loop.exec()
+
+        if timed_out:
+            raise WaitJobError("Timed out while waiting for a job completion")
 
         if job.error():
             raise WaitJobError(job.errorString())
