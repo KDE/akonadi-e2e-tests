@@ -15,6 +15,7 @@ class CyrusServer(ImapServer):
     USERNAME = "admin"
     PASSWORD = "admin"
     DOCKER_IMAGE = "akonadi-e2e-cyrus:latest"
+    CONTAINER_NAME = "cyrus-akonadi-e2e-tests"
 
     def _ready_hook(self, client: BaseMailBox):
         client.folder.create("INBOX")

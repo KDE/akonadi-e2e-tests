@@ -23,7 +23,14 @@ class RadicaleServer(DAVServer):
     async def start(self) -> None:
         log.debug("Starting Radicale server")
         # FIXME: This assumes image already exists!
-        self.container = DockerContainer("akonadi-e2e-radicale:latest").with_exposed_ports(5232)
+        self.container = DockerContainer("akonadi-e2e-radicale:latest").with_exposed_ports(5232).with_name("radicale-akonadi-e2e-tests").with_kwargs(
+        log_config={
+            "type": "journald",
+            "config": {
+                "tag": "radicale-akonadi-e2e-tests"
+            }
+        }
+        )
         await asyncio.get_running_loop().run_in_executor(None, self.container.start)
         log.debug(
             "Radicale server started at %s:%s",

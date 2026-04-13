@@ -14,3 +14,4 @@ class DovecotServer(ImapServer):
     DOCKER_IMAGE = "akonadi-e2e-dovecot:latest"
     USERNAME = "admin"
     PASSWORD = "admin"
+    CONTAINER_NAME = "dovecot-akonadi-e2e-tests"
