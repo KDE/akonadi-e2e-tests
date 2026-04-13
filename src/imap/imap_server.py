@@ -1,15 +1,17 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+# SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
-from abc import abstractmethod
+import time
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from enum import Enum
 from logging import getLogger
+from typing import ClassVar
 
-from aioimaplib import IMAP4  # type: ignore
+from imap_tools import BaseMailBox, MailboxFolderDeleteError, MailBoxUnencrypted
+from testcontainers.core.container import DockerContainer  # type: ignore
 
 log = getLogger(__name__)
 
@@ -20,38 +22,55 @@ class ImapServerType(Enum):
 
 
 class ImapServer:
-    @abstractmethod
-    async def start(self) -> None: ...
+    DOCKER_IMAGE: ClassVar[str]
+    USERNAME: ClassVar[str]
+    PASSWORD: ClassVar[str]
 
-    @abstractmethod
-    async def stop(self) -> None: ...
+    def __init__(self):
+        self.container = None
+
+    def start(self) -> None:
+        log.info(f"Starting {self.__class__.__name__} IMAP container")
+        # FIXME: This assumes image already exists!
+        self.container = DockerContainer(self.DOCKER_IMAGE).with_exposed_ports(143)
+        self.container.start()
+
+        client = self._wait_ready()
+        self._ready_hook(client)
+        client.logout()
+
+    def stop(self):
+        log.info(f"Stopping {self.__class__.__name__} container")
+        if self.container:
+            self.container.stop()
 
     @property
-    @abstractmethod
-    def port(self) -> int: ...
+    def host_or_ip(self) -> str:
+        return self.container.get_container_host_ip()  # type: ignore
 
     @property
-    @abstractmethod
-    def host_or_ip(self) -> str: ...
+    def port(self) -> int:
+        return int(self.container.get_exposed_port(143))  # type: ignore
 
     @property
-    @abstractmethod
-    def username(self) -> str: ...
+    def username(self) -> str:
+        return self.USERNAME
 
     @property
-    @abstractmethod
-    def password(self) -> str: ...
+    def password(self) -> str:
+        return self.PASSWORD
 
-    async def prepare_test_environment(self):
+    def prepare_test_environment(self):
         log.info("Populating IMAP server for user %s", self.username)
-        imap = IMAP4(host=self.host_or_ip, port=self.port)
-        await imap.wait_hello_from_server()
-        resp = await imap.login(self.username, self.password)
-        assert resp.result == "OK"
+        client = MailBoxUnencrypted(host=self.host_or_ip, port=self.port)
+        client.login(self.username, self.password, initial_folder=None)
 
-        for name in ["Trash", "Sent", "Templates", "Test", "Test2"]:
-            resp = await imap.create(name)
-            assert resp.result == "OK"
+        folder_to_create = ["Trash", "Sent", "Templates", "Test", "Test2"]
+        for name in folder_to_create:
+            client.folder.create(name)
+        assert len(client.folder.list()) == len(folder_to_create) + 1, (
+            "Failed to create all folders"
+        )  # + 1 for INBOX
 
         for mailbox in ["INBOX", "Test", "Test2"]:
             msg = EmailMessage()
@@ -61,10 +80,10 @@ class ImapServer:
             msg["To"] = "test@example.com"
             msg["Date"] = formatdate(localtime=True)
             msg["Message-ID"] = make_msgid()
-            resp = await imap.append(
-                msg.as_bytes().replace(b"\n", b"\r\n"), mailbox, flags="\\Seen"
+            resp = client.append(
+                msg.as_bytes().replace(b"\n", b"\r\n"), mailbox, flag_set=["\\Seen"]
             )
-            assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
+            assert resp[0] == "OK", f"Error from IMAP: {resp}"
 
             msg = EmailMessage()
             msg.set_content("Hello, world!\r\n")
@@ -73,14 +92,14 @@ class ImapServer:
             msg["To"] = "test@example.com"
             msg["Date"] = formatdate(localtime=True)
             msg["Message-ID"] = make_msgid()
-            resp = await imap.append(msg.as_bytes().replace(b"\n", b"\r\n"), mailbox)
-            assert resp.result == "OK", f"Error from IMAP: {resp.result} {resp.lines}"
+            resp = client.append(msg.as_bytes().replace(b"\n", b"\r\n"), mailbox)
+            assert resp[0] == "OK", f"Error from IMAP: {resp}"
 
         log.info("IMAP server populated with messages")
 
-        await imap.logout()
+        client.logout()
 
-    async def cleanup_test_environment(self):
+    def cleanup_test_environment(self):
         """
         Currently, aioimaplib does not include a way to list mailboxes at top level (list method does not work with empty string as reference_name, contrary to imaplib2)
         So we just delete every mailbox created in the setup and empty INBOX mailbox of all its messages
@@ -90,45 +109,42 @@ class ImapServer:
         """
         log.info("Cleaning IMAP server for user %s", self.username)
 
-        imap = IMAP4(host=self.host_or_ip, port=self.port)
-        await imap.wait_hello_from_server()
+        client = MailBoxUnencrypted(host=self.host_or_ip, port=self.port)
+        client.login(self.username, self.password, initial_folder="INBOX")
 
-        resp = await imap.login(self.username, self.password)
-        assert resp.result == "OK"
-        resp = await imap.select()
-        assert resp.result == "OK"
-
-        imap_list_response = await imap.list('""', "*")
-        folder_list = [l.decode().split(" ")[-1] for l in imap_list_response.lines][:-1]
-        for name in folder_list:
-            if name == "INBOX":
+        folder_list = client.folder.list()
+        for folder in folder_list:
+            if folder.name == "INBOX":
                 continue
-            # check that the mailbox exists:
-            resp = await imap.status(name, "(MESSAGES)")
-            if resp.result == "OK":
-                deleted = False
-                # delete might fail at first if some operations are still ongoing, so we try serveral time
-                for _ in range(5):
-                    resp = await imap.delete(name)
-                    if resp.result == "OK":
-                        deleted = True
-                        break
-                    await asyncio.sleep(0.2)
-                assert deleted
+            deleted = False
+            # delete might fail at first if some operations are still ongoing, so we try serveral time
+            for _ in range(5):
+                try:
+                    client.folder.delete(folder.name)
+                    deleted = True
+                    break
+                except MailboxFolderDeleteError:
+                    time.sleep(0.2)
+            assert deleted
 
         # We can't delete INBOX mailbox, we have to empty its messages ourselves
-        resp = await imap.search("ALL")
-        if resp.result == "OK" and resp.lines and resp.lines[0]:
-            msg_ids = resp.lines[0].decode().strip().split()
-
-            if msg_ids and len(msg_ids) > 0:
-                for num in msg_ids:
-                    resp = await imap.store(num, "+FLAGS", "(\\Deleted)")
-                    assert resp.result == "OK"
-
-                resp = await imap.expunge()
-                assert resp.result == "OK"
-
-        await imap.logout()
+        uids = client.uids("ALL")
+        client.delete(uids)
+        assert len(client.uids("ALL")) == 0
+        client.logout()
 
         log.info("IMAP server cleanup complete")
+
+    def _ready_hook(self, client: BaseMailBox):
+        pass
+
+    def _wait_ready(self) -> BaseMailBox:
+        # wait until IMAP responds and user can login
+        for _ in range(100):
+            try:
+                client = MailBoxUnencrypted(host=self.host_or_ip, port=self.port)
+                client.login(self.username, self.password, initial_folder=None)
+                return client
+            except Exception:
+                time.sleep(0.2)
+        raise TimeoutError(f"{self.__class__.__name__} not ready after 20s")

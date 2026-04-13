@@ -12,9 +12,9 @@ requires-python = ">=3.13"
 # >are< the main usage of this package, we list them here.
 dependencies = [
     "aiohttp>=3.13.3",
-    "aioimaplib>=2.0.1",
     "caldav>=1.6.0",
     "camel-converter>=4.0.1",
+    "imap-tools>=1.11.1",
     "lxml>=6.0.2",
     "mypy>=1.15.0",
     "psutil>=7.0.0",

@@ -5,8 +5,8 @@
 from logging import getLogger
 
 import pytest
-from aioimaplib import aioimaplib  # type: ignore
 from AkonadiCore import Akonadi  # type: ignore
+from imap_tools import MailBoxUnencrypted
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
@@ -19,18 +19,16 @@ log = getLogger(__name__)
 
 @pytest.mark.asyncio
 async def test_imap_ready(imap_server: ImapServer):
-    client = aioimaplib.IMAP4(host=imap_server.host_or_ip, port=imap_server.port, timeout=10.0)
-    await client.wait_hello_from_server()
-    resp = await client.login("admin", "admin")
-    assert resp.result.startswith("OK")
-    await client.logout()
+    client = MailBoxUnencrypted(imap_server.host_or_ip, imap_server.port)
+    client.login("admin", "admin")
+    client.logout()
 
 
 @pytest.mark.asyncio
 async def test_akonadi_server_starts(
     akonadi_server: AkonadiServer, dbus_client: AkonadiDBus
 ) -> None:
-    assert await akonadi_server.is_running()
+    assert akonadi_server.is_running()
     path = await dbus_client.server_interface.server_path()
     assert path.startswith("/tmp/akonadi-e2e-")
 
@@ -61,8 +59,9 @@ async def test_akonadi_client_list_agents(
 async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
     assert imap_resource.identifier.startswith("akonadi_imap_resource_")
     collections = imap_resource.list_collections()
+
     assert len(collections) == 7
 
-    await imap_resource.sync_collection("INBOX")
+    imap_resource.sync_collection("INBOX")
     items = imap_resource.list_items("INBOX")
     assert len(items) == 2

@@ -2,13 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
 from collections.abc import Callable, Coroutine
-from time import time
+from time import sleep, time
 from typing import Any
 
 
-async def wait_until(
+def wait_until(
     condition: Callable[[], bool] | Callable[[], Coroutine[Any, Any, bool]],
     timeout: float = 5.0,
     interval: float = 0.2,
@@ -22,16 +21,11 @@ async def wait_until(
     while True:
         result = condition()
 
-        if asyncio.iscoroutine(result):
-            result = await result
-
         if result:
             return
 
         if time() - start > timeout:
             result = condition()
-            if asyncio.iscoroutine(result):
-                result = await result
             assert result, f"Condition not met within {timeout} seconds"
 
-        await asyncio.sleep(interval)
+        sleep(interval)

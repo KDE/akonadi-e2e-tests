@@ -80,15 +80,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aioimaplib"
-version = "2.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ee/da/a454c47fb8522e607425e15bf1f49ccfdb3d75f4071f40b63ebd49573495/aioimaplib-2.0.1.tar.gz", hash = "sha256:5a494c3b75f220977048f5eb2c7ba9c0570a3148aaf38bee844e37e4d7af8648", size = 35555, upload-time = "2025-01-16T10:38:23.14Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/52/48aaa287fb3c4c995edcb602370b10d182dc5c48371df7cb3a404356733f/aioimaplib-2.0.1-py3-none-any.whl", hash = "sha256:727e00c35cf25106bd34611dddd6e2ddf91a5f1a7e72d9269f3ce62486b31e14", size = 34729, upload-time = "2025-01-16T10:38:20.427Z" },
-]
-
-[[package]]
 name = "aiosignal"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -106,9 +97,9 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
-    { name = "aioimaplib" },
     { name = "caldav" },
     { name = "camel-converter" },
+    { name = "imap-tools" },
     { name = "lxml" },
     { name = "mypy" },
     { name = "psutil" },
@@ -135,9 +126,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.3" },
-    { name = "aioimaplib", specifier = ">=2.0.1" },
     { name = "caldav", specifier = ">=1.6.0" },
     { name = "camel-converter", specifier = ">=4.0.1" },
+    { name = "imap-tools", specifier = ">=1.11.1" },
     { name = "lxml", specifier = ">=6.0.2" },
     { name = "mypy", specifier = ">=1.15.0" },
     { name = "psutil", specifier = ">=7.0.0" },
@@ -407,6 +398,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f1/70/7703c29685631f5a7590aa73f1f1d3fa9a380e654b86af429e0934a32f7d/idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9", size = 190490, upload-time = "2024-09-15T18:07:39.745Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3", size = 70442, upload-time = "2024-09-15T18:07:37.964Z" },
+]
+
+[[package]]
+name = "imap-tools"
+version = "1.11.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/eb/de91770dc8f34691c33355f7b6277500db32f68ce039c08e2a40ad5a0536/imap_tools-1.11.1.tar.gz", hash = "sha256:e3aa02ff3415a2b50a47707eacbf7386bb79aabc34e370c6bb95f9ad20504389", size = 46562, upload-time = "2026-01-15T08:25:47.357Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/bb/94eca066102559a20953475779a4d4d6b39712985014bceba726e1f65aab/imap_tools-1.11.1-py3-none-any.whl", hash = "sha256:0749d0a1f2b9041be1533ea98cc3e9f7977ba86ad3669c1fcf89c27969dcfb0a", size = 35291, upload-time = "2026-01-15T08:25:42.773Z" },
 ]
 
 [[package]]

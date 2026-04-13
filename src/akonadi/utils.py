@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
 import time
 
 from AkonadiCore import Akonadi  # type: ignore
@@ -25,7 +24,7 @@ class AkonadiUtils:
 
     # Waits for the resource to go back into given status
     @staticmethod
-    async def wait_for_status(identifier, status, timeout: float = 30.0):
+    def wait_for_status(identifier, status, timeout: float = 30.0):
         loop = QEventLoop()
         done = False
 
@@ -46,6 +45,6 @@ class AkonadiUtils:
             if time.time() - start > timeout:
                 raise TimeoutError(f"Resource did not achieve status {status} in time")
             loop.processEvents()
-            await asyncio.sleep(0.5)
+            time.sleep(0.2)
 
         manager.instanceStatusChanged.disconnect(on_status_changed)

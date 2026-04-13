@@ -5,7 +5,6 @@
 import uuid
 from datetime import datetime
 from email.message import EmailMessage
-from email.parser import BytesParser
 
 MESSAGE_IDX_SUFFIX = 0
 
@@ -28,7 +27,3 @@ def create_message(subject: str | None = None, body: str | None = None) -> Email
     message["Message-ID"] = f"<{uuid.uuid4()}@localhost>"
 
     return message
-
-
-def parse_message(data: bytes) -> EmailMessage:
-    return BytesParser(EmailMessage).parsebytes(data)

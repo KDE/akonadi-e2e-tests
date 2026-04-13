@@ -1,13 +1,16 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+# SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import locale
 import os
 import tempfile
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
+from imap_tools import BaseMailBox, MailBoxUnencrypted
 from PySide6.QtCore import QCoreApplication  # type: ignore
 
 from src.akonadi.client import AkonadiClient
@@ -20,7 +23,6 @@ from src.dav.client import DavClient
 from src.dav.dav_server import DAVServer, DAVServerType
 from src.dav.nextcloud_server import NextCloudServer
 from src.dav.radicale_server import RadicaleServer
-from src.imap.client import ImapClient
 from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
@@ -36,7 +38,7 @@ def fix_locale():
 
 
 @pytest.fixture(scope="session")
-def instance_id() -> str:
+def instance_id() -> Generator[str, Any]:
     """Pytest fixture that creates a temporary directory for an Akonadi instance.
 
     Returns:
@@ -58,7 +60,7 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus]:
 
 
 @pytest.fixture(scope="session")
-def _akonadi_env(instance_id: str) -> AkonadiEnv:
+def _akonadi_env(instance_id: str) -> Generator[AkonadiEnv, Any]:
     tempdir = Path(os.environ.get("TMPDIR", "/tmp")) / instance_id
     env = AkonadiEnv(tempdir, instance_id)
     os.environ.update(env.environ)
@@ -66,16 +68,16 @@ def _akonadi_env(instance_id: str) -> AkonadiEnv:
 
 
 @pytest.fixture(scope="session")
-async def akonadi_server(_akonadi_env: AkonadiEnv) -> AsyncGenerator[AkonadiServer]:
+def akonadi_server(_akonadi_env: AkonadiEnv) -> Generator[AkonadiServer]:
     """Pytest fixture that creates an Akonadi server.
 
     Returns:
         The Akonadi server.
     """
     server = AkonadiServer(_akonadi_env)
-    await server.start()
+    server.start()
     yield server
-    await server.stop()
+    server.stop()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -108,7 +110,7 @@ def server_type(request):
 
 
 @pytest.fixture(scope="session")
-async def imap_server_session(server_type: ImapServerType) -> AsyncGenerator[ImapServer]:
+def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
     match server_type:
         case ImapServerType.CYRUS:
             server = CyrusServer()
@@ -117,25 +119,25 @@ async def imap_server_session(server_type: ImapServerType) -> AsyncGenerator[Ima
         case _:
             pytest.fail(f"Unknown IMAP server type: {server_type}")
 
-    await server.start()
+    server.start()
 
     yield server
-    await server.stop()
+    server.stop()
 
 
 @pytest.fixture
-async def imap_server(imap_server_session: ImapServer) -> AsyncGenerator[ImapServer]:
-    await imap_server_session.prepare_test_environment()
+def imap_server(imap_server_session: ImapServer) -> Generator[ImapServer]:
+    imap_server_session.prepare_test_environment()
 
     yield imap_server_session
 
-    await imap_server_session.cleanup_test_environment()
+    imap_server_session.cleanup_test_environment()
 
 
 @pytest.fixture()
-async def akonadi_client(
+def akonadi_client(
     akonadi_server: AkonadiServer,
-) -> AsyncGenerator[AkonadiClient]:
+) -> Generator[AkonadiClient]:
     client = AkonadiClient(akonadi_server.env)
     yield client
 
@@ -146,14 +148,14 @@ async def imap_resource(
     dbus_client: AkonadiDBus,
     imap_server: ImapServer,
 ) -> AsyncGenerator[ImapResource]:
-    resource = await ImapResource.create(akonadi_client, dbus_client)
+    resource = ImapResource.create(akonadi_client, dbus_client)
     await resource.configure(
         host=imap_server.host_or_ip,
         port=imap_server.port,
         username=imap_server.username,
         password=imap_server.password,
     )
-    await resource.synchronize()
+    resource.synchronize()
     yield resource
 
     # Remove the resource after the test - this cleans up useless secrets from the keychain
@@ -161,13 +163,13 @@ async def imap_resource(
 
 
 @pytest.fixture()
-async def imap_client(
+def imap_client(
     imap_server: ImapServer,
-) -> AsyncGenerator[ImapClient]:
-    client = ImapClient(imap_server.host_or_ip, imap_server.port)
-    await client.connect(imap_server.username, imap_server.password)
-    yield client
-    await client.disconnect()
+) -> Generator[BaseMailBox]:
+    mailbox = MailBoxUnencrypted(imap_server.host_or_ip, imap_server.port)
+    mailbox.login(imap_server.username, imap_server.password)
+    yield mailbox
+    mailbox.logout()
 
 
 @pytest.fixture()
@@ -180,11 +182,11 @@ async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:
 async def groupware_resource(
     akonadi_client: AkonadiClient, dbus_client: AkonadiDBus, dav_server: DAVServer
 ) -> AsyncGenerator[DAVResource]:
-    resource = await DAVResource.create(akonadi_client, dbus_client)
+    resource = DAVResource.create(akonadi_client, dbus_client)
     await resource.configure(
         dav_server.base_url, username=dav_server.username, password=dav_server.password
     )
-    await resource.synchronize()
+    resource.synchronize()
 
     yield resource
 

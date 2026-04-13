@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
+import abc
 import asyncio
 from abc import abstractmethod
 from enum import Enum
@@ -14,7 +14,7 @@ class DAVServerType(Enum):
     RADICALE = "radicale"
 
 
-class DAVServer:
+class DAVServer(abc.ABC):
     @abstractmethod
     async def start(self) -> None: ...
 

@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
-import os
 import time
 from logging import getLogger
 from typing import ClassVar, Self
@@ -31,7 +29,7 @@ class Resource:
         self.akonadi_client = akonadi_client
 
     @classmethod
-    async def create(cls, akonadi_client: AkonadiClient, dbus: AkonadiDBus) -> Self:
+    def create(cls, akonadi_client: AkonadiClient, dbus: AkonadiDBus) -> Self:
         log.debug("Creating %s resource via D-Bus", cls.RESOURCE_TYPE)
 
         createJob = Akonadi.AgentInstanceCreateJob(cls.RESOURCE_TYPE)
@@ -51,9 +49,9 @@ class Resource:
         Akonadi.AgentManager.self().removeInstance(instance)
 
         # Give time to shut down the resource fully
-        await asyncio.sleep(0.5)
+        time.sleep(0.5)
 
-    async def synchronize(self) -> None:
+    def synchronize(self) -> None:
         log.debug("Synchronizing %s resource via Agent Manager", self.RESOURCE_TYPE)
 
         instance = Akonadi.AgentManager.self().instance(self._identifier)
@@ -62,7 +60,7 @@ class Resource:
         resourceSynchroJob.start()
         AkonadiUtils.wait_for_job(resourceSynchroJob)
 
-        await AkonadiUtils.wait_for_status(self._identifier, 0)
+        AkonadiUtils.wait_for_status(self._identifier, 0)
 
         log.debug("%s resource synchronized", self.RESOURCE_TYPE)
 
@@ -93,14 +91,14 @@ class Resource:
 
         return resolve_recursive(resource_root, path)
 
-    async def sync_collection(self, collection_name: str) -> None:
+    def sync_collection(self, collection_name: str) -> None:
         collection = self.resolve_collection(collection_name)
         Akonadi.AgentManager.self().synchronizeCollection(collection, False)
 
         # to be sure that the collection has been synchronized correctly, we must wait for the instance to be running, then idle again
         # because there isn't a job we can wait, the instance may be idle at first without actually being synced (sync not triggered yet / status not changed yet)
-        await AkonadiUtils.wait_for_status(self._identifier, 1)
-        await AkonadiUtils.wait_for_status(self._identifier, 0)
+        AkonadiUtils.wait_for_status(self._identifier, 1)
+        AkonadiUtils.wait_for_status(self._identifier, 0)
 
     def list_collections(self) -> list[Akonadi.Collection]:
         collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
@@ -133,7 +131,7 @@ class Resource:
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
 
-    async def set_online(self, online: bool) -> None:
+    def set_online(self, online: bool) -> None:
         """
         Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
         """

@@ -52,7 +52,7 @@ class DAVResource(Resource):
         instance = Akonadi.AgentManager.self().instance(self._identifier)
         instance.reconfigure()
 
-        await AkonadiUtils.wait_for_status(self._identifier, 0)
+        AkonadiUtils.wait_for_status(self._identifier, 0)
 
     @override
     async def remove(self) -> None:

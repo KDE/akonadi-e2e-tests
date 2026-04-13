@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
 import os
+import time
 from logging import getLogger
 from textwrap import dedent
 
@@ -22,7 +22,7 @@ class AkonadiServer:
     def env(self) -> AkonadiEnv:
         return self._env
 
-    async def start(self) -> None:
+    def start(self) -> None:
         """Start the Akonadi server.
 
         This will start the Akonadi server.
@@ -36,11 +36,11 @@ class AkonadiServer:
             if Akonadi.ServerManager.isRunning():
                 log.info("Akonadi Server started")
                 return
-            await asyncio.sleep(0.1)
+            time.sleep(0.1)
 
         raise RuntimeError("Akonadi server failed to start in time")
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         """Stop the Akonadi server.
 
         This will stop the Akonadi server.
@@ -49,7 +49,7 @@ class AkonadiServer:
         Akonadi.Control.stop()
         log.info("Akonadi Server stopped")
 
-    async def is_running(self) -> bool:
+    def is_running(self) -> bool:
         """Check if the Akonadi server is running.
 
         Returns:
