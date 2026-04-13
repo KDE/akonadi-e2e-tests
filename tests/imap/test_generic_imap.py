@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
 # SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
+# SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import time
@@ -302,6 +303,37 @@ def test_copy_message_on_server_is_synced(
 
     check_collection_in_sync("Test", imap_resource, imap_client)
     check_collection_in_sync("Test2", imap_resource, imap_client)
+
+def test_offline_append_message(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    akonadi_client: AkonadiClient,
+) -> None:
+    check_collection_in_sync("Test", imap_resource, imap_client)
+    collection = imap_resource.resolve_collection("Test")
+
+    imap_resource.set_online(False)
+
+    # Append the item to Akonadi
+    akonadi_client.add_item(
+        collection.id(),
+        create_message(subject="test_append_message").as_bytes(),
+        "message/rfc822",
+    )
+
+    items = akonadi_client.list_items(collection.id())
+    assert len(items) == 3
+
+    # No messages should have been added to imap server at this point
+    imap_client.folder.set("Test")
+    messages = list(imap_client.fetch(mark_seen=False))
+    assert len(messages) == 2
+
+    imap_resource.set_online(True)
+
+    wait_until(lambda: message_added(imap_client, "Test", "3"))
+
+    check_collection_in_sync("Test", imap_resource, imap_client)
 
 
 """"
