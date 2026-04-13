@@ -73,6 +73,12 @@ env["QT_LOGGING_RULES"] = ("{your logging rules}")
 env["QT_MESSAGE_PATTERN"] = "{message pattern}"
 ```
 
+Logs from the different test servers are forwarded to journnald, with a specific tag for each server. You can access them with :
+```shell
+journalctl CONTAINER_TAG={server-type}-akonadi-e2e-tests
+```
+For example, `journalctl CONTAINER_TAG=dovecot-akonadi-e2e-tests` to access dovecot server logs.
+
 
 ## Conventions
 

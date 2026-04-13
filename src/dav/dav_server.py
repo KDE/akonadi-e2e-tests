@@ -5,8 +5,13 @@ import abc
 import asyncio
 from abc import abstractmethod
 from enum import Enum
+from logging import getLogger
+from typing import ClassVar
 
 import aiohttp
+from testcontainers.core.container import DockerContainer  # type: ignore
+
+log = getLogger(__name__)
 
 
 class DAVServerType(Enum):
@@ -15,11 +20,32 @@ class DAVServerType(Enum):
 
 
 class DAVServer(abc.ABC):
-    @abstractmethod
-    async def start(self) -> None: ...
+    DOCKER_IMAGE: ClassVar[str]
+    USERNAME: ClassVar[str]
+    PASSWORD: ClassVar[str]
+    CONTAINER_NAME: ClassVar[str]
+    PORT: ClassVar[int]
 
-    @abstractmethod
-    async def stop(self) -> None: ...
+    def __init__(self):
+        self.container = None
+
+    async def start(self) -> None:
+        log.info(f"Starting {self.__class__.__name__} DAV container")
+        # FIXME: This assumes image already exists!
+        self.container = (
+            DockerContainer(self.DOCKER_IMAGE)
+            .with_exposed_ports(self.PORT)
+            .with_name(self.CONTAINER_NAME)
+            .with_kwargs(log_config={"type": "journald", "config": {"tag": self.CONTAINER_NAME}})
+        )
+        self.container.start()
+
+        await self.wait_for_server(self.readiness_url)
+
+    async def stop(self) -> None:
+        log.info(f"Stopping {self.__class__.__name__} container")
+        if self.container:
+            self.container.stop()
 
     @property
     @abstractmethod
@@ -27,11 +53,23 @@ class DAVServer(abc.ABC):
 
     @property
     @abstractmethod
-    def username(self) -> str: ...
+    def readiness_url(self) -> str: ...
 
     @property
-    @abstractmethod
-    def password(self) -> str: ...
+    def host_or_ip(self) -> str:
+        return self.container.get_container_host_ip()  # type: ignore
+
+    @property
+    def port(self) -> int:
+        return self.container.get_exposed_port(self.PORT)  # type: ignore
+
+    @property
+    def username(self) -> str:
+        return self.USERNAME
+
+    @property
+    def password(self) -> str:
+        return self.PASSWORD
 
     async def wait_for_server(self, url: str):
         deadline = asyncio.get_event_loop().time() + 20
@@ -43,7 +81,7 @@ class DAVServer(abc.ABC):
             try:
                 async with (
                     aiohttp.ClientSession(
-                        auth=aiohttp.BasicAuth(self.username, self.password)
+                        auth=aiohttp.BasicAuth(self.USERNAME, self.PASSWORD)
                     ) as session,
                     session.request(
                         "PROPFIND",

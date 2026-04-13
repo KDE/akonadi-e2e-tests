@@ -34,13 +34,11 @@ class ImapServer:
     def start(self) -> None:
         log.info(f"Starting {self.__class__.__name__} IMAP container")
         # FIXME: This assumes image already exists!
-        self.container = DockerContainer(self.DOCKER_IMAGE).with_exposed_ports(143).with_name(self.CONTAINER_NAME).with_kwargs(
-        log_config={
-            "type": "journald",
-            "config": {
-                "tag": self.CONTAINER_NAME
-            }
-        }
+        self.container = (
+            DockerContainer(self.DOCKER_IMAGE)
+            .with_exposed_ports(143)
+            .with_name(self.CONTAINER_NAME)
+            .with_kwargs(log_config={"type": "journald", "config": {"tag": self.CONTAINER_NAME}})
         )
         self.container.start()
 
