@@ -76,7 +76,12 @@ def akonadi_server(_akonadi_env: AkonadiEnv) -> Generator[AkonadiServer]:
     """
     server = AkonadiServer(_akonadi_env)
     server.start()
+    root = Path(__file__).resolve().parent
+    output_file = root / "akonadiconsole.sh"
+    output_file.write_text("#!/bin/sh\n" + server.akonadiconsole_command() + "\n")
+    output_file.chmod(0o755)
     yield server
+    output_file.unlink()
     server.stop()
 
 
@@ -170,7 +175,6 @@ def imap_client(
     mailbox.login(imap_server.username, imap_server.password)
     yield mailbox
     mailbox.logout()
-
 
 @pytest.fixture()
 async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:

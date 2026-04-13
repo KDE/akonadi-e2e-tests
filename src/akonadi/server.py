@@ -57,21 +57,12 @@ class AkonadiServer:
         """
         return Akonadi.ServerManager.isRunning()
 
+    def akonadiconsole_command(self) -> str:
+        """Get the command to launch akonadiconsole for debugging purposes."""
+        return f"XDG_CONFIG_HOME={self._env.xdg_config_home} XDG_DATA_HOME={self._env.xdg_data_home} XDG_CACHE_HOME={self._env.xdg_cache_home} HOME={self._env.home_dir} AKONADI_INSTANCE={self._env.instance_id} akonadiconsole"
+
     def _prepare_environment(self) -> None:
         """Prepare the environment for the Akonadi server."""
-        log.debug(
-            "Command to launch akonadiconsole for debug purposes: ".join(
-                [
-                    "env",
-                    f"XDG_CONFIG_HOME={self._env.xdg_config_home}",
-                    f"XDG_DATA_HOME={self._env.xdg_data_home}",
-                    f"XDG_CACHE_HOME={self._env.xdg_cache_home}",
-                    f"HOME={self._env.home_dir}",
-                    f"AKONADI_INSTANCE={self._env.instance_id}",
-                    "akonadiconsole",
-                ]
-            )
-        )
 
         os.makedirs(self._env.akonadi_config_dir, exist_ok=True)
         os.makedirs(self._env.akonadi_data_dir, exist_ok=True)
