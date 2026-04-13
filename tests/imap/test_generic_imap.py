@@ -309,8 +309,8 @@ def test_offline_append_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
-    collection = imap_resource.resolve_collection("Test")
+    check_collection_in_sync("TestEmpty", imap_resource, imap_client)
+    collection = imap_resource.resolve_collection("TestEmpty")
 
     imap_resource.set_online(False)
 
@@ -322,18 +322,22 @@ def test_offline_append_message(
     )
 
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 3
+    assert len(items) == 1
 
     # No messages should have been added to imap server at this point
-    imap_client.folder.set("Test")
+    imap_client.folder.set("TestEmpty")
     messages = list(imap_client.fetch(mark_seen=False))
-    assert len(messages) == 2
+    assert len(messages) == 0
 
     imap_resource.set_online(True)
 
-    wait_until(lambda: message_added(imap_client, "Test", "3"))
+    wait_until(lambda: message_added(imap_client, "TestEmpty", "1"))
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    imap_client.folder.set("TestEmpty")
+    messages = list(imap_client.fetch(mark_seen=False))
+    assert len(messages) == 1
+
+    check_collection_in_sync("TestEmpty", imap_resource, imap_client)
 
 
 """"

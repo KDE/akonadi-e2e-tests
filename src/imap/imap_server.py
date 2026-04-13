@@ -73,7 +73,7 @@ class ImapServer:
         client = MailBoxUnencrypted(host=self.host_or_ip, port=self.port)
         client.login(self.username, self.password, initial_folder=None)
 
-        folder_to_create = ["Trash", "Sent", "Templates", "Test", "Test2"]
+        folder_to_create = ["Trash", "Sent", "Templates", "TestEmpty", "Test", "Test2"]
         for name in folder_to_create:
             client.folder.create(name)
         assert len(client.folder.list()) == len(folder_to_create) + 1, (

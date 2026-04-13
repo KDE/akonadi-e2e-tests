@@ -60,7 +60,7 @@ async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
     assert imap_resource.identifier.startswith("akonadi_imap_resource_")
     collections = imap_resource.list_collections()
 
-    assert len(collections) == 7
+    assert len(collections) == 8
 
     imap_resource.sync_collection("INBOX")
     items = imap_resource.list_items("INBOX")
