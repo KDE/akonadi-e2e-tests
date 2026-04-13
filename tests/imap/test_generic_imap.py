@@ -339,6 +339,37 @@ def test_offline_append_message(
 
     check_collection_in_sync("TestEmpty", imap_resource, imap_client)
 
+def test_offline_delete_message(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    akonadi_client: AkonadiClient,
+) -> None:
+    check_collection_in_sync("Test", imap_resource, imap_client)
+    collection = imap_resource.resolve_collection("Test")
+
+    items = akonadi_client.list_items(collection.id())
+    assert len(items) == 2
+    item = items[0]
+
+    imap_resource.set_online(False)
+
+    akonadi_client.delete_item(item.id())
+
+    items = akonadi_client.list_items(collection.id())
+    assert len(items) == 1
+    assert item.id() not in [i.id() for i in items]
+
+    # No messages should have been deleted on imap server at this point
+    imap_client.folder.set("Test")
+    messages = list(imap_client.fetch(mark_seen=False))
+    assert len(messages) == 2
+
+    imap_resource.set_online(True)
+
+    wait_until(lambda: message_deleted(imap_client, item, "Test"), timeout=10.0)
+
+    imap_client.folder.set("Test")
+    check_collection_in_sync("Test", imap_resource, imap_client)
 
 """"
 @pytest.mark.asyncio
