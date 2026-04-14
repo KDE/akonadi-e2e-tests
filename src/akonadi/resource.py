@@ -137,3 +137,4 @@ class Resource:
         """
         instance = Akonadi.AgentManager.self().instance(self._identifier)
         instance.setIsOnline(online)
+        AkonadiUtils.wait_for_online(self._identifier, online)
