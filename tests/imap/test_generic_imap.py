@@ -58,6 +58,33 @@ def test_akonadi_sync_add_collections(
     wait_until(lambda: len(imap_client.folder.list("", "TestTopLevel*TestChild")) > 0)
 
 
+def test_akonadi_sync_delete_collection(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Deleting a collection in the akonadi server, the change is replayed on the server
+    """
+    mime_types = ["inode/directory", "message/rfc822"]
+    toplevel_collection = imap_resource.resolve_collection("Test")
+
+    # Creat child collection
+    child_collection = Akonadi.Collection()
+    child_collection.setName("TestChild")
+    child_collection.setContentMimeTypes(mime_types)
+    child_collection.setParentCollection(toplevel_collection)
+    job = Akonadi.CollectionCreateJob(child_collection)
+
+    AkonadiUtils.wait_for_job(job)
+    wait_until(lambda: len(imap_client.folder.list("", "Test*TestChild")) > 0)
+
+    # Delete parent collection
+    job = Akonadi.CollectionDeleteJob(toplevel_collection)
+    AkonadiUtils.wait_for_job(job)
+
+    wait_until(lambda: not imap_client.folder.exists("Test"))
+    wait_until(lambda: len(imap_client.folder.list("", "Test*TestChild")) == 0)
+
+
 def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
