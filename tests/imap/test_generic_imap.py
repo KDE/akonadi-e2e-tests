@@ -12,7 +12,7 @@ from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.imap.email_utils import create_message
 from src.imap.test_utils import check_collection_in_sync, message_added, message_deleted
-from test import wait_until
+from src.test.wait import wait_until
 
 log = getLogger(__name__)
 

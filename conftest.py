@@ -91,6 +91,7 @@ def qcore_app(_akonadi_env: AkonadiEnv):
 @pytest.fixture(scope="session", params=list(DAVServerType))
 async def dav_server(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer]:
     server_type = request.param
+    server: DAVServer
     match server_type:
         case DAVServerType.NEXTCLOUD:
             server = NextCloudServer()
@@ -111,6 +112,7 @@ def server_type(request):
 
 @pytest.fixture(scope="session")
 def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
+    server: ImapServer
     match server_type:
         case ImapServerType.CYRUS:
             server = CyrusServer()

@@ -5,3 +5,17 @@ include:
   - project: sysadmin/ci-utilities
     file:
       - /gitlab-templates/reuse-lint.yml
+
+python-lint:
+  stage: validate
+  image: python:latest
+  rules:
+    - changes:
+        # match *.py files in the root folder
+        - "*.py"
+        # and *.py files in subfolders
+        - "**/*.py"
+  script:
+    - pip3 install ruff
+    - ruff format --check .
+    - ruff check .
