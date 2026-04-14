@@ -5,3 +5,10 @@ include:
   - project: sysadmin/ci-utilities
     file:
       - /gitlab-templates/reuse-lint.yml
+
+ruff:
+  stage: validate
+  image: registry.gitlab.com/pipeline-components/ruff:latest
+  script:
+    - ruff format --check .
+    - ruff check .
