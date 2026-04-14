@@ -26,4 +26,4 @@ class NextCloudServer(DAVServer):
     @override
     @property
     def readiness_url(self):
-        return f"{self.base_url}/calendars/{self.USERNAME}/"
+        return f"{self.base_url}/calendars/{self.username}/"

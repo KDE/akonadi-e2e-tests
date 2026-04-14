@@ -5,6 +5,7 @@ import abc
 import asyncio
 from abc import abstractmethod
 from enum import Enum
+from functools import cached_property
 from logging import getLogger
 from typing import ClassVar
 
@@ -55,13 +56,13 @@ class DAVServer(abc.ABC):
     @abstractmethod
     def readiness_url(self) -> str: ...
 
-    @property
+    @cached_property
     def host_or_ip(self) -> str:
-        return self.container.get_container_host_ip()  # type: ignore
+        return self.container.get_container_host_ip()
 
-    @property
+    @cached_property
     def port(self) -> int:
-        return self.container.get_exposed_port(self.PORT)  # type: ignore
+        return self.container.get_exposed_port(self.PORT)
 
     @property
     def username(self) -> str:
@@ -81,7 +82,7 @@ class DAVServer(abc.ABC):
             try:
                 async with (
                     aiohttp.ClientSession(
-                        auth=aiohttp.BasicAuth(self.USERNAME, self.PASSWORD)
+                        auth=aiohttp.BasicAuth(self.username, self.password)
                     ) as session,
                     session.request(
                         "PROPFIND",
