@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import abc
 import asyncio
+import uuid
 from abc import abstractmethod
 from enum import Enum
 from functools import cached_property
@@ -36,7 +37,7 @@ class DAVServer(abc.ABC):
         self.container = (
             DockerContainer(self.DOCKER_IMAGE)
             .with_exposed_ports(self.PORT)
-            .with_name(self.CONTAINER_NAME)
+            .with_name(f"{self.CONTAINER_NAME}-{str(uuid.uuid4())[:4]}")
             .with_kwargs(log_config={"type": "journald", "config": {"tag": self.CONTAINER_NAME}})
         )
         self.container.start()

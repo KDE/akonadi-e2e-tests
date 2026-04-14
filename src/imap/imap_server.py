@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import time
+import uuid
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from enum import Enum
@@ -37,7 +38,7 @@ class ImapServer:
         self.container = (
             DockerContainer(self.DOCKER_IMAGE)
             .with_exposed_ports(143)
-            .with_name(self.CONTAINER_NAME)
+            .with_name(f"{self.CONTAINER_NAME}-{str(uuid.uuid4())[:4]}")
             .with_kwargs(log_config={"type": "journald", "config": {"tag": self.CONTAINER_NAME}})
         )
         self.container.start()
