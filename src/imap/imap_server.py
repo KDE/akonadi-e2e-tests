@@ -7,6 +7,7 @@ import time
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from enum import Enum
+from functools import cached_property
 from logging import getLogger
 from typing import ClassVar
 
@@ -44,13 +45,13 @@ class ImapServer:
         if self.container:
             self.container.stop()
 
-    @property
+    @cached_property
     def host_or_ip(self) -> str:
-        return self.container.get_container_host_ip()  # type: ignore
+        return self.container.get_container_host_ip()
 
-    @property
+    @cached_property
     def port(self) -> int:
-        return int(self.container.get_exposed_port(143))  # type: ignore
+        return int(self.container.get_exposed_port(143))
 
     @property
     def username(self) -> str:
