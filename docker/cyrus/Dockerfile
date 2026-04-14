@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-FROM debian:bookworm
+FROM debian:trixie-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -33,5 +33,3 @@ RUN mkdir -p /etc/sasl2 && \
 EXPOSE 143
 
 CMD ["/usr/lib/cyrus/bin/master", "-C", "/srv/cyrus/imapd.conf", "-M", "/etc/cyrus.conf", "-D"]
-
-
