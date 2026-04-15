@@ -81,11 +81,13 @@ class AkonadiClient:
             raise ClientError(f"Found {len(job.items())} items whith id {item_id}")
         return None if len(job.items()) == 0 else job.items()[0]
 
-    def list_items(self, collection_id: int) -> list[Akonadi.Item]:
+    def list_items(self, collection_id: int, full_payload: bool = True) -> list[Akonadi.Item]:
         collection = Akonadi.Collection()
         collection.setId(collection_id)
 
         job = Akonadi.ItemFetchJob(collection)
+        if full_payload:
+            job.fetchScope().fetchFullPayload()
         AkonadiUtils.wait_for_job(job)
 
         return job.items()
