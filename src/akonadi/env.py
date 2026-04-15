@@ -66,5 +66,6 @@ class AkonadiEnv:
         env["XDG_DATA_HOME"] = str(self.xdg_data_home)
         env["AKONADI_INSTANCE"] = self._instance_id
         env["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
+        env["LC_ALL"] = "C"
 
         return env
