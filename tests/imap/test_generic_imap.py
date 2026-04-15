@@ -371,6 +371,7 @@ def test_copy_message_on_server_is_synced(
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
 
+
 def test_offline_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
@@ -441,6 +442,49 @@ def test_offline_delete_message(
     assert len(messages) == 1
 
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+def test_akonadi_offline_delete_collection(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Removing a collection from the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
+    """
+    mime_types = ["inode/directory", "message/rfc822"]
+    toplevel_collection = imap_resource.resolve_collection("Test")
+
+    # Create child collection
+    child_collection = Akonadi.Collection()
+    child_collection.setName("TestChild")
+    child_collection.setContentMimeTypes(mime_types)
+    child_collection.setParentCollection(toplevel_collection)
+    job = Akonadi.CollectionCreateJob(child_collection)
+
+    AkonadiUtils.wait_for_job(job)
+    assert "TestChild" in list(map(lambda c: c.name(), imap_resource.list_collections()))
+    wait_until(lambda: len(imap_client.folder.list("", "*TestChild")) > 0)
+
+    imap_resource.set_online(False)
+
+    # Delete parent collection
+    job = Akonadi.CollectionDeleteJob(toplevel_collection)
+    AkonadiUtils.wait_for_job(job)
+
+    resource_collections = imap_resource.list_collections()
+
+    assert "Test" not in list(map(lambda c: c.name(), resource_collections))
+    assert "TestChild" not in list(map(lambda c: c.name(), resource_collections))
+    assert imap_client.folder.exists("Test")
+    assert len(imap_client.folder.list("", "*TestChild")) > 0
+
+    imap_resource.set_online(True)
+
+    resource_collections = imap_resource.list_collections()
+
+    assert "Test" not in list(map(lambda c: c.name(), resource_collections))
+    assert "TestChild" not in list(map(lambda c: c.name(), resource_collections))
+    wait_until(lambda: not imap_client.folder.exists("Test"))
+    wait_until(lambda: len(imap_client.folder.list("", "*TestChild")) == 0)
 
 
 """"
