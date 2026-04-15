@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-FROM tomsquest/docker-radicale:latest
+FROM docker.io/tomsquest/docker-radicale:latest
 
 USER root
 
