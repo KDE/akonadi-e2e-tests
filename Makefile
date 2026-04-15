@@ -6,7 +6,7 @@
 all: init docker
 
 init:
-	uv venv --system-site-packages
+	uv venv --system-site-packages --python $(shell which python3)
 	uv sync
 
 test:
