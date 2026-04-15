@@ -71,3 +71,35 @@ def assert_payload_are_equal(
     akonadi_payload = akonadi_message.payloadData().data().decode()
     imap_payload = imap_message.raw_message_data.decode().replace("\r\n", "\n")
     assert akonadi_payload == imap_payload
+
+
+def assert_partial_sync(
+    initial_items: list[Akonadi.Item],
+    current_items: list[Akonadi.Item],
+    updated_items: list[Akonadi.Item],
+) -> None:
+    """
+    Check between two item lists that only the items to check have been synced.
+    Note that we do not really check whether the IMAP server or Akonadi server sent only the updated items; instead, we check on the Akonadi side that only the updated items have been sync.
+    The only available field to perform this check is the revision.
+
+    :param initial_items: the items before the sync
+    :param current_items: the items after the sync
+    :param updated_items: the items that should have been updated
+    """
+
+    updated_items_id = [item.id() for item in updated_items]
+
+    for initial_item, current_item in zip(initial_items, current_items, strict=False):
+        if initial_item.id() in updated_items_id:
+            assert current_item.revision() > initial_item.revision()
+            assert (
+                current_item.modificationTime().toMSecsSinceEpoch()
+                > initial_item.modificationTime().toMSecsSinceEpoch()
+            )
+        else:
+            assert current_item.revision() == initial_item.revision()
+            assert (
+                current_item.modificationTime().toMSecsSinceEpoch()
+                == initial_item.modificationTime().toMSecsSinceEpoch()
+            )
