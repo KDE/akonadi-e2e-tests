@@ -64,6 +64,34 @@ def test_new_mailbox_on_server_is_synced(
     assert any(lambda c: c.name() == folder.name for c in collections)
 
 
+def test_offline_new_mailbox_on_server_is_synced(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,  # noqa: ARG001
+) -> None:
+    """
+    Adding a collection in the server while the resource is offline, nothing happens
+    When the resource is online, the collection is replicated and no other change occurred
+    """
+    imap_resource.set_online(False)
+
+    # Create remote folders
+    parent = ImapFolderFactory.create()
+    child = ImapFolderFactory.create(parent=parent)
+
+    # Nothing happened
+    collection_names = [c.name() for c in imap_resource.list_collections()]
+    assert parent.name not in collection_names
+    assert child.name not in collection_names
+
+    # Collections are replicated but empty until synchronize
+    imap_resource.set_online(True)
+    collection_names = [c.name() for c in imap_resource.list_collections()]
+    assert parent.name in collection_names
+    assert child.name in collection_names
+    assert len(imap_resource.list_items(parent.name)) == 0
+    assert len(imap_resource.list_items(child.imap_path)) == 0
+
+
 def test_mailbox_deleted_on_server_is_synced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
