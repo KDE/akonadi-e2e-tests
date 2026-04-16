@@ -5,6 +5,7 @@
 from logging import getLogger
 from typing import override
 
+import pytest
 from AkonadiCore import Akonadi  # type: ignore
 from sdbus import DbusInterfaceCommonAsync, DbusUnprivilegedFlag, dbus_method_async
 
@@ -75,3 +76,22 @@ class ImapResource(Resource):
             password_exists = await kwallet.get_password(self._kwallet_key) is not None
             if password_exists:
                 await kwallet.remove_password(self._kwallet_key)
+
+    @override
+    def resolve_collection(self, collection_name: str) -> Akonadi.Collection:
+        path = collection_name.split("/")
+
+        def resolve_recursive(parent: Akonadi.Collection, path: list[str]):
+            if not path:
+                return parent
+
+            collections = self.akonadi_client.list_collections(
+                parent_id=parent.id(), first_level=True
+            )
+            collection = next(filter(lambda c: c.name() == path[0], collections), None)
+            if not collection:
+                pytest.fail(f"Collection {collection_name} not found: {path[0]} does not exist!")
+
+            return resolve_recursive(collection, path[1:])
+
+        return resolve_recursive(self.get_root_collection(), path)

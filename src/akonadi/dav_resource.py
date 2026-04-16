@@ -1,10 +1,13 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+# SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from logging import getLogger
 from typing import override
+from urllib.parse import unquote
 
+import pytest
 from AkonadiCore import Akonadi  # type: ignore
 
 from src.akonadi.client import AkonadiClient
@@ -68,3 +71,33 @@ class DAVResource(Resource):
 
             # FIXME: Enable this once the DAV resource is fixed to clean up after itself
             # assert not password_exists
+
+    @override
+    def resolve_collection(self, collection_remote_id: str) -> Akonadi.Collection:
+        resource_root = self.get_root_collection()
+
+        collections = self.akonadi_client.list_collections(
+            parent_id=resource_root.id(), first_level=True
+        )
+        collection = next(
+            (c for c in collections if unquote(c.remoteId()) == unquote(collection_remote_id)), None
+        )
+        if not collection:
+            pytest.fail(f"Collection {collection_remote_id} not found")
+
+        return collection
+
+    def collection_from_display_name(self, name: str) -> None:
+        collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
+        resource_root = next(filter(lambda c: c.resource() == self.identifier, collections), None)
+        if not resource_root:
+            pytest.fail("Resource root collection not found")
+
+        collections = self.akonadi_client.list_collections(
+            parent_id=resource_root.id(), first_level=True
+        )
+        collection = next((c for c in collections if c.displayName() == name), None)
+        if not collection:
+            pytest.fail(f"Collection {name} not found")
+
+        return collection

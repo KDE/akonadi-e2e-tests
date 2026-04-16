@@ -7,9 +7,11 @@ import os
 import tempfile
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 import pytest
+from caldav.collection import Principal
+from caldav.davclient import DAVClient, get_davclient
 from imap_tools import BaseMailBox
 from PySide6.QtCore import QCoreApplication  # type: ignore
 
@@ -19,7 +21,6 @@ from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.env import AkonadiEnv
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.server import AkonadiServer
-from src.dav.client import DavClient
 from src.dav.dav_server import DAVServer, DAVServerType
 from src.dav.nextcloud_server import NextCloudServer
 from src.dav.radicale_server import RadicaleServer
@@ -106,7 +107,9 @@ async def dav_server(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer
             pytest.fail(f"Unknown DAV server type: {dav_server}")
 
     await server.start()
+    server.prepare_test_environment()
     yield server
+    server.cleanup_test_environment()
     await server.stop()
 
 
@@ -179,9 +182,20 @@ def imap_client(
 
 
 @pytest.fixture()
-async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:
-    client = DavClient(dav_server.base_url, dav_server.username, dav_server.password)
+def dav_client(dav_server: DAVServer) -> Generator[DAVClient | None]:
+    client = get_davclient(
+        url=dav_server.base_url, username=dav_server.username, password=dav_server.password
+    )
     yield client
+    client.close()
+
+
+@pytest.fixture()
+def dav_principal(dav_client: DAVClient | None) -> Generator[Principal | None]:
+    if dav_client is None:
+        yield None
+    principal = dav_client.get_principal()
+    yield principal
 
 
 @pytest.fixture()

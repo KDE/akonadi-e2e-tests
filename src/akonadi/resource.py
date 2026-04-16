@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import time
+from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import ClassVar, Self
 
@@ -20,7 +21,7 @@ class ResourceError(Exception):
     pass
 
 
-class Resource:
+class Resource(ABC):
     RESOURCE_TYPE: ClassVar[str]
 
     def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str) -> None:
@@ -75,23 +76,9 @@ class Resource:
             pytest.fail("Resource root collection not found")
         return resource_root
 
+    @abstractmethod
     def resolve_collection(self, collection_name: str) -> Akonadi.Collection:
-        path = collection_name.split("/")
-
-        def resolve_recursive(parent: Akonadi.Collection, path: list[str]):
-            if not path:
-                return parent
-
-            collections = self.akonadi_client.list_collections(
-                parent_id=parent.id(), first_level=True
-            )
-            collection = next(filter(lambda c: c.name() == path[0], collections), None)
-            if not collection:
-                pytest.fail(f"Collection {collection_name} not found: {path[0]} does not exist!")
-
-            return resolve_recursive(collection, path[1:])
-
-        return resolve_recursive(self.get_root_collection(), path)
+        raise NotImplementedError
 
     def sync_collection(self, collection_name: str) -> None:
         collection = self.resolve_collection(collection_name)
