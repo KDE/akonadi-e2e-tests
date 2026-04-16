@@ -59,7 +59,7 @@ def message_deleted(imap_client: BaseMailBox, item: Akonadi.Item, mailbox: str) 
 
 
 def assert_payload_are_equal(
-    akonadi_message: Akonadi.Message, imap_message: MailMessageWithOriginalPayload
+    akonadi_message: Akonadi.Item, imap_message: MailMessageWithOriginalPayload
 ) -> None:
     akonadi_payload = akonadi_message.payloadData().data().decode()
     imap_payload = imap_message.raw_message_data.decode().replace("\r\n", "\n")
