@@ -323,7 +323,7 @@ def test_rename_collection(
     """
     Test renaming a collection in akonadi side when online and verifying the change in both Akonadi and IMAP server.
     """
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     initial_collections = imap_resource.list_collections()
 
     assert "Test" in [c.name() for c in initial_collections]
@@ -338,11 +338,15 @@ def test_rename_collection(
 
     # Check in imap server that the new collection exists and the old one is deleted
     wait_until(lambda: not imap_client.folder.exists("Test"))
-    check_collection_in_sync("Test3", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test3", imap_resource, imap_client)
 
     # Check that the renamed collection has the same items as the original one
-    initial_collection = [collection for collection in initial_collections if collection.name() == "Test"]
-    updated_collection = [collection for collection in updated_collections if collection.name() == "Test3"]
+    initial_collection = [
+        collection for collection in initial_collections if collection.name() == "Test"
+    ]
+    updated_collection = [
+        collection for collection in updated_collections if collection.name() == "Test3"
+    ]
     assert sorted(initial_collection) == sorted(updated_collection)
 
 
@@ -399,7 +403,6 @@ def test_copy_message_on_server_is_synced(
 
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
-
 
 
 def test_offline_append_message(
