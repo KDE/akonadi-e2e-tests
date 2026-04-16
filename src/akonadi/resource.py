@@ -108,7 +108,9 @@ class Resource:
 
         return self.akonadi_client.list_collections(parent_id=resource_root.id())
 
-    def list_items(self, collection_name_or_id: str | int) -> list[Akonadi.Item]:
+    def list_items(
+        self, collection_name_or_id: str | int, full_payload: bool = True
+    ) -> list[Akonadi.Item]:
         if isinstance(collection_name_or_id, str):
             collection = self.resolve_collection(collection_name_or_id)
             if not collection:
@@ -118,7 +120,9 @@ class Resource:
         else:
             collection_id = int(collection_name_or_id)
 
-        return self.akonadi_client.list_items(collection_id=collection_id)
+        return self.akonadi_client.list_items(
+            collection_id=collection_id, full_payload=full_payload
+        )
 
     def delete_collection(self, collection_name: str) -> None:
         collection = self.resolve_collection(collection_name)

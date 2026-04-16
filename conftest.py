@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from imap_tools import BaseMailBox, MailBoxUnencrypted
+from imap_tools import BaseMailBox
 from PySide6.QtCore import QCoreApplication  # type: ignore
 
 from src.akonadi.client import AkonadiClient
@@ -26,6 +26,7 @@ from src.dav.radicale_server import RadicaleServer
 from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
+from src.imap.mailbox_with_original_payload import MailBoxUnencryptedWithOriginalPayload
 
 
 @pytest.fixture(autouse=True)
@@ -171,10 +172,11 @@ async def imap_resource(
 def imap_client(
     imap_server: ImapServer,
 ) -> Generator[BaseMailBox]:
-    mailbox = MailBoxUnencrypted(imap_server.host_or_ip, imap_server.port)
+    mailbox = MailBoxUnencryptedWithOriginalPayload(imap_server.host_or_ip, imap_server.port)
     mailbox.login(imap_server.username, imap_server.password)
     yield mailbox
     mailbox.logout()
+
 
 @pytest.fixture()
 async def dav_client(dav_server: DAVServer) -> AsyncGenerator[DavClient]:

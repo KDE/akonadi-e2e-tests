@@ -9,6 +9,7 @@ from AkonadiCore import Akonadi  # type: ignore
 from imap_tools import A, BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
+from src.imap.mailbox_with_original_payload import MailMessageWithOriginalPayload
 
 log = getLogger(__name__)
 
@@ -24,10 +25,9 @@ def compare_flags(flags1: Iterable[str], flags2: list[str]) -> bool:
     return to_set(flags1) == to_set(flags2)
 
 
-def check_collection_in_sync(
-    name: str, imap_resource: ImapResource, imap_client: BaseMailBox
+def assert_collection_equal_mailbox(
+    name: str, imap_resource: ImapResource, imap_client: BaseMailBox, payload_test: bool = True
 ) -> None:
-    imap_resource.sync_collection(name)
     items = imap_resource.list_items(name)
     items.sort(key=lambda i: i.remoteId() or "-1")
 
@@ -42,6 +42,8 @@ def check_collection_in_sync(
         assert msg.uid == item.remoteId()
         log.info("Comparing flags: %s and %s", msg.flags, item.flags())
         assert compare_flags(msg.flags, [bytes(f).decode() for f in item.flags()])
+        if payload_test:
+            assert_payload_are_equal(item, msg)  # type: ignore
 
 
 def message_added(imap_client: BaseMailBox, mailbox: str, uid: str) -> bool:
@@ -54,3 +56,11 @@ def message_deleted(imap_client: BaseMailBox, item: Akonadi.Item, mailbox: str) 
     imap_client.folder.set(mailbox)
     imap_client.expunge()
     return not bool(list(imap_client.fetch(A(uid=item.remoteId()), mark_seen=False)))
+
+
+def assert_payload_are_equal(
+    akonadi_message: Akonadi.Message, imap_message: MailMessageWithOriginalPayload
+) -> None:
+    akonadi_payload = akonadi_message.payloadData().data().decode()
+    imap_payload = imap_message.raw_message_data.decode().replace("\r\n", "\n")
+    assert akonadi_payload == imap_payload

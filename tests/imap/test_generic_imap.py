@@ -12,28 +12,28 @@ from imap_tools import BaseMailBox, MailboxFolderDeleteError
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.imap.email_utils import create_message
-from src.imap.test_utils import check_collection_in_sync, message_added, message_deleted
+from src.imap.test_utils import assert_collection_equal_mailbox, message_added, message_deleted
 from test import wait_until
 
 log = getLogger(__name__)
 
 
 def test_initial_sync(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set("Test")
     imap_client.flag(["1"], ["$TestFlag"], True)
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_resource.set_online(False)
 
@@ -48,77 +48,76 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
 
     imap_resource.set_online(True)
     imap_resource.sync_collection("Test")
-
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_removed_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     imap_client.folder.set("Test")
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.delete(["1"])
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_added_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     imap_client.folder.set("Test")
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.append(create_message().as_bytes(), "Test")
     imap_resource.sync_collection(
         "Test"
     )  # Doing a double sync as check collection in sync, do a sync too
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_flag_change_and_removed_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
     imap_client.folder.set("Test")
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.flag(["2"], "$TestFlag", True)
     imap_client.delete(["1"])
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_flag_change_and_added_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
     imap_client.folder.set("Test")
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.flag(["2"], "$TestFlag", True)
     imap_client.append(create_message().as_bytes(), "Test")
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_added_and_removed_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
     imap_client.folder.set("Test")
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     imap_client.append(create_message().as_bytes(), "Test")
 
     imap_client.delete(["1"])
 
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_sync_flag_change_and_added_and_removed_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
     imap_client.folder.set("Test")
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.flag(["2"], "$TestFlag", True)
     imap_client.append(create_message().as_bytes(), "Test")
@@ -126,7 +125,7 @@ def test_sync_flag_change_and_added_and_removed_message(
 
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_new_mailbox_on_server_is_synced(
@@ -142,7 +141,7 @@ def test_new_mailbox_on_server_is_synced(
 def test_mailbox_deleted_on_server_is_synced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set(
         "INBOX"
@@ -162,7 +161,7 @@ def test_mailbox_deleted_on_server_is_synced(
 def test_mailbox_deleted_on_server_is_unsynced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_resource.set_online(False)
 
@@ -191,7 +190,7 @@ def test_mailbox_deleted_on_server_is_unsynced(
     reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change."
 )
 def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set(
         "INBOX"
@@ -202,7 +201,7 @@ def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: B
 
     imap_resource.synchronize()
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_append_message(
@@ -210,7 +209,7 @@ def test_append_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("Test")
 
     # Append the item to Akonadi
@@ -228,7 +227,8 @@ def test_append_message(
     # It may take a little bit for the change to propagate to the IMAP server, so try a few times
     wait_until(lambda: message_added(imap_client, "Test", "3"))
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_delete_message(
@@ -236,7 +236,7 @@ def test_delete_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     collection = imap_resource.resolve_collection("Test")
     items = akonadi_client.list_items(collection.id())
@@ -251,7 +251,7 @@ def test_delete_message(
     assert len(items) == 1
     assert item.id() not in [i.id() for i in items]
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_move_message_on_server_is_synced(
@@ -259,8 +259,8 @@ def test_move_message_on_server_is_synced(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
-    check_collection_in_sync("Test2", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
     source = imap_resource.resolve_collection("Test")
     items_source = akonadi_client.list_items(source.id())
@@ -276,8 +276,8 @@ def test_move_message_on_server_is_synced(
     wait_until(lambda: message_deleted(imap_client, item, "Test"))
     wait_until(lambda: message_added(imap_client, "Test2", "3"))
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
-    check_collection_in_sync("Test2", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
 
 @pytest.mark.xfail(
@@ -288,8 +288,8 @@ def test_copy_message_on_server_is_synced(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
-    check_collection_in_sync("Test2", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
     source = imap_resource.resolve_collection("Test")
     items_source = akonadi_client.list_items(source.id())
@@ -305,15 +305,15 @@ def test_copy_message_on_server_is_synced(
     wait_until(lambda: message_added(imap_client, "Test", "2"))
     wait_until(lambda: message_added(imap_client, "Test2", "3"))
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
-    check_collection_in_sync("Test2", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
 def test_offline_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("TestEmpty", imap_resource, imap_client)
+    assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("TestEmpty")
 
     imap_resource.set_online(False)
@@ -341,14 +341,14 @@ def test_offline_append_message(
     messages = list(imap_client.fetch(mark_seen=False))
     assert len(messages) == 1
 
-    check_collection_in_sync("TestEmpty", imap_resource, imap_client)
+    assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
 
 def test_offline_delete_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("Test")
 
     items = akonadi_client.list_items(collection.id())
@@ -376,12 +376,12 @@ def test_offline_delete_message(
     messages = list(imap_client.fetch(mark_seen=False))
     assert len(messages) == 1
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 """"
 @pytest.mark.asyncio
 async def test_sync_10000_messages(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     start = time.time()
 
@@ -390,7 +390,7 @@ async def test_sync_10000_messages(imap_resource: ImapResource, imap_client: Bas
 
     imap_resource.sync_collection("Test")
 
-    check_collection_in_sync("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     total = time.time() - start
 
