@@ -80,6 +80,29 @@ def test_mailbox_deleted_on_server_is_synced(
     assert folder.name not in list(map(lambda c: c.name(), collections))
 
 
+def test_mailbox_renamed_on_server_is_synced(
+        imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Renaming a mailbox on the server, the change is replayed on the resource
+    """
+    collection_new_name = "new_name"
+
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    imap_client.folder.rename(folder.name, collection_new_name)
+    assert not imap_client.folder.exists(folder.name)
+    assert imap_client.folder.exists(collection_new_name)
+
+    imap_resource.synchronize()
+
+    collections = imap_resource.list_collections()
+    assert folder.name not in (c.name() for c in collections)
+    assert collection_new_name in (c.name() for c in collections)
+
+
 @pytest.mark.xfail(
     reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change."
 )
