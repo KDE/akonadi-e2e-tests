@@ -51,6 +51,7 @@ class ImapResource(Resource):
         await settings.set_safety("PLAIN")
         await settings.set_authentication(1)
         await settings.set_user_name(username)
+        await settings.set_interval_check_enabled(False)
 
         wallet = WalletIface.new_proxy(
             self._dbus.resource_service_name(self._identifier),
