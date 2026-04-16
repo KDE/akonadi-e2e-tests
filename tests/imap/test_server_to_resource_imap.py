@@ -9,7 +9,7 @@ import time
 from logging import getLogger
 
 import pytest
-from imap_tools import BaseMailBox, MailboxFolderDeleteError
+from imap_tools import BaseMailBox, MailboxFolderDeleteError, MailboxFolderRenameError
 
 from src.akonadi.imap_resource import ImapResource
 from src.imap.email_utils import create_message
@@ -52,6 +52,28 @@ def test_mailbox_deleted_on_server_is_synced(
 
     collections = imap_resource.list_collections()
     assert "Test" not in list(map(lambda c: c.name(), collections))
+
+
+def test_mailbox_renamed_on_server_is_synced(
+        imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Renaming a mailbox on the server, the change is replayed on the resource
+    """
+    collection_to_rename = "Test"
+    collection_new_name = "Test6"
+
+    for _ in range(5):
+        try:
+            imap_client.folder.rename(collection_to_rename, collection_new_name)
+        except MailboxFolderRenameError:
+            time.sleep(0.2)
+
+    imap_resource.synchronize()
+
+    collections = imap_resource.list_collections()
+    assert collection_to_rename not in (c.name() for c in collections)
+    assert collection_new_name in (c.name() for c in collections)
 
 
 @pytest.mark.xfail(
