@@ -18,7 +18,7 @@ from src.imap.test_utils import assert_collection_equal_mailbox
 log = getLogger(__name__)
 
 
-def test_new_mailbox_on_server_is_synced(
+def test_mailbox_created_on_server_is_synced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
     """
