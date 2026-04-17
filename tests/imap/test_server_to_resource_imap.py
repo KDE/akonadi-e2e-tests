@@ -18,6 +18,7 @@ from src.imap.test_utils import (
     assert_collection_equal_mailbox,
     assert_item_sync,
     assert_item_unsync,
+    compare_flags,
 )
 
 log = getLogger(__name__)
@@ -235,6 +236,45 @@ def test_sync_flag_change_and_added_and_removed_message(
     imap_resource.sync_collection(folder.name)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+
+def test_offline_change_email_flags_on_server_is_synced(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Changing flags of an item on the server while the resource is offline, nothing happens
+    When the resource is online, the flags are replicated and no other change occurred
+    """
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create(folder=folder.name, flags=("\\Draft"))
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    # Set offline and change server flags
+    [item] = imap_resource.list_items(folder.name)
+    imap_resource.set_online(False)
+    imap_client.folder.set(folder.name)
+    imap_client.flag([item.remoteId()], "\\Flagged", True)
+    imap_client.flag([item.remoteId()], "\\Draft", False)
+
+    # Check nothing happened
+    [item] = [i for i in imap_resource.list_items(folder.name) if i.id() == item.id()]
+    flags = [bytes(f).decode() for f in item.flags()]
+    assert compare_flags(flags, ["\\Draft"])
+
+    # Set collection online and ensure flags have not yet changed
+    imap_resource.set_online(True)
+    [item] = [i for i in imap_resource.list_items(folder.name) if i.id() == item.id()]
+    flags = [bytes(f).decode() for f in item.flags()]
+    assert compare_flags(flags, ["\\Draft"])
+
+    # Sync and check flags have changes
+    imap_resource.sync_collection(folder.name)
+    [item] = [i for i in imap_resource.list_items(folder.name) if i.id() == item.id()]
+    flags = [bytes(f).decode() for f in item.flags()]
+    assert compare_flags(flags, ["\\Flagged"])
+
+    assert_all_collections_are_equals(imap_client, imap_resource)
 
 
 def test_offline_removed_message_server_side(
