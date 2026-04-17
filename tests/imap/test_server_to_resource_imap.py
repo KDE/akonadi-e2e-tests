@@ -28,7 +28,7 @@ def test_new_mailbox_on_server_is_synced(
     imap_resource.synchronize()
 
     collections = imap_resource.list_collections()
-    assert any(lambda c: c.name() == "Test3" for c in collections)
+    assert "Test3" in (c.name() for c in collections)
 
 
 def test_mailbox_deleted_on_server_is_synced(
@@ -50,8 +50,7 @@ def test_mailbox_deleted_on_server_is_synced(
     assert not imap_client.folder.exists("Test")
     imap_resource.synchronize()
 
-    collections = imap_resource.list_collections()
-    assert "Test" not in list(map(lambda c: c.name(), collections))
+    assert "Test" not in (c.name() for c in imap_resource.list_collections())
 
 
 def test_mailbox_renamed_on_server_is_synced(
