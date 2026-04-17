@@ -57,7 +57,7 @@ IGNORED_PROPERTIES = {"CREATED", "LAST-MODIFIED", "DTSTAMP", "TRANSP"}
 
 def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> None:
     def _filter_lines(lines):
-        return [l for l in lines if l.split(":")[0] not in IGNORED_PROPERTIES]
+        return [line for line in lines if line.split(":")[0] not in IGNORED_PROPERTIES]
 
     akonadi_event = _filter_lines(item_to_event(akonadi_item).content_lines())
     server_event = _filter_lines(dav_event.icalendar_instance.events[0].content_lines())
