@@ -393,7 +393,6 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
 
         imap_resource.sync_collection(folder.name)
         wait_until(lambda: not has_flag(imap_client, item, folder.name, flag))  # noqa: B023
-
         assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
@@ -445,3 +444,45 @@ def test_offline_rename_collection(
 
     # Check that the renamed collection has the same items as the original one
     assert_akonadi_items_are_equal(initial_items, updated_items)
+
+
+def test_akonadi_offline_add_flag(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Changing flags of an item in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
+    """
+    folder_name = ImapFolderFactory.create().name
+    imap_resource.synchronize()
+
+    imap_client.folder.set(folder_name)
+    assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
+    items = imap_resource.list_items(folder_name)
+    item = items[0]
+
+    imap_resource.set_online(False)
+
+    flags = ["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
+    for flag in flags:
+        imap_resource.add_flag(item.id(), flag)
+    item = imap_resource.akonadi_client.item_by_id(item.id())
+    for flag in flags:
+        assert not has_flag(imap_client, item, folder_name, flag)  # noqa: B023
+
+    imap_resource.set_online(True)
+
+    for flag in flags:
+        assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023
+    assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
+
+    imap_resource.set_online(False)
+
+    for flag in flags:
+        imap_resource.clear_flag(item.id(), flag)
+    item = imap_resource.akonadi_client.item_by_id(item.id())
+    for flag in flags:
+        assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023
+
+    imap_resource.set_online(True)
+
+    for flag in flags:
+        assert not has_flag(imap_client, item, folder_name, flag)  # noqa: B023
+    assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
