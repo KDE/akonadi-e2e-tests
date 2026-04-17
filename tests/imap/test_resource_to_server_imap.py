@@ -385,3 +385,48 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
         wait_until(lambda: not has_flag(imap_client, item, "Test", flag))  # noqa: B023
 
         assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+def test_offline_rename_collection(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+) -> None:
+    """
+    Renaming a collection in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server.
+    """
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    initial_collections = imap_resource.list_collections()
+    initial_items = imap_resource.list_items("Test")
+
+    assert "Test" in [c.name() for c in initial_collections]
+    assert "Test3" not in [c.name() for c in initial_collections]
+
+    imap_resource.set_online(False)
+
+    imap_resource.rename_collection("Test", "Test3")
+
+    updated_collections = imap_resource.list_collections()
+    updated_items = imap_resource.list_items("Test3")
+
+    assert "Test3" in [c.name() for c in updated_collections]
+    assert "Test" not in [c.name() for c in updated_collections]
+
+    # Check that nothing changed on the imap server side
+    wait_until(lambda: imap_client.folder.exists("Test"))
+    wait_until(lambda: not imap_client.folder.exists("Test3"))
+
+    imap_resource.set_online(True)
+
+    assert "Test3" in [c.name() for c in updated_collections]
+    assert "Test" not in [c.name() for c in updated_collections]
+
+    # Check in imap server that the new collection exists and the old one is deleted
+    wait_until(lambda: not imap_client.folder.exists("Test"))
+    assert_collection_equal_mailbox("Test3", imap_resource, imap_client)
+
+    # Check that the renamed collection has the same items as the original one
+    assert len(initial_items) == len(updated_items)
+    initial_items.sort(key=lambda item: item.id())
+    updated_items.sort(key=lambda item: item.id())
+    for initial_item, updated_item in zip(initial_items, updated_items, strict=False):
+        assert_akonadi_items_are_equal(initial_item, updated_item)
