@@ -1,0 +1,68 @@
+# SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
+# SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
+# SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
+# SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+from logging import getLogger
+
+import pytest
+from imap_tools import BaseMailBox
+
+from src.akonadi.imap_resource import ImapResource
+from src.imap.test_utils import assert_collection_equal_mailbox
+
+log = getLogger(__name__)
+
+
+@pytest.mark.xfail(
+    reason="The tests are flaky/not stable, we xfail conflict tests while stabilizing others"
+)
+def test_mailbox_deleted_on_server_is_unsynced(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+    imap_resource.set_online(False)
+
+    imap_client.folder.set(
+        "INBOX"
+    )  # Needed to avoid CREATE => Selected mailbox was deleted, have to disconnect
+    imap_client.folder.delete("Test")
+    imap_resource.delete_collection("Test2")
+
+    # check mailboxes in disconnected state
+    collections_akonadi = imap_resource.list_collections()
+    assert "Test" in list(map(lambda c: c.name(), collections_akonadi))
+    assert imap_client.folder.exists("Test2")
+
+    # reconnect
+    imap_resource.set_online(True)
+    imap_resource.synchronize()
+
+    # check that both imap and akonadi server are properly synchronised
+    collections_akonadi = imap_resource.list_collections()
+    assert "Test" not in list(map(lambda c: c.name(), collections_akonadi))
+    assert not imap_client.folder.exists("Test2")
+
+
+@pytest.mark.xfail(
+    reason="The tests are flaky/not stable, we xfail conflict tests while stabilizing others"
+)
+def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+    imap_resource.set_online(False)
+
+    collection = imap_resource.resolve_collection("Test")
+    items = imap_resource.list_items(collection.id())
+    item = items[0]
+    imap_uid = item.remoteId()
+
+    imap_client.folder.set("Test")
+    imap_client.flag([imap_uid], "$TestFlag", True)
+    imap_resource.add_flag(item.id(), "$TestFlag2")
+
+    imap_resource.set_online(True)
+    imap_resource.sync_collection("Test")
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
