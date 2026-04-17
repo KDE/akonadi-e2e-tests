@@ -24,9 +24,9 @@ class ResourceError(Exception):
 class Resource(ABC):
     RESOURCE_TYPE: ClassVar[str]
 
-    def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str) -> None:
+    def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, instance: Akonadi.AgentInstance) -> None:
         self._dbus = dbus
-        self._identifier = identifier
+        self._identifier = instance.identifier()
         self.akonadi_client = akonadi_client
 
     @classmethod
@@ -37,17 +37,20 @@ class Resource(ABC):
         createJob.start()
         AkonadiUtils.wait_for_job(createJob)
 
-        instance_id = createJob.instance().identifier()
+        instance = createJob.instance()
 
-        assert createJob.instance().isValid()
+        assert instance.isValid()
 
-        return cls(akonadi_client, dbus, instance_id)
+        return cls(akonadi_client, dbus, instance)
+
+    @property
+    def instance(self) -> Akonadi.AgentInstance:
+        return Akonadi.AgentManager.self().instance(self._identifier)
 
     async def remove(self) -> None:
         log.debug("Removing %s resource via Agent Manager", self.identifier)
 
-        instance = Akonadi.AgentManager.self().instance(self._identifier)
-        Akonadi.AgentManager.self().removeInstance(instance)
+        Akonadi.AgentManager.self().removeInstance(self.instance)
 
         # Give time to shut down the resource fully
         time.sleep(0.5)
@@ -55,9 +58,7 @@ class Resource(ABC):
     def synchronize(self) -> None:
         log.debug("Synchronizing %s resource via Agent Manager", self.RESOURCE_TYPE)
 
-        instance = Akonadi.AgentManager.self().instance(self._identifier)
-
-        resourceSynchroJob = Akonadi.ResourceSynchronizationJob(instance)
+        resourceSynchroJob = Akonadi.ResourceSynchronizationJob(self.instance)
         resourceSynchroJob.start()
         AkonadiUtils.wait_for_job(resourceSynchroJob)
 
@@ -134,6 +135,5 @@ class Resource(ABC):
         """
         Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
         """
-        instance = Akonadi.AgentManager.self().instance(self._identifier)
-        instance.setIsOnline(online)
+        self.instance.setIsOnline(online)
         AkonadiUtils.wait_for_online(self._identifier, online)

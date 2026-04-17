@@ -63,8 +63,7 @@ class ImapResource(Resource):
 
         await settings.save()
 
-        instance = Akonadi.AgentManager.self().instance(self._identifier)
-        instance.reconfigure()
+        self.instance.reconfigure()
 
         AkonadiUtils.wait_for_status(self._identifier, 0)
 
