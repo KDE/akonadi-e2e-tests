@@ -162,6 +162,41 @@ def test_akonadi_offline_delete_collection(
     wait_until(lambda: len(imap_client.folder.list("", "*TestChild")) == 0)
 
 
+def test_akonadi_offline_rename_collection(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Renaming a collection in the server, nothing happens, when the resource is set online, the collection is also
+    renamed in the akonadi server, no other change occurred (other than timestamps book keeping)
+    """
+    old_name = "Test"
+    new_name = "Test0"
+    initial_collections = imap_resource.list_collections()
+
+    assert old_name in (collection.name() for collection in initial_collections)
+    assert new_name not in (collection.name() for collection in initial_collections)
+    assert imap_client.folder.exists(old_name)
+    assert not imap_client.folder.exists(new_name)
+
+    imap_resource.set_online(False)
+    imap_resource.rename_collection(old_name, new_name)
+
+    updated_offline_collections = imap_resource.list_collections()
+
+    assert old_name not in (collection.name() for collection in updated_offline_collections)
+    assert new_name in (collection.name() for collection in updated_offline_collections)
+
+    # Here we need to test that nothing happens in the server
+    assert imap_client.folder.exists(old_name)
+    assert not imap_client.folder.exists(new_name)
+
+    imap_resource.set_online(True)
+
+    assert imap_client.folder.exists(new_name)
+    assert not imap_client.folder.exists(old_name)
+    assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
+
+
 def test_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
