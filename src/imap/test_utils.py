@@ -63,7 +63,7 @@ def has_flag(imap_client: BaseMailBox, item: Akonadi.Item, mailbox: str, flag: s
     assert item.remoteId() is not None
     imap_client.folder.set(mailbox)
     [imap_mail] = imap_client.fetch(AND(uid=item.remoteId()), mark_seen=False)
-    return flag in imap_mail.flags
+    return flag.lower() in [flag.lower() for flag in imap_mail.flags]
 
 
 def assert_payload_are_equal(
