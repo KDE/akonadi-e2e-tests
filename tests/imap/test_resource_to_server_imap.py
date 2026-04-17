@@ -17,6 +17,7 @@ from src.akonadi.imap_resource import ImapResource
 from src.imap.email_utils import create_message
 from src.imap.test_utils import (
     assert_collection_equal_mailbox,
+    compare_flags,
     has_flag,
     message_added,
     message_deleted,
@@ -384,3 +385,45 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
         wait_until(lambda: not has_flag(imap_client, item, "Test", flag))  # noqa: B023
 
         assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+def test_akonadi_offline_add_flag(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Changing flags of an item in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
+    """
+    imap_client.folder.set("Test")
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    items = imap_resource.list_items("Test")
+    item = items[0]
+
+    imap_resource.set_online(False)
+
+    flags = ["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
+    for flag in flags:
+        imap_resource.add_flag(item.id(), flag)
+    item = imap_resource.akonadi_client.item_by_id(item.id())
+    assert compare_flags(flags, [bytes(f).decode() for f in item.flags()])
+    for flag in flags:
+        wait_until(lambda: not has_flag(imap_client, item, "Test", flag))  # noqa: B023
+
+    imap_resource.set_online(True)
+
+    for flag in flags:
+        wait_until(lambda: has_flag(imap_client, item, "Test", flag))  # noqa: B023
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+    imap_resource.set_online(False)
+
+    for flag in flags:
+        imap_resource.clear_flag(item.id(), flag)
+    item = imap_resource.akonadi_client.item_by_id(item.id())
+    # No more flags should be left
+    assert compare_flags([], [bytes(f).decode() for f in item.flags()])
+    for flag in flags:
+        wait_until(lambda: has_flag(imap_client, item, "Test", flag))  # noqa: B023
+
+    imap_resource.set_online(True)
+
+    for flag in flags:
+        wait_until(lambda: not has_flag(imap_client, item, "Test", flag))  # noqa: B023
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
