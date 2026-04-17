@@ -149,6 +149,8 @@ class Resource(ABC):
     def clear_flag(self, item_id: int, flag: str) -> None:
         item = self.akonadi_client.item_by_id(item_id)
         item.clearFlag(flag.encode())
+        item.clearFlag(flag.lower().encode())
+        item.clearFlag(flag.upper().encode())
 
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
