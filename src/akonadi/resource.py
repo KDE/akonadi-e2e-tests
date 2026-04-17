@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+# SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -135,5 +136,20 @@ class Resource(ABC):
         """
         Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
         """
+        time.sleep(0.2)
         self.instance.setIsOnline(online)
         AkonadiUtils.wait_for_online(self._identifier, online)
+        if online:
+            self.wait_resource_is_idle()
+
+    def wait_resource_is_idle(self, timeout_ms: int = 30000):
+        assert self.instance.isOnline(), "Resource must be online to wait for idle"
+        start_time = time.monotonic()
+        timeout_s = timeout_ms / 1000.0
+
+        while self.instance.taskList():
+            log.info("Waiting for resource %s to be idle", self.identifier)
+            elapsed = time.monotonic() - start_time
+            if elapsed > timeout_s:
+                pytest.fail(f"Timed out after {timeout_s} seconds waiting for resource {self.identifier} to be idle")
+            time.sleep(0.05)
