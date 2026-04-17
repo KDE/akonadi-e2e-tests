@@ -21,6 +21,10 @@ log = getLogger(__name__)
 def test_mailbox_deleted_on_server_is_unsynced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Deleting a collection from an offline resource and deleting a mailbox from a server
+    When going back online, both collection/mailbox are deleted
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_resource.set_online(False)
@@ -50,6 +54,10 @@ def test_mailbox_deleted_on_server_is_unsynced(
     reason="The tests are flaky/not stable, we xfail conflict tests while stabilizing others"
 )
 def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Flag change on an item from an offline resource and flag mail from a server
+    When going back online, both items/mails are correctly flagged
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_resource.set_online(False)

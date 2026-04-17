@@ -167,6 +167,9 @@ def test_append_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
+    """
+    Adding an item to a collection in the akonadi server, the change is replayed on the server
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("Test")
 
@@ -181,8 +184,6 @@ def test_append_message(
     items = akonadi_client.list_items(collection.id())
     assert len(items) == 3
 
-    # Wait for it to be uploaded to the IMAP as well
-    # It may take a little bit for the change to propagate to the IMAP server, so try a few times
     wait_until(lambda: message_added(imap_client, "Test", "3"))
 
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
@@ -193,6 +194,9 @@ def test_delete_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
+    """
+    Removing an item from a collection in the akonadi server, the change is replayed on the server
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     collection = imap_resource.resolve_collection("Test")
@@ -216,6 +220,10 @@ def test_offline_append_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
+    """
+    Adding an item to a collection in the offline akonadi server, nothing happens
+    When the resource is set online, the change is replayed on the server
+    """
     assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("TestEmpty")
 
@@ -252,6 +260,10 @@ def test_offline_delete_message(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
+    """
+    Removing an item from a collection in the offline akonadi server, nothing happens
+    When the resource is set online, the change is replayed on the server
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("Test")
 
@@ -283,11 +295,14 @@ def test_offline_delete_message(
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
-def test_move_message_on_server_is_synced(
+def test_move_message_on_resource_is_synced(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
+    """
+    Moving an item from one collection to another in the akonadi server, the change is replayed on the server
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
@@ -317,6 +332,9 @@ def test_copy_message_on_server_is_synced(
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
 ) -> None:
+    """
+    Copying an item from one collection to another in the akonadi server, the change is replayed on the server
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 

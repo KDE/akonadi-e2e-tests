@@ -21,6 +21,9 @@ log = getLogger(__name__)
 def test_new_mailbox_on_server_is_synced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Creating a new mailbox on the server, the change is replayed on the resource
+    """
     imap_client.folder.create("Test3")
     imap_resource.synchronize()
 
@@ -31,6 +34,9 @@ def test_new_mailbox_on_server_is_synced(
 def test_mailbox_deleted_on_server_is_synced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Deleting a mailbox on the server, the change is replayed on the resource
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set(
@@ -52,6 +58,9 @@ def test_mailbox_deleted_on_server_is_synced(
     reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change."
 )
 def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Recreating a mailbox on the server, the change is replayed on the resource
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set(
@@ -67,6 +76,9 @@ def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: B
 
 
 def test_sync_removed_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Deleting a message on the server, the change is replayed on the resource
+    """
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -77,6 +89,9 @@ def test_sync_removed_message(imap_resource: ImapResource, imap_client: BaseMail
 
 
 def test_sync_added_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Adding a message on the server, the change is replayed on the resource
+    """
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -91,6 +106,9 @@ def test_sync_added_message(imap_resource: ImapResource, imap_client: BaseMailBo
 def test_sync_added_and_removed_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Adding and removing a message on the server, the message is not present in the resource
+    """
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     imap_client.append(create_message().as_bytes(), "Test")
@@ -103,6 +121,9 @@ def test_sync_added_and_removed_message(
 
 
 def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Changing the flag of a message on the server, the change is replayed on the resource
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set("Test")
@@ -115,6 +136,9 @@ def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMai
 def test_sync_flag_change_and_removed_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Changing the flag and deleting a different message on the server, the changes are replayed on the resource
+    """
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -128,6 +152,9 @@ def test_sync_flag_change_and_removed_message(
 def test_sync_flag_change_and_added_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Changing the flag and adding a different message on the server, the changes are replayed on the resource
+    """
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -141,6 +168,9 @@ def test_sync_flag_change_and_added_message(
 def test_sync_flag_change_and_added_and_removed_message(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    """
+    Changing the flag, adding and removing a different message on the server, the changes are replayed on the resource
+    """
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 

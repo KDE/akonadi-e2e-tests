@@ -19,4 +19,7 @@ log = getLogger(__name__)
 
 
 def test_initial_sync(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Test that the initial setup is synced between the server and the resource
+    """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
