@@ -7,7 +7,7 @@ import os
 import tempfile
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
 from caldav.collection import Principal

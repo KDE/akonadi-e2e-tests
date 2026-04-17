@@ -25,7 +25,9 @@ class ResourceError(Exception):
 class Resource(ABC):
     RESOURCE_TYPE: ClassVar[str]
 
-    def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, instance: Akonadi.AgentInstance) -> None:
+    def __init__(
+        self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, instance: Akonadi.AgentInstance
+    ) -> None:
         self._dbus = dbus
         self._identifier = instance.identifier()
         self.akonadi_client = akonadi_client
@@ -151,5 +153,7 @@ class Resource(ABC):
             log.info("Waiting for resource %s to be idle", self.identifier)
             elapsed = time.monotonic() - start_time
             if elapsed > timeout_s:
-                pytest.fail(f"Timed out after {timeout_s} seconds waiting for resource {self.identifier} to be idle")
+                pytest.fail(
+                    f"Timed out after {timeout_s} seconds waiting for resource {self.identifier} to be idle"
+                )
             time.sleep(0.05)
