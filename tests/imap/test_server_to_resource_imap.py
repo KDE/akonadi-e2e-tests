@@ -181,3 +181,22 @@ def test_sync_flag_change_and_added_and_removed_message(
     imap_resource.sync_collection("Test")
 
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Add a message on the server side when offline
+    Check sync after online
+    """
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    imap_resource.set_online(False)
+
+    imap_client.append(create_message("appendTest").as_bytes(), "Test")
+    # Make sure this resource isn't updated when offline
+    assert len(imap_resource.list_items("Test")) == 2
+
+    imap_resource.set_online(True)
+    imap_resource.sync_collection("Test")
+
+    assert len(imap_resource.list_items("Test")) == 3
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
