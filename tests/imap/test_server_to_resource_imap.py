@@ -183,6 +183,27 @@ def test_sync_flag_change_and_added_and_removed_message(
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
+def test_offline_removed_message_server_side(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    imap_client.folder.set("Test")
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    imap_resource.set_online(False)
+
+    items = imap_resource.list_items("Test")
+    item_to_delete = items[0]
+    imap_client.delete(item_to_delete.remoteId())
+
+    # Make sure this resource isn't updated when offline
+    assert len(imap_resource.list_items("Test")) == 2
+
+    imap_resource.set_online(True)
+    imap_resource.sync_collection("Test")
+
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert len(imap_resource.list_items("Test")) == 1
+
+
 def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Add a message on the server side when offline
