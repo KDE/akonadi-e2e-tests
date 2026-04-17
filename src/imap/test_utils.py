@@ -123,7 +123,6 @@ def assert_partial_sync(
                 == initial_item.modificationTime().toMSecsSinceEpoch()
             )
 
-
 def old_prepare(imap_client: BaseMailBox, imap_resource: ImapResource) -> None:
     """
     Need to be deleted after migrating all tests to factory boys
@@ -140,3 +139,9 @@ def old_prepare(imap_client: BaseMailBox, imap_resource: ImapResource) -> None:
 
     log.info("IMAP server populated with messages")
     imap_resource.synchronize()
+
+def assert_akonadi_items_are_equal(item1: Akonadi.Item, item2: Akonadi.Item) -> None:
+    assert item1.id() == item2.id()
+    item1_payload = item1.payloadData().data().decode()
+    item2_payload = item2.payloadData().data().decode()
+    assert item1_payload == item2_payload
