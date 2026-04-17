@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2025 Daniel Vrátil <dvratil@kde.org>
+# SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -91,12 +92,18 @@ def assert_partial_sync(
     updated_items_id = [item.id() for item in updated_items]
 
     for initial_item, current_item in zip(initial_items, current_items, strict=False):
+        # handle updated items
         if initial_item.id() in updated_items_id:
             assert current_item.revision() > initial_item.revision()
             assert (
                 current_item.modificationTime().toMSecsSinceEpoch()
                 > initial_item.modificationTime().toMSecsSinceEpoch()
             )
+        # handle added items
+        elif initial_item.id() not in updated_items_id:
+            assert current_item.revision() == 0
+            assert current_item.modificationTime().toMSecsSinceEpoch() is not None
+        # handle unchanged items
         else:
             assert current_item.revision() == initial_item.revision()
             assert (

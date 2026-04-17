@@ -239,3 +239,25 @@ def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: B
 
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_partial_sync(initial_items, updated_items, [item_to_update])
+
+
+def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Check that only the added items has been sync
+    """
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    initial_items = imap_resource.list_items("Test")
+    assert len(initial_items) == 2
+
+    for _ in range(5):
+        msg_to_append = create_message("appendTest")
+        imap_client.append(msg_to_append.as_bytes(), "Test")
+        imap_resource.sync_collection("Test")
+
+    updated_items = imap_resource.list_items("Test")
+    items_added = [item for item in updated_items if item not in initial_items]
+
+    assert len(updated_items) == 7
+    assert len(items_added) == 5
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_partial_sync(initial_items, updated_items, items_added)
