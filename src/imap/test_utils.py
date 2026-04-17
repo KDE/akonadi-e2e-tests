@@ -145,3 +145,4 @@ def assert_akonadi_items_are_equal(item1: Akonadi.Item, item2: Akonadi.Item) -> 
     item1_payload = item1.payloadData().data().decode()
     item2_payload = item2.payloadData().data().decode()
     assert item1_payload == item2_payload
+    assert compare_flags(item1.flags(), item2.flags())
