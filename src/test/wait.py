@@ -6,7 +6,7 @@ from collections.abc import Callable, Coroutine
 from time import sleep, time
 from typing import Any
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication  # type: ignore
 
 
 def wait_until(
