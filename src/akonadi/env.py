@@ -67,5 +67,19 @@ class AkonadiEnv:
         env["AKONADI_INSTANCE"] = self._instance_id
         env["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
         env["LC_ALL"] = "C"
+        env["QT_LOGGING_RULES"] = ";".join([
+            "kf.dav=true",
+            "org.kde.pim.kimap=true",
+            "org.kde.pim.akonadi=true",
+            "org.kde.pim.akonadiagentbase=true",
+            "org.kde.pim.akonadiserver=true",
+            "org.kde.pim.akonadicore=true",
+            "org.kde.pim.akonadiprivate=true",
+            "org.kde.pim.davresource=true",
+            "org.kde.pim.imapresource=true",
+            "org.kde.pim.imapresource.trace=true",
+        ])
+        if "QT_MESSAGE_PATTERN" not in env:
+            env["QT_MESSAGE_PATTERN"] = "FOOO %{category} %{type}: %{function} - %{message}"
 
         return env
