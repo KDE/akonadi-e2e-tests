@@ -141,3 +141,33 @@ def test_remove_item_in_akonadi_on_collection_removed_on_server(
     imap_resource.synchronize()
     assert collection_name not in (c.name() for c in imap_resource.list_collections())
     # Cannot fetch items on a deleted collection, assume it is gone as well
+
+
+def test_update_item_in_akonadi_on_collection_removed_on_server(
+        imap_resource: ImapResource,
+        imap_client: BaseMailBox,
+        akonadi_client: AkonadiClient,
+) -> None:
+    collection_name = "Test7"
+    flag_to_add = "\\Draft"
+    imap_client.folder.create(collection_name)
+    imap_client.folder.set(collection_name)
+    imap_client.append(create_message().as_bytes(), collection_name)
+    imap_resource.synchronize()
+    assert collection_name in (c.name() for c in imap_resource.list_collections())
+    pre_update_items_on_resource = imap_resource.list_items(collection_name)
+    pre_update_items_on_server = list(imap_client.fetch(mark_seen=False))
+    assert len(pre_update_items_on_server) == len(pre_update_items_on_resource) == 1
+    assert flag_to_add not in pre_update_items_on_server[0].flags
+
+    imap_resource.set_online(False)
+
+    imap_resource.add_flag(pre_update_items_on_resource[-1].id(), flag_to_add)
+
+    imap_client.folder.delete(collection_name)
+
+    imap_resource.set_online(True)
+
+    imap_resource.synchronize()
+    assert collection_name not in (c.name() for c in imap_resource.list_collections())
+    # Cannot fetch items on a deleted collection, assume it is gone as well
