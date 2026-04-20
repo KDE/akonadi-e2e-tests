@@ -8,6 +8,7 @@
 from logging import getLogger
 
 import pytest
+import time
 from AkonadiCore import Akonadi
 from imap_tools import BaseMailBox
 
@@ -98,6 +99,10 @@ def test_rename_collection(
     assert "Test" in [c.name() for c in initial_collections]
     assert "Test3" not in [c.name() for c in initial_collections]
 
+    # If the rename request arrives to quickly after the sync and list
+    # somehow the rename never reaches the resource... there is a bug
+    # somewhere in the chain
+    time.sleep(0.1)
     imap_resource.rename_collection("Test", "Test3")
 
     updated_collections = imap_resource.list_collections()
