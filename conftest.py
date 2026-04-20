@@ -165,6 +165,7 @@ async def imap_resource(
         password=imap_server.password,
     )
     resource.synchronize()
+    resource.wait_resource_is_idle()
     yield resource
 
     # Remove the resource after the test - this cleans up useless secrets from the keychain
@@ -207,6 +208,7 @@ async def groupware_resource(
         dav_server.base_url, username=dav_server.username, password=dav_server.password
     )
     resource.synchronize()
+    resource.wait_resource_is_idle()
 
     yield resource
 
