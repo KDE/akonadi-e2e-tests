@@ -314,6 +314,9 @@ def test_offline_delete_message(
     assert len(items) == 2
     item = items[0]
 
+    # Issuing set_online(False) while the IMAP resource is not idle
+    # might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # This context manager is needed as we need to wait for the ChangeReplay

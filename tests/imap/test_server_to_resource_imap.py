@@ -188,6 +188,9 @@ def test_offline_removed_message_server_side(
 ) -> None:
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    # Issuing set_online(False) while the IMAP resource is not idle
+    # might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     items = imap_resource.list_items("Test")
@@ -210,6 +213,10 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     Check sync after online
     """
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+    # Issuing set_online(False) while the IMAP resource is not idle
+    # might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_client.append(create_message("appendTest").as_bytes(), "Test")
