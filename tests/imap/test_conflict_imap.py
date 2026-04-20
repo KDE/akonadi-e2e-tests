@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
+# SPDX-FileCopyrightText: 2026 Kenny Lorin <kenny.lorin@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 from logging import getLogger
@@ -9,6 +10,8 @@ from logging import getLogger
 import pytest
 from imap_tools import BaseMailBox
 
+from akonadi.client import AkonadiClient
+from imap.email_utils import create_message
 from src.akonadi.imap_resource import ImapResource
 from src.imap.test_utils import assert_collection_equal_mailbox, old_prepare
 
@@ -76,3 +79,36 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     imap_resource.set_online(True)
     imap_resource.sync_collection("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+
+
+def test_add_item_in_akonadi_on_collection_removed_on_server(
+        imap_resource: ImapResource,
+        imap_client: BaseMailBox,
+        akonadi_client: AkonadiClient,
+) -> None:
+    collection_name = "Test7"
+    imap_client.folder.create(collection_name)
+    imap_client.folder.set(collection_name)
+    server_items_on_collection_creation = list(imap_client.fetch(mark_seen=False))
+    imap_resource.synchronize()
+    assert collection_name in (c.name() for c in imap_resource.list_collections())
+    assert len(imap_resource.list_items(collection_name)) == len(server_items_on_collection_creation) == 0
+
+    collection = imap_resource.resolve_collection(collection_name)
+    imap_resource.set_online(False)
+
+    akonadi_client.add_item(
+        collection.id(),
+        create_message(subject="test_add_item_in_akonadi_on_collection_removed_on_server").as_bytes(),
+        "message/rfc822",
+    )
+
+    assert len(list(imap_client.fetch(mark_seen=False))) == len(server_items_on_collection_creation) # no message added to folder
+
+    imap_client.folder.delete(collection_name)
+
+    imap_resource.set_online(True)
+
+    imap_resource.synchronize()
+    assert collection_name not in (c.name() for c in imap_resource.list_collections())
+    # Cannot fetch items on a deleted collection, assume it is gone as well
