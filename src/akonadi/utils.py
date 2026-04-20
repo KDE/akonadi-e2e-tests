@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from contextlib import contextmanager
 from AkonadiCore import Akonadi  # type: ignore
 from PySide6.QtCore import QEventLoop, QTimer  # type: ignore
+
+from src.test import wait_until
 
 
 class WaitJobError(Exception):
@@ -11,6 +14,19 @@ class WaitJobError(Exception):
 
 
 class AkonadiUtils:
+    @staticmethod
+    def change_replay_count(instance):
+        return len([task for task in instance.taskList() if "ChangeReplay" in task])
+
+    @staticmethod
+    @contextmanager
+    def wait_for_queued_change_replay(instance, timeout_ms: int = 30000):
+        assert not instance.isOnline()
+        change_replay_before = AkonadiUtils.change_replay_count(instance)
+        yield change_replay_before
+        assert not instance.isOnline()
+        wait_until(lambda: AkonadiUtils.change_replay_count(instance) == change_replay_before + 1)
+
     @staticmethod
     def wait_for_job(job, timeout_ms: int = 30000):
         loop = QEventLoop()
