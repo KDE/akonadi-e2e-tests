@@ -143,7 +143,11 @@ def test_akonadi_offline_delete_collection(
 
     # Delete parent collection
     job = Akonadi.CollectionDeleteJob(toplevel_collection)
-    AkonadiUtils.wait_for_job(job)
+    # This context manager is needed as we need to wait for the ChangeReplay
+    # to be queued before set_online(True) is called, otherwise the ChangeReplay
+    # might be lost, this is sign of a bug in Akonadi
+    with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
+        AkonadiUtils.wait_for_job(job)
 
     resource_collections = imap_resource.list_collections()
 
@@ -265,11 +269,15 @@ def test_offline_append_message(
     imap_resource.set_online(False)
 
     # Append the item to Akonadi
-    akonadi_client.add_item(
-        collection.id(),
-        create_message(subject="test_append_message").as_bytes(),
-        "message/rfc822",
-    )
+    # This context manager is needed as we need to wait for the ChangeReplay
+    # to be queued before set_online(True) is called, otherwise the ChangeReplay
+    # might be lost, this is sign of a bug in Akonadi
+    with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
+        akonadi_client.add_item(
+            collection.id(),
+            create_message(subject="test_append_message").as_bytes(),
+            "message/rfc822",
+        )
 
     items = akonadi_client.list_items(collection.id())
     assert len(items) == 1
@@ -308,7 +316,11 @@ def test_offline_delete_message(
 
     imap_resource.set_online(False)
 
-    akonadi_client.delete_item(item.id())
+    # This context manager is needed as we need to wait for the ChangeReplay
+    # to be queued before set_online(True) is called, otherwise the ChangeReplay
+    # might be lost, this is sign of a bug in Akonadi
+    with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
+        akonadi_client.delete_item(item.id())
 
     items = akonadi_client.list_items(collection.id())
     assert len(items) == 1
