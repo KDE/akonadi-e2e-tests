@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 from urllib.parse import unquote_plus
 
-from caldav import Principal
+from caldav.collection import Principal
 
 from src.akonadi.dav_resource import DAVResource
 from src.dav.test_utils import assert_all_collections_are_equals
