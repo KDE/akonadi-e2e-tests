@@ -85,42 +85,36 @@ def assert_payload_are_equal(
     assert akonadi_payload == imap_payload
 
 
-def assert_partial_sync(
-    initial_items: list[Akonadi.Item],
-    current_items: list[Akonadi.Item],
-    updated_items: list[Akonadi.Item],
-) -> None:
+def assert_item_sync(initial_item: Akonadi.Item, current_item: Akonadi.Item) -> None:
     """
-    Check between two item lists that only the items to check have been synced.
-    Note that we do not really check whether the IMAP server or Akonadi server sent only the updated items; instead, we check on the Akonadi side that only the updated items have been sync.
-    The only available field to perform this check is the revision.
-
-    :param initial_items: the items before the sync
-    :param current_items: the items after the sync
-    :param updated_items: the items that should have been updated
+    Assert item has been sync
+    Note that we do not really check whether the IMAP server or Akonadi server sent only the updated items; instead, we check on the Akonadi side that only the update item has been sync.
+    The only available fields to perform this check is the revision and modification time.
+    :param initial_item: The item before the sync
+    :param current_item: The item after the sync
+    :return:
     """
+    assert current_item.id() == initial_item.id()
+    assert current_item.revision() > initial_item.revision()
+    assert (
+        current_item.modificationTime().toMSecsSinceEpoch()
+        > initial_item.modificationTime().toMSecsSinceEpoch()
+    )
 
-    updated_items_id = [item.id() for item in updated_items]
 
-    for initial_item, current_item in zip(initial_items, current_items, strict=False):
-        # handle updated items
-        if initial_item.id() in updated_items_id:
-            assert current_item.revision() > initial_item.revision()
-            assert (
-                current_item.modificationTime().toMSecsSinceEpoch()
-                > initial_item.modificationTime().toMSecsSinceEpoch()
-            )
-        # handle added items
-        elif initial_item.id() not in updated_items_id:
-            assert current_item.revision() == 0
-            assert current_item.modificationTime().toMSecsSinceEpoch() is not None
-        # handle unchanged items
-        else:
-            assert current_item.revision() == initial_item.revision()
-            assert (
-                current_item.modificationTime().toMSecsSinceEpoch()
-                == initial_item.modificationTime().toMSecsSinceEpoch()
-            )
+def assert_item_unsync(initial_item: Akonadi.Item, current_item: Akonadi.Item) -> None:
+    """
+    Assert item has not been sync
+    :param initial_item: The item before the sync
+    :param current_item: The item after the sync
+    :return:
+    """
+    assert current_item.id() == initial_item.id()
+    assert current_item.revision() == initial_item.revision()
+    assert (
+        current_item.modificationTime().toMSecsSinceEpoch()
+        == initial_item.modificationTime().toMSecsSinceEpoch()
+    )
 
 
 def assert_akonadi_items_are_equal(item1: Akonadi.Item, item2: Akonadi.Item) -> None:

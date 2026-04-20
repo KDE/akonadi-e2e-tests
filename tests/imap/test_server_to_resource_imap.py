@@ -13,7 +13,12 @@ from imap_tools import BaseMailBox
 from src.akonadi.imap_resource import ImapResource
 from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
 from src.imap.email_utils import create_message
-from src.imap.test_utils import assert_collection_equal_mailbox, assert_partial_sync
+from src.imap.test_utils import (
+    assert_all_collections_are_equals,
+    assert_collection_equal_mailbox,
+    assert_item_sync,
+    assert_item_unsync,
+)
 
 log = getLogger(__name__)
 
@@ -297,8 +302,18 @@ def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: B
     imap_client.folder.set(folder.name)
     imap_client.flag([item_to_update.remoteId()], ["$TestFlag"], True)
     imap_resource.sync_collection(folder.name)
-    updated_items = imap_resource.list_items(folder.name)
-    assert_partial_sync(initial_items, updated_items, [item_to_update])
+    current_items = imap_resource.list_items(folder.name)
+
+    initial_items.sort(key=lambda i: i.id())
+    current_items.sort(key=lambda i: i.id())
+
+    for initial_item, current_item in zip(initial_items, current_items, strict=True):
+        # updated item should have been sync
+        if initial_item.id() == item_to_update.id():
+            assert_item_sync(initial_item, current_item)
+        # other items should not have been sync
+        else:
+            assert_item_unsync(initial_item, current_item)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -322,11 +337,95 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
 
     updated_items = imap_resource.list_items(folder.name)
     items_added = [item for item in updated_items if item not in initial_items]
+    items_added_id = [item.id() for item in items_added]
+
     assert len(updated_items) == 10
     assert len(items_added) == 5
-    assert_partial_sync(initial_items, updated_items, items_added)
-
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    for item in updated_items:
+        # Added item should have no revision, aka revision to 0, and modificationTime not none
+        if item.id() in items_added_id:
+            assert item.revision() == 0
+            assert item.modificationTime().toMSecsSinceEpoch() is not None
+        else:
+            [initial_item] = [
+                initial_item for initial_item in initial_items if initial_item == item
+            ]
+            assert_item_unsync(initial_item, item)
+
+
+@pytest.mark.xfail(
+    reason="Fail on CYRUS only, unchanged items are actually sync, revision is updated"
+)
+def test_partial_sync_on_delete_msg(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Removing an item from a collection on the server implicitly triggers a partial sync, the removed item is also removed in the akonadi server, no other change occurred.
+    To do this check, we actually look that all other items are unsynced
+    """
+    custom_folder = ImapFolderFactory.create(nb_items=5)
+    inbox_folder = "INBOX"
+    ImapEmailFactory.create_batch(10, folder=inbox_folder)
+    imap_resource.synchronize()
+
+    # Check custom_folder before deleting
+    assert_collection_equal_mailbox(custom_folder.name, imap_resource, imap_client)
+    custom_folder_initial_items = imap_resource.list_items(custom_folder.name)
+    assert len(custom_folder_initial_items) == 5
+
+    # Check inbox folder before deleting
+    assert_collection_equal_mailbox(inbox_folder, imap_resource, imap_client)
+    inbox_folder_initial_items = imap_resource.list_items(inbox_folder)
+    assert len(inbox_folder_initial_items) == 10
+
+    custom_folder_msgs_to_delete = custom_folder_initial_items[:3]
+    inbox_folder_msgs_to_delete = inbox_folder_initial_items[:6]
+
+    # delete msgs in custom_folder
+    imap_client.folder.set(custom_folder.name)
+    for msg in custom_folder_msgs_to_delete:
+        imap_client.delete(msg.remoteId())
+
+    # delete msgs in inbox folder
+    imap_client.folder.set(inbox_folder)
+    for msg in inbox_folder_msgs_to_delete:
+        imap_client.delete(msg.remoteId())
+
+    imap_resource.synchronize()
+    custom_folder_current_items = imap_resource.list_items(custom_folder.name)
+    inbox_folder_current_items = imap_resource.list_items(inbox_folder)
+
+    # check msg in custom folder
+    assert len(custom_folder_current_items) == 2
+    assert_collection_equal_mailbox(custom_folder.name, imap_resource, imap_client)
+
+    for item in custom_folder_current_items:
+        # Check that unchanged item is unsync
+        [initial_item] = [
+            initial_item for initial_item in custom_folder_initial_items if initial_item == item
+        ]
+        assert_item_unsync(initial_item, item)
+
+    # Check that deleted item is not in the current collection
+    for msg in custom_folder_msgs_to_delete:
+        assert msg not in custom_folder_current_items
+
+    # check msg in inbox folder
+    assert len(inbox_folder_current_items) == 4
+    assert_collection_equal_mailbox(inbox_folder, imap_resource, imap_client)
+
+    for item in inbox_folder_current_items:
+        # Check that unchanged item is unsync
+        [initial_item] = [
+            initial_item for initial_item in inbox_folder_initial_items if initial_item == item
+        ]
+        assert_item_unsync(initial_item, item)
+
+    # Check that deleted item is not in the current collection
+    for msg in inbox_folder_msgs_to_delete:
+        assert msg not in custom_folder_current_items
+
+    assert_all_collections_are_equals(imap_client, imap_resource)
 
 
 def test_server_offline_rename_collection(
