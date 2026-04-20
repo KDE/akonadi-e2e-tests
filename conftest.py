@@ -25,6 +25,7 @@ from src.dav.dav_server import DAVServer, DAVServerType
 from src.dav.nextcloud_server import NextCloudServer
 from src.dav.radicale_server import RadicaleServer
 from src.factories.email_factory import set_clients as set_email_clients
+from src.factories.event_factory import set_clients as set_event_clients
 from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
@@ -108,7 +109,6 @@ async def dav_server(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer
             pytest.fail(f"Unknown DAV server type: {dav_server}")
 
     await server.start()
-    server.prepare_test_environment()
     yield server
     server.cleanup_test_environment()
     await server.stop()
@@ -226,3 +226,17 @@ def load_imap_factory(request):
         imap_client = None
     if imap_resource and imap_client:
         set_email_clients(imap=imap_client, akonadi=imap_resource)
+
+
+@pytest.fixture(autouse=True)
+def load_dav_factory(request):
+    if "groupware_resource" in request.fixturenames:
+        groupware_resource = request.getfixturevalue("groupware_resource")
+    else:
+        groupware_resource = None
+    if "dav_principal" in request.fixturenames:
+        dav_principal = request.getfixturevalue("dav_principal")
+    else:
+        dav_principal = None
+    if groupware_resource and dav_principal:
+        set_event_clients(dav=dav_principal, akonadi=groupware_resource)

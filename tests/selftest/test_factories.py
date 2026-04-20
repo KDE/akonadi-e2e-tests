@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from caldav.collection import Principal
 from imap_tools import BaseMailBox
 
+from src.akonadi.dav_resource import DAVResource
 from src.akonadi.imap_resource import ImapResource
 from src.factories.email_factory import (
     AkonadiEmailFactory,
@@ -11,6 +13,7 @@ from src.factories.email_factory import (
     ImapEmailFactory,
     ImapFolderFactory,
 )
+from src.factories.event_factory import AkonadiEventFactory, DavCalendarFactory, DavEventFactory
 
 
 def test_imap_factory(imap_resource: ImapResource, imap_client: BaseMailBox):  # noqa: ARG001
@@ -33,3 +36,20 @@ def test_imap_resource_factory(imap_resource: ImapResource, imap_client: BaseMai
     assert len(imap_resource.list_items("INBOX")) == 10
     assert len(imap_resource.list_items("Test")) == 5
 
+
+def test_dav_factory(groupware_resource: DAVResource, dav_principal: Principal):  # noqa: ARG001
+    DavCalendarFactory.create(name="Test", nb_items=5)
+    DavEventFactory.create_batch(10, calendar="Default Calendar")
+
+    assert len(dav_principal.calendars()) == 2
+    assert len(dav_principal.calendar("Test").get_events()) == 5
+    assert len(dav_principal.calendar("Default Calendar").get_events()) == 10
+
+
+def test_dav_resource_factory(groupware_resource: DAVResource, dav_principal: Principal):
+    AkonadiEventFactory.create_batch(10, calendar="Default Calendar")
+
+    groupware_resource.wait_resource_is_idle()
+    assert len(groupware_resource.list_collections()) == 2  # INBOX, Test and IMAP Account
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
+    assert len(groupware_resource.list_items(collection.id())) == 10

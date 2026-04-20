@@ -87,10 +87,7 @@ class DAVResource(Resource):
         return collection
 
     def collection_from_display_name(self, name: str) -> None:
-        collections = self.akonadi_client.list_collections(parent_id=0, first_level=True)
-        resource_root = next(filter(lambda c: c.resource() == self.identifier, collections), None)
-        if not resource_root:
-            pytest.fail("Resource root collection not found")
+        resource_root = self.get_root_collection()
 
         collections = self.akonadi_client.list_collections(
             parent_id=resource_root.id(), first_level=True

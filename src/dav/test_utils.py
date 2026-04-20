@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-from urllib.parse import unquote
+from urllib.parse import unquote, unquote_plus
 
 import icalendar
 from AkonadiCore import Akonadi  # type: ignore
@@ -47,7 +47,7 @@ def assert_collection_equal_calendar(
     assert len(events) == len(items)
 
     for event, item in zip(events, items, strict=False):
-        assert event.canonical_url == item.remoteId()
+        assert unquote_plus(event.canonical_url) == unquote_plus(item.remoteId())
         if payload_test:
             assert_payload_are_equal(item, event)
 

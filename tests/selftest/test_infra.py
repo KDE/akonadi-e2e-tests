@@ -9,8 +9,8 @@ import pytest
 from AkonadiCore import Akonadi  # type: ignore
 from imap_tools import MailBoxUnencrypted
 
-from akonadi.dav_resource import DAVResource
 from src.akonadi.client import AkonadiClient
+from src.akonadi.dav_resource import DAVResource
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.server import AkonadiServer

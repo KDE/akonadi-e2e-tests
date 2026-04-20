@@ -6,14 +6,12 @@ import abc
 import asyncio
 import uuid
 from abc import abstractmethod
-from datetime import datetime, timedelta
 from enum import Enum
 from functools import cached_property
 from logging import getLogger
 from typing import ClassVar
 
 import aiohttp
-from caldav.collection import Calendar, Principal
 from caldav.davclient import get_davclient
 from testcontainers.core.container import DockerContainer  # type: ignore
 
@@ -101,32 +99,6 @@ class DAVServer(abc.ABC):
                 pass
 
             await asyncio.sleep(0.2)
-
-    def _create_remote_calendar(
-        self, dav_principal: Principal, name: str, nb_items: int
-    ) -> Calendar:
-        calendar = dav_principal.make_calendar(name=name)
-        for i in range(nb_items):
-            calendar.add_event(
-                summary=f"Test event {name} - {i}",
-                dtstart=datetime.now() + timedelta(hours=i),
-                dtend=datetime.now() + timedelta(hours=i + 1),
-            )
-        return calendar
-
-    def prepare_test_environment(self):
-        dav_client = get_davclient(
-            url=self.base_url, username=self.username, password=self.password
-        )
-        dav_principal = dav_client.principal()
-        for i in range(3):
-            self._create_remote_calendar(dav_principal, name=f"Test{i}", nb_items=3)
-
-        assert len(dav_principal.calendars()) == 4, (
-            "Failed to create all folders"
-        )  # 3 + 1 for Default calendar
-
-        dav_client.close()
 
     def cleanup_test_environment(self):
         dav_client = get_davclient(

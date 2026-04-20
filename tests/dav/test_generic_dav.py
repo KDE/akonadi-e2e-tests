@@ -9,16 +9,21 @@ from caldav.collection import Principal
 
 from src.akonadi.dav_resource import DAVResource
 from src.dav.test_utils import assert_all_collections_are_equals
+from src.factories.event_factory import DavCalendarFactory, DavEventFactory
 
 
 def test_initial_sync(dav_principal: Principal, groupware_resource: DAVResource) -> None:
     """
     Test that the initial setup is synced between the server and the resource
     """
+    DavCalendarFactory.create(name="Test 5", nb_items=5)
+    DavCalendarFactory.create(name="Test 10", nb_items=10)
+    DavEventFactory.create_batch(10, calendar="Default Calendar")
+    groupware_resource.synchronize()
     assert (
-        len(groupware_resource.list_collections()) == 5
-    )  # parent collection + Default calendar + 3 calendars
-    assert len(dav_principal.calendars()) == 4
+        len(groupware_resource.list_collections()) == 4
+    )  # parent collection + Default calendar + 2 calendars
+    assert len(dav_principal.calendars()) == 3
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
@@ -26,6 +31,9 @@ def test_list_calendars(dav_principal: Principal, groupware_resource: DAVResourc
     """
     Test that the initial setup has synced url/name between the server and the resource
     """
+    DavCalendarFactory.create(name="Test", nb_items=5)
+    groupware_resource.synchronize()
+
     server_calendars = dav_principal.calendars()
     # Skip root collection
     akonadi_calendars = [
