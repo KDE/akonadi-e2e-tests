@@ -6,6 +6,8 @@ from collections.abc import Callable, Coroutine
 from time import sleep, time
 from typing import Any
 
+from PySide6.QtCore import QCoreApplication
+
 
 def wait_until(
     condition: Callable[[], bool] | Callable[[], Coroutine[Any, Any, bool]],
@@ -19,6 +21,7 @@ def wait_until(
     start = time()
 
     while True:
+        QCoreApplication.processEvents()
         result = condition()
 
         if result:
