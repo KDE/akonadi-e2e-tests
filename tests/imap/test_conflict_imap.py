@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
 # SPDX-FileCopyrightText: 2026 Alan Thouvenin <alan.thouvenin@enioka.com>
+# SPDX-FileCopyrightText: 2026 Kenny Lorin <kenny.lorin@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 from logging import getLogger
@@ -10,9 +11,15 @@ from logging import getLogger
 import pytest
 from imap_tools import BaseMailBox
 
+from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
-from src.akonadi.utils import AkonadiUtils
-from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
+from src.akonadi.utils import AkonadiUtils, WaitJobError
+from src.factories.email_factory import (
+    AkonadiEmailFactory,
+    ImapEmailFactory,
+    ImapFolderFactory,
+    fake,
+)
 from src.imap.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_mailbox,
@@ -221,3 +228,110 @@ def test_akonadi_conflict_rename_collection(
 
     assert_collection_equal_mailbox(server_new_name, imap_resource, imap_client)
     assert_all_collections_are_equals(imap_client, imap_resource)
+
+
+@pytest.mark.xfail(
+    reason="see `test_generic_imap.py::test_delete_collection_with_one_item_should_delete_item"
+)
+def test_add_item_in_akonadi_on_collection_removed_on_server(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    akonadi_client: AkonadiClient,
+) -> None:
+    """
+    While the resource is offline, adding an item to a collection in the akonadi server while deleting the same
+    collection on the IMAP server
+    Then both the item and the collection should be removed from akonadi once the resource comes back online
+    """
+    folder = ImapFolderFactory.create(nb_items=0)
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    imap_resource.set_online(False)
+
+    AkonadiEmailFactory.create(folder=folder.name)
+    collection = imap_resource.resolve_collection(folder.name)
+    created_item = akonadi_client.list_items(collection.id())[0]
+
+    assert len(list(imap_client.fetch(mark_seen=False))) == 0  # no message added to folder
+
+    imap_client.folder.delete(folder.name)
+
+    imap_resource.set_online(True)
+
+    assert folder.name not in (c.name() for c in imap_resource.list_collections())
+    with pytest.raises(WaitJobError):
+        akonadi_client.item_by_id(created_item.id())
+
+
+def test_remove_item_in_akonadi_on_collection_removed_on_server(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    akonadi_client: AkonadiClient,
+) -> None:
+    """
+    While the resource is offline, removing an item to a collection in the akonadi server while deleting the same
+    collection on the IMAP server
+    Then both the item and the collection should be removed from akonadi once the resource comes back online
+    """
+    folder = ImapFolderFactory.create(nb_items=1)
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    imap_client.folder.set(folder.name)
+
+    pre_delete_items_on_resource = imap_resource.list_items(folder.name)
+    imap_resource.set_online(False)
+
+    akonadi_client.delete_item(pre_delete_items_on_resource[0].id())
+
+    assert (
+        len(list(imap_client.fetch(mark_seen=False))) == 1
+    )  # item was not deleted on the remote server
+
+    imap_client.folder.delete(folder.name)
+
+    imap_resource.set_online(True)
+
+    assert folder.name not in (c.name() for c in imap_resource.list_collections())
+    # item deleted by the resource, querying it should throw
+    with pytest.raises(WaitJobError):
+        akonadi_client.item_by_id(pre_delete_items_on_resource[0].id())
+
+
+@pytest.mark.xfail(
+    reason="see `test_generic_imap.py::test_delete_collection_with_one_item_should_delete_item"
+)
+def test_update_item_in_akonadi_on_collection_removed_on_server(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    akonadi_client: AkonadiClient,
+) -> None:
+    """
+    While the resource is offline, changing the flags of an item to a collection in the akonadi server while deleting
+    the same collection on the IMAP server
+    Then both the item and the collection should be removed from akonadi once the resource comes back online
+    """
+    flag_to_add = "\\Draft"
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create(folder=folder.name, flags=[])
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    pre_update_items_on_resource = imap_resource.list_items(folder.name)
+    imap_client.folder.set(folder.name)
+    pre_update_items_on_server = list(imap_client.fetch(mark_seen=False))
+    assert len(pre_update_items_on_server) == len(pre_update_items_on_resource) == 1
+    assert len(pre_update_items_on_server[0].flags) == 0
+
+    imap_resource.set_online(False)
+
+    imap_resource.add_flag(pre_update_items_on_resource[0].id(), flag_to_add)
+
+    imap_client.folder.delete(folder.name)
+
+    imap_resource.set_online(True)
+
+    assert folder.name not in (c.name() for c in imap_resource.list_collections())
+    with pytest.raises(WaitJobError):
+        akonadi_client.item_by_id(pre_update_items_on_resource[0].id())

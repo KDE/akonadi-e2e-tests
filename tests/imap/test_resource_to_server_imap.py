@@ -487,14 +487,14 @@ def test_akonadi_offline_add_flag(
 
     for flag in flags:
         imap_resource.add_flag(item.id(), flag)
-    item = imap_resource.akonadi_client.item_by_id(item.id())
+    item = imap_resource.akonadi_client.item_by_id(item.id(), False)
     for flag in flags:
         assert not has_flag(imap_client, item, folder_name, flag)  # noqa: B023
         assert flag.lower() in [bytes(f).decode().lower() for f in item.flags()]
 
     imap_resource.set_online(True)
 
-    item = imap_resource.akonadi_client.item_by_id(item.id())
+    item = imap_resource.akonadi_client.item_by_id(item.id(), False)
     for flag in flags:
         assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023
         assert flag.lower() in [bytes(f).decode().lower() for f in item.flags()]
@@ -524,14 +524,14 @@ def test_akonadi_offline_remove_flag(
 
     for flag in flags:
         imap_resource.clear_flag(item.id(), flag)
-    item = imap_resource.akonadi_client.item_by_id(item.id())
+    item = imap_resource.akonadi_client.item_by_id(item.id(), False)
     for flag in flags:
         assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023
         assert flag.lower() not in [bytes(f).decode().lower() for f in item.flags()]
 
     imap_resource.set_online(True)
 
-    item = imap_resource.akonadi_client.item_by_id(item.id())
+    item = imap_resource.akonadi_client.item_by_id(item.id(), False)
     for flag in flags:
         wait_until(lambda: not has_flag(imap_client, item, folder_name, flag))  # noqa: B023
         assert flag.lower() not in [bytes(f).decode().lower() for f in item.flags()]
