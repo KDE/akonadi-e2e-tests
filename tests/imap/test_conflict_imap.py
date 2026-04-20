@@ -112,3 +112,32 @@ def test_add_item_in_akonadi_on_collection_removed_on_server(
     imap_resource.synchronize()
     assert collection_name not in (c.name() for c in imap_resource.list_collections())
     # Cannot fetch items on a deleted collection, assume it is gone as well
+
+
+def test_remove_item_in_akonadi_on_collection_removed_on_server(
+        imap_resource: ImapResource,
+        imap_client: BaseMailBox,
+        akonadi_client: AkonadiClient,
+) -> None:
+    collection_name = "Test7"
+    imap_client.folder.create(collection_name)
+    imap_client.folder.set(collection_name)
+    imap_client.append(create_message().as_bytes(), collection_name)
+    imap_resource.synchronize()
+    assert collection_name in (c.name() for c in imap_resource.list_collections())
+    pre_delete_items = list(imap_client.fetch(mark_seen=False))
+
+    pre_delete_items_on_resource = imap_resource.list_items(collection_name)
+    imap_resource.set_online(False)
+
+    akonadi_client.delete_item(pre_delete_items_on_resource[-1].id()) # the last item is the one we added earlier, so it is the one we remove
+
+    assert len(list(imap_client.fetch(mark_seen=False))) == len(pre_delete_items)
+
+    imap_client.folder.delete(collection_name)
+
+    imap_resource.set_online(True)
+
+    imap_resource.synchronize()
+    assert collection_name not in (c.name() for c in imap_resource.list_collections())
+    # Cannot fetch items on a deleted collection, assume it is gone as well
