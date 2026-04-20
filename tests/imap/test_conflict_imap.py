@@ -10,8 +10,10 @@ import pytest
 from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
-from src.factories.email_factory import ImapFolderFactory
-from src.imap.test_utils import assert_collection_equal_mailbox
+from src.akonadi.utils import AkonadiUtils
+from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory
+from src.imap.test_utils import assert_collection_equal_mailbox, message_added
+from src.test import wait_until
 
 log = getLogger(__name__)
 
@@ -83,3 +85,36 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     imap_resource.set_online(True)
     imap_resource.sync_collection(folder)
     assert_collection_equal_mailbox(folder, imap_resource, imap_client)
+
+def test_conflict_append_message(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+) -> None:
+    """
+    Adding an item to a collection on the server, removing the collection in akonadi server, nothing happens.
+    When the resource is set online, the collection is removed on the server
+    """
+    folder_name = ImapFolderFactory.create(nb_items=0).name
+    imap_resource.synchronize()
+
+    assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
+
+    imap_resource.set_online(False)
+
+    # Append the item to the server
+    ImapEmailFactory.create(folder=folder_name)
+    imap_client.folder.set(folder_name)
+    wait_until(lambda: message_added(imap_client, folder_name, "1"))
+
+    # This context manager is needed as we need to wait for the ChangeReplay
+    # to be queued before set_online(True) is called, otherwise the ChangeReplay
+    # might be lost, this is sign of a bug in Akonadi
+    with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
+        # Remove the collection from the akonadi server
+        imap_resource.delete_collection(folder_name)
+        assert folder_name not in [col.name() for col in imap_resource.list_collections()]
+
+    imap_resource.set_online(True)
+
+    wait_until(lambda: not imap_client.folder.exists(folder_name))
+    assert folder_name not in [col.name() for col in imap_resource.list_collections()]
