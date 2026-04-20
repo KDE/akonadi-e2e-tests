@@ -28,7 +28,7 @@ class DAVResource(Resource):
     def __init__(self, akonadi_client: AkonadiClient, dbus: AkonadiDBus, identifier: str) -> None:
         super().__init__(akonadi_client, dbus, identifier)
         self._kwallet_key = (
-            f"{self._identifier}_{self.akonadi_client.akonadi_instance_name}rc,$default$"
+            f"{self._identifier}_{self.akonadi_client.akonadi_instance_name},$default$"
         )
 
     async def configure(self, base_url: str, username: str, password: str) -> None:
