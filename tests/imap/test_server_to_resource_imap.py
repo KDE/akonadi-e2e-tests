@@ -5,17 +5,44 @@
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-import time
 from logging import getLogger
 
 import pytest
-from imap_tools import BaseMailBox, MailboxFolderDeleteError
+from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
+from src.factories.email_factory import (
+    ImapEmailFactory,
+    ImapFolderFactory,
+)
 from src.imap.email_utils import create_message
-from src.imap.test_utils import assert_collection_equal_mailbox, assert_partial_sync
+from src.imap.test_utils import assert_collection_equal_mailbox, assert_partial_sync, old_prepare
 
 log = getLogger(__name__)
+
+
+def test_initial_sync(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Starting a first full sync leads to all the items and collections being replicated in the akonadi server
+    """
+    ImapFolderFactory.create(name="Test", nb_items=5)
+    ImapEmailFactory.create_batch(10, folder="INBOX")
+
+    imap_resource.synchronize()
+
+    assert len(imap_resource.list_collections()) == 3  # INBOX, Test and IMAP Account
+    assert len(imap_resource.list_items("INBOX")) == 10
+    assert len(imap_resource.list_items("Test")) == 5
+
+    assert len(imap_client.folder.list()) == 2
+
+    imap_client.folder.set("INBOX")
+    assert len(list(imap_client.fetch(mark_seen=False))) == 10
+    imap_client.folder.set("Test")
+    assert len(list(imap_client.fetch(mark_seen=False))) == 5
+
+    assert_collection_equal_mailbox("INBOX", imap_resource, imap_client)
+    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
 
 def test_new_mailbox_on_server_is_synced(
@@ -24,11 +51,11 @@ def test_new_mailbox_on_server_is_synced(
     """
     Creating a new mailbox on the server, the change is replayed on the resource
     """
-    imap_client.folder.create("Test3")
+    ImapFolderFactory.create(name="test_new_mailbox_on_server_is_synced", nb_items=0)
     imap_resource.synchronize()
 
     collections = imap_resource.list_collections()
-    assert any(lambda c: c.name() == "Test3" for c in collections)
+    assert any(lambda c: c.name() == "test_new_mailbox_on_server_is_synced" for c in collections)
 
 
 def test_mailbox_deleted_on_server_is_synced(
@@ -37,21 +64,20 @@ def test_mailbox_deleted_on_server_is_synced(
     """
     Deleting a mailbox on the server, the change is replayed on the resource
     """
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    ImapFolderFactory.create(name="to_be_deleted")
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox("to_be_deleted", imap_resource, imap_client)
 
     imap_client.folder.set(
         "INBOX"
     )  # Needed to avoid CREATE => Selected mailbox was deleted, have to disconnect
-    for _ in range(5):
-        try:
-            imap_client.folder.delete("Test")
-        except MailboxFolderDeleteError:
-            time.sleep(0.2)
-    assert not imap_client.folder.exists("Test")
+    imap_client.folder.delete("to_be_deleted")
+
+    assert not imap_client.folder.exists("to_be_deleted")
     imap_resource.synchronize()
 
     collections = imap_resource.list_collections()
-    assert "Test" not in list(map(lambda c: c.name(), collections))
+    assert "to_be_deleted" not in list(map(lambda c: c.name(), collections))
 
 
 @pytest.mark.xfail(
@@ -61,6 +87,8 @@ def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: B
     """
     Recreating a mailbox on the server, the change is replayed on the resource
     """
+    ImapFolderFactory.create(name="Test")
+    imap_resource.synchronize()
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set(
@@ -79,7 +107,10 @@ def test_sync_removed_message(imap_resource: ImapResource, imap_client: BaseMail
     """
     Deleting a message on the server, the change is replayed on the resource
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
+    imap_resource.synchronize()
+
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.delete(["1"])
@@ -92,6 +123,7 @@ def test_sync_added_message(imap_resource: ImapResource, imap_client: BaseMailBo
     """
     Adding a message on the server, the change is replayed on the resource
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -109,6 +141,7 @@ def test_sync_added_and_removed_message(
     """
     Adding and removing a message on the server, the message is not present in the resource
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     imap_client.append(create_message().as_bytes(), "Test")
@@ -124,6 +157,7 @@ def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMai
     """
     Changing the flag of a message on the server, the change is replayed on the resource
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_client.folder.set("Test")
@@ -139,6 +173,7 @@ def test_sync_flag_change_and_removed_message(
     """
     Changing the flag and deleting a different message on the server, the changes are replayed on the resource
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -155,6 +190,7 @@ def test_sync_flag_change_and_added_message(
     """
     Changing the flag and adding a different message on the server, the changes are replayed on the resource
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -171,6 +207,7 @@ def test_sync_flag_change_and_added_and_removed_message(
     """
     Changing the flag, adding and removing a different message on the server, the changes are replayed on the resource
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
@@ -186,6 +223,7 @@ def test_sync_flag_change_and_added_and_removed_message(
 def test_offline_removed_message_server_side(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     # Issuing set_online(False) while the IMAP resource is not idle
@@ -212,6 +250,7 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     Add a message on the server side when offline
     Check sync after online
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     # Issuing set_online(False) while the IMAP resource is not idle
@@ -235,6 +274,7 @@ def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: B
     """
     Check that only the updated item has been sync
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     initial_items = imap_resource.list_items("Test")
     item_to_update = initial_items[0]
@@ -252,6 +292,7 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
     """
     Check that only the added items has been sync
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     initial_items = imap_resource.list_items("Test")
     assert len(initial_items) == 2

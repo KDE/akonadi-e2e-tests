@@ -10,6 +10,7 @@ from AkonadiCore import Akonadi  # type: ignore
 from imap_tools import AND, A, BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
+from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory
 from src.imap.mailbox_with_original_payload import MailMessageWithOriginalPayload
 
 log = getLogger(__name__)
@@ -110,3 +111,21 @@ def assert_partial_sync(
                 current_item.modificationTime().toMSecsSinceEpoch()
                 == initial_item.modificationTime().toMSecsSinceEpoch()
             )
+
+
+def old_prepare(imap_client: BaseMailBox, imap_resource: ImapResource) -> None:
+    """
+    Need to be deleted after migrating all tests to factory boys
+    """
+    folder_to_create = ["Trash", "Sent", "Templates", "TestEmpty", "Test", "Test2"]
+    for name in folder_to_create:
+        ImapFolderFactory.create(name=name, nb_items=0)
+    assert len(imap_client.folder.list()) == len(folder_to_create) + 1, (
+        "Failed to create all folders"
+    )  # + 1 for INBOX
+
+    for mailbox in ["INBOX", "Test", "Test2"]:
+        ImapEmailFactory.create_batch(2, folder=mailbox)
+
+    log.info("IMAP server populated with messages")
+    imap_resource.synchronize()

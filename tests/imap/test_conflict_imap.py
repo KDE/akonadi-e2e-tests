@@ -10,7 +10,7 @@ import pytest
 from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
-from src.imap.test_utils import assert_collection_equal_mailbox
+from src.imap.test_utils import assert_collection_equal_mailbox, old_prepare
 
 log = getLogger(__name__)
 
@@ -25,6 +25,7 @@ def test_mailbox_deleted_on_server_is_unsynced(
     Deleting a collection from an offline resource and deleting a mailbox from a server
     When going back online, both collection/mailbox are deleted
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_resource.set_online(False)
@@ -58,6 +59,7 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     Flag change on an item from an offline resource and flag mail from a server
     When going back online, both items/mails are correctly flagged
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     imap_resource.set_online(False)

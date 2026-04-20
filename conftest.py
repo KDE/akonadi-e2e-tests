@@ -24,6 +24,7 @@ from src.akonadi.server import AkonadiServer
 from src.dav.dav_server import DAVServer, DAVServerType
 from src.dav.nextcloud_server import NextCloudServer
 from src.dav.radicale_server import RadicaleServer
+from src.factories.email_factory import set_clients as set_email_clients
 from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
@@ -136,8 +137,6 @@ def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
 
 @pytest.fixture
 def imap_server(imap_server_session: ImapServer) -> Generator[ImapServer]:
-    imap_server_session.prepare_test_environment()
-
     yield imap_server_session
 
     imap_server_session.cleanup_test_environment()
@@ -213,3 +212,17 @@ async def groupware_resource(
     yield resource
 
     await resource.remove()
+
+
+@pytest.fixture(autouse=True)
+def load_imap_factory(request):
+    if "imap_resource" in request.fixturenames:
+        imap_resource = request.getfixturevalue("imap_resource")
+    else:
+        imap_resource = None
+    if "imap_client" in request.fixturenames:
+        imap_client = request.getfixturevalue("imap_client")
+    else:
+        imap_client = None
+    if imap_resource and imap_client:
+        set_email_clients(imap=imap_client, akonadi=imap_resource)

@@ -5,8 +5,6 @@
 
 import time
 import uuid
-from email.message import EmailMessage
-from email.utils import formatdate, make_msgid
 from enum import Enum
 from functools import cached_property
 from logging import getLogger
@@ -67,45 +65,6 @@ class ImapServer:
     @property
     def password(self) -> str:
         return self.PASSWORD
-
-    def prepare_test_environment(self):
-        log.info("Populating IMAP server for user %s", self.username)
-        client = MailBoxUnencrypted(host=self.host_or_ip, port=self.port)
-        client.login(self.username, self.password, initial_folder=None)
-
-        folder_to_create = ["Trash", "Sent", "Templates", "TestEmpty", "Test", "Test2"]
-        for name in folder_to_create:
-            client.folder.create(name)
-        assert len(client.folder.list()) == len(folder_to_create) + 1, (
-            "Failed to create all folders"
-        )  # + 1 for INBOX
-
-        for mailbox in ["INBOX", "Test", "Test2"]:
-            msg = EmailMessage()
-            msg.set_content("Hello, world!\r\n")
-            msg["Subject"] = "Test message"
-            msg["From"] = "test1@example.com"
-            msg["To"] = "test@example.com"
-            msg["Date"] = formatdate(localtime=True)
-            msg["Message-ID"] = make_msgid()
-            resp = client.append(
-                msg.as_bytes().replace(b"\n", b"\r\n"), mailbox, flag_set=["\\Seen"]
-            )
-            assert resp[0] == "OK", f"Error from IMAP: {resp}"
-
-            msg = EmailMessage()
-            msg.set_content("Hello, world!\r\n")
-            msg["Subject"] = "Test message 2"
-            msg["From"] = "test2@example.com"
-            msg["To"] = "test@example.com"
-            msg["Date"] = formatdate(localtime=True)
-            msg["Message-ID"] = make_msgid()
-            resp = client.append(msg.as_bytes().replace(b"\n", b"\r\n"), mailbox)
-            assert resp[0] == "OK", f"Error from IMAP: {resp}"
-
-        log.info("IMAP server populated with messages")
-
-        client.logout()
 
     def cleanup_test_environment(self):
         """

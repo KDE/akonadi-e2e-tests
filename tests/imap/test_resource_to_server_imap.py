@@ -5,10 +5,10 @@
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+import time
 from logging import getLogger
 
 import pytest
-import time
 from AkonadiCore import Akonadi
 from imap_tools import BaseMailBox
 
@@ -21,6 +21,7 @@ from src.imap.test_utils import (
     has_flag,
     message_added,
     message_deleted,
+    old_prepare,
 )
 from test import wait_until
 
@@ -31,6 +32,7 @@ def test_akonadi_sync_add_collection(imap_resource: ImapResource, imap_client: B
     """
     Adding a collection in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     root_collection = imap_resource.get_root_collection()
     mime_types = ["inode/directory", "message/rfc822"]
 
@@ -65,6 +67,7 @@ def test_akonadi_sync_delete_collection(
     """
     Deleting a collection in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     mime_types = ["inode/directory", "message/rfc822"]
     toplevel_collection = imap_resource.resolve_collection("Test")
 
@@ -93,6 +96,7 @@ def test_rename_collection(
     """
     Test renaming a collection in akonadi side when online and verifying the change in both Akonadi and IMAP server.
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     initial_collections = imap_resource.list_collections()
 
@@ -130,6 +134,7 @@ def test_akonadi_offline_delete_collection(
     """
     Removing a collection from the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     mime_types = ["inode/directory", "message/rfc822"]
     toplevel_collection = imap_resource.resolve_collection("Test")
 
@@ -178,6 +183,7 @@ def test_akonadi_offline_rename_collection(
     Renaming a collection in the server, nothing happens, when the resource is set online, the collection is also
     renamed in the akonadi server, no other change occurred (other than timestamps book keeping)
     """
+    old_prepare(imap_client, imap_resource)
     old_name = "Test"
     new_name = "Test0"
     initial_collections = imap_resource.list_collections()
@@ -214,6 +220,7 @@ def test_append_message(
     """
     Adding an item to a collection in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("Test")
 
@@ -241,6 +248,7 @@ def test_delete_message(
     """
     Removing an item from a collection in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
     collection = imap_resource.resolve_collection("Test")
@@ -268,6 +276,7 @@ def test_offline_append_message(
     Adding an item to a collection in the offline akonadi server, nothing happens
     When the resource is set online, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("TestEmpty")
 
@@ -312,6 +321,7 @@ def test_offline_delete_message(
     Removing an item from a collection in the offline akonadi server, nothing happens
     When the resource is set online, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     collection = imap_resource.resolve_collection("Test")
 
@@ -358,6 +368,7 @@ def test_move_message_on_resource_is_synced(
     """
     Moving an item from one collection to another in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
@@ -390,6 +401,7 @@ def test_copy_message_on_server_is_synced(
     """
     Copying an item from one collection to another in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
     assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
 
@@ -418,6 +430,7 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
     """
     When changing flags of an item in the akonadi server, the change is replayed on the server
     """
+    old_prepare(imap_client, imap_resource)
     imap_client.folder.set("Test")
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
 
