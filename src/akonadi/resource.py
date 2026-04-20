@@ -14,6 +14,7 @@ from AkonadiCore import Akonadi  # type: ignore
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.utils import AkonadiUtils
+from src.test import wait_until
 
 log = getLogger(__name__)
 
@@ -52,9 +53,7 @@ class Resource(ABC):
         log.debug("Removing %s resource via Agent Manager", self.identifier)
 
         Akonadi.AgentManager.self().removeInstance(self.instance)
-
-        # Give time to shut down the resource fully
-        time.sleep(0.5)
+        wait_until(lambda: self.instance not in Akonadi.AgentManager.self().instances())
 
     def synchronize(self) -> None:
         log.debug("Synchronizing %s resource via Agent Manager", self.RESOURCE_TYPE)
