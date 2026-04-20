@@ -121,10 +121,11 @@ class DAVServer(abc.ABC):
         dav_principal = dav_client.principal()
         for i in range(3):
             self._create_remote_calendar(dav_principal, name=f"Test{i}", nb_items=3)
+        dav_principal.make_calendar(name="TestEmpty")
 
-        assert len(dav_principal.calendars()) == 4, (
+        assert len(dav_principal.calendars()) == 5, (
             "Failed to create all folders"
-        )  # 3 + 1 for Default calendar
+        )  # 4 + 1 for Default calendar
 
         dav_client.close()
 
