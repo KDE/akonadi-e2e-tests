@@ -27,6 +27,17 @@ def compare_flags(flags1: Iterable[str], flags2: list[str]) -> bool:
     return to_set(flags1) == to_set(flags2)
 
 
+def assert_all_collections_are_equals(
+    imap_client: BaseMailBox, imap_resource: ImapResource, payload_test: bool = True
+) -> None:
+    mailboxes = imap_client.folder.list()
+    collections = [c for c in imap_resource.list_collections() if c.parentCollection().id() != 0]
+
+    assert len(mailboxes) == len(collections)
+    for mailbox in mailboxes:
+        assert_collection_equal_mailbox(mailbox.name, imap_resource, imap_client, payload_test)
+
+
 def assert_collection_equal_mailbox(
     name: str, imap_resource: ImapResource, imap_client: BaseMailBox, payload_test: bool = True
 ) -> None:
