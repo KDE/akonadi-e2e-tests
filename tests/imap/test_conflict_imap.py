@@ -11,8 +11,12 @@ from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.utils import AkonadiUtils
-from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory
-from src.imap.test_utils import assert_collection_equal_mailbox, message_added
+from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
+from src.imap.test_utils import (
+    assert_all_collections_are_equals,
+    assert_collection_equal_mailbox,
+    message_added,
+)
 from src.test import wait_until
 
 log = getLogger(__name__)
@@ -120,3 +124,64 @@ def test_conflict_append_message(
 
     wait_until(lambda: not imap_client.folder.exists(folder_name))
     assert folder_name not in [col.name() for col in imap_resource.list_collections()]
+
+
+def test_akonadi_conflict_rename_collection(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Renaming a collection in the akonadi server, renaming the same collection under another name on the server, nothing happens.
+    When the resource is set online, the collection in the akonadi server is renamed with the name given on the server
+    """
+    old_name = ImapFolderFactory.create().name
+    imap_resource.synchronize()
+
+    akonadi_new_name = f"{fake.word()}_{fake.word()}"
+    server_new_name = f"{fake.word()}_{fake.word()}"
+    initial_collections = imap_resource.list_collections()
+
+    assert old_name in (collection.name() for collection in initial_collections)
+    assert akonadi_new_name not in (collection.name() for collection in initial_collections)
+    assert server_new_name not in (collection.name() for collection in initial_collections)
+
+    assert imap_client.folder.exists(old_name)
+    assert not imap_client.folder.exists(akonadi_new_name)
+    assert not imap_client.folder.exists(server_new_name)
+
+    imap_resource.set_online(False)
+    imap_resource.rename_collection(old_name, akonadi_new_name)
+    imap_client.folder.rename(old_name, server_new_name)
+
+    updated_akonadi_collections = imap_resource.list_collections()
+
+    assert old_name not in (collection.name() for collection in updated_akonadi_collections)
+    assert akonadi_new_name in (collection.name() for collection in updated_akonadi_collections)
+    assert server_new_name not in (collection.name() for collection in updated_akonadi_collections)
+
+    assert not imap_client.folder.exists(old_name)
+    assert not imap_client.folder.exists(akonadi_new_name)
+    assert imap_client.folder.exists(server_new_name)
+
+    imap_resource.set_online(True)
+
+    # At this point we're sure old_name is not a collection's name on akonadi or server's side, so no need to test it again
+
+    updated_akonadi_collections = imap_resource.list_collections()
+
+    assert akonadi_new_name not in (collection.name() for collection in updated_akonadi_collections)
+    assert server_new_name in (collection.name() for collection in updated_akonadi_collections)
+
+    assert not imap_client.folder.exists(akonadi_new_name)
+    assert imap_client.folder.exists(server_new_name)
+
+    assert len(imap_resource.list_items(server_new_name)) == 0
+
+    imap_resource.sync_collection(server_new_name)
+
+    imap_client.folder.set(server_new_name)
+    assert len(imap_resource.list_items(server_new_name)) == len(
+        list(imap_client.fetch(mark_seen=False))
+    )
+
+    assert_collection_equal_mailbox(server_new_name, imap_resource, imap_client)
+    assert_all_collections_are_equals(imap_client, imap_resource)
