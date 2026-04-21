@@ -11,12 +11,17 @@ import pytest
 from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
-from src.akonadi.test_utils import assert_item_sync, assert_item_unsync
+from src.akonadi.test_utils import (
+    assert_akonadi_items_are_equal,
+    assert_item_sync,
+    assert_item_unsync,
+)
 from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
 from src.imap.email_utils import create_message
 from src.imap.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_mailbox,
+    assert_no_items_are_equal,
     compare_flags,
 )
 
@@ -569,3 +574,55 @@ def test_server_offline_rename_collection(
     imap_resource.sync_collection(new_name)
 
     assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
+
+
+def test_conflict_uidvalidity_collection(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Removing a collection on the server, then creating another collection under the same name, nothing happens.
+    When the resource is set online, the collection is recreated on the akonadi server (detecting UIDVALIDITY change)
+    """
+    initial_folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+
+    assert_collection_equal_mailbox(initial_folder.name, imap_resource, imap_client)
+    initial_items = imap_resource.list_items(initial_folder.name)
+
+    imap_resource.set_online(False)
+
+    imap_client.folder.set(
+        "INBOX"
+    )  # Needed to avoid CREATE => Selected mailbox was deleted, have to disconnect
+    imap_client.folder.delete(initial_folder.name)
+    new_folder = ImapFolderFactory.create(name=initial_folder.name)
+    new_messages = new_folder.messages
+
+    # Check that the collection still exists, but new items are created server-side
+    assert initial_folder.name in [mailbox.name for mailbox in imap_client.folder.list()]
+    assert initial_folder.name in [col.name() for col in imap_resource.list_collections()]
+    imap_client.folder.set(initial_folder.name)
+    new_client_messages = [message for message in imap_client.fetch(mark_seen=False)]
+    assert len(new_client_messages) == len(new_messages)
+    assert_no_items_are_equal(new_client_messages, initial_items)
+
+    imap_resource.set_online(True)
+
+    # Check that akonadi still has the same items as before until we synchronize
+    online_items = imap_resource.list_items(new_folder.name)
+    assert len(initial_items) == len(online_items)
+    assert_akonadi_items_are_equal(initial_items, online_items)
+
+    imap_resource.synchronize()
+
+    # Check that the imap folder still has the same messages as before akonadi set online
+    imap_client.folder.set(initial_folder.name)
+    assert len([message for message in imap_client.fetch(mark_seen=False)]) == len(new_messages)
+
+    # Check that the akonadi collection now has the same messages as the imap folder
+    assert initial_folder.name in [col.name() for col in imap_resource.list_collections()]
+    updated_items = imap_resource.list_items(initial_folder.name)
+    assert len(updated_items) == len(new_messages)
+
+    assert_collection_equal_mailbox(initial_folder.name, imap_resource, imap_client)
+    assert_all_collections_are_equals(imap_client, imap_resource)

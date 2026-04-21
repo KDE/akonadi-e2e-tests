@@ -6,7 +6,7 @@
 from logging import getLogger
 
 from AkonadiCore import Akonadi  # type: ignore
-from imap_tools import AND, A, BaseMailBox
+from imap_tools import AND, A, BaseMailBox, MailMessage
 
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.test_utils import compare_flags
@@ -24,6 +24,19 @@ def assert_all_collections_are_equals(
     assert len(mailboxes) == len(collections)
     for mailbox in mailboxes:
         assert_collection_equal_mailbox(mailbox.name, imap_resource, imap_client, payload_test)
+
+
+def assert_no_items_are_equal(messages: list[MailMessage], items: list[Akonadi.Item]) -> None:
+    items.sort(key=lambda i: i.remoteId() or "-1")
+    messages.sort(key=lambda m: m.uid or "-1")
+
+    for msg, item in zip(messages, items, strict=False):
+        assert (
+            msg.uid != item.remoteId()
+            or not compare_flags(msg.flags, [bytes(f).decode() for f in item.flags()])
+            or item.payloadData().data().decode()
+            != msg.raw_message_data.decode().replace("\r\n", "\n")  # type: ignore
+        )
 
 
 def assert_collection_equal_mailbox(
