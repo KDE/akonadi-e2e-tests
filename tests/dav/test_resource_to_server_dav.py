@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import pytest
+from AkonadiCore import Akonadi
 from caldav.collection import Principal
 
 from src.akonadi.dav_resource import DAVResource
+from src.akonadi.utils import AkonadiUtils
 from src.dav.test_utils import assert_all_collections_are_equals
-from src.factories.event_factory import AkonadiCalendarFactory
+from src.factories.event_factory import AkonadiCalendarFactory, DavCalendarFactory
 from src.test import wait_until
 
 
@@ -24,6 +26,28 @@ def test_akonadi_sync_add_collection(
 
     wait_until(
         lambda: "TestTopLevel" in [c.get_display_name() for c in dav_principal.get_calendars()]
+    )
+
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_akonadi_sync_remove_collection(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Removing a collection in the akonadi server, the change is replayed on the server
+    """
+    DavCalendarFactory.create(name="TestTopLevel", nb_items=0)
+    groupware_resource.synchronize()
+    wait_until(
+        lambda: "TestTopLevel" in [c.displayName() for c in groupware_resource.list_collections()]
+    )
+
+    collection = groupware_resource.collection_from_display_name("TestTopLevel")
+    job = Akonadi.CollectionDeleteJob(collection)
+    AkonadiUtils.wait_for_job(job)
+    wait_until(
+        lambda: "TestTopLevel" not in [c.get_display_name() for c in dav_principal.get_calendars()]
     )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
