@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
+# SPDX-FileCopyrightText: 2026 Kenny LORIN <kenny.lorin@enioka.com>
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 # SPDX-FileCopyrightText: 2026 Alan THOUVENIN <alan.thouvenin@enioka.com>
 #
@@ -15,9 +16,26 @@ from src.akonadi.test_utils import (
     assert_akonadi_items_are_equal,
     assert_item_unsync,
 )
-from src.dav.test_utils import assert_all_collections_are_equals
+from src.dav.test_utils import assert_all_collections_are_equals, assert_collection_equal_calendar
 from src.factories.event_factory import DavCalendarFactory, DavEventFactory, GenericCalendar, fake
 from src.test import wait_until
+
+
+def test_add_collection_to_server_is_sync(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+) -> None:
+    """
+    Adding a calendar to the DAV server gets replicated to the akonadi server
+    """
+    created_calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+
+    matching_collection = groupware_resource.collection_from_display_name(created_calendar.name)
+
+    assert_collection_equal_calendar(
+        matching_collection.name(), dav_resource=groupware_resource, dav_principal=dav_principal
+    )
 
 
 def test_multiple_sync_without_change(
