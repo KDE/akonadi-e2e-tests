@@ -56,13 +56,23 @@ def test_akonadi_sync_delete_collection(
     """
     toplevel_folder = AkonadiFolderFactory.create()
     child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
-    wait_until(lambda: imap_client.folder.exists(toplevel_folder.name) and imap_client.folder.exists(child_folder.imap_path))
+    wait_until(
+        lambda: (
+            imap_client.folder.exists(toplevel_folder.name)
+            and imap_client.folder.exists(child_folder.imap_path)
+        )
+    )
 
     # Delete parent collection
     job = Akonadi.CollectionDeleteJob(toplevel_folder.get_collection())
     AkonadiUtils.wait_for_job(job)
 
-    wait_until(lambda: not imap_client.folder.exists(toplevel_folder.name) and not imap_client.folder.exists(child_folder.imap_path))
+    wait_until(
+        lambda: (
+            not imap_client.folder.exists(toplevel_folder.name)
+            and not imap_client.folder.exists(child_folder.imap_path)
+        )
+    )
 
 
 def test_rename_collection(
@@ -115,7 +125,12 @@ def test_akonadi_offline_delete_collection(
     """
     toplevel_folder = AkonadiFolderFactory.create()
     child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
-    wait_until(lambda: imap_client.folder.exists(toplevel_folder.name) and imap_client.folder.exists(child_folder.imap_path))
+    wait_until(
+        lambda: (
+            imap_client.folder.exists(toplevel_folder.name)
+            and imap_client.folder.exists(child_folder.imap_path)
+        )
+    )
 
     imap_resource.set_online(False)
 

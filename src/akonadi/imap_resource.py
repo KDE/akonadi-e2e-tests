@@ -90,7 +90,9 @@ class ImapResource(Resource):
             collections = self.akonadi_client.list_collections(
                 parent_id=parent.id(), first_level=True
             )
-            collection = next(filter(lambda c: c.name() == path[0] and c.id() != parent.id(), collections), None)
+            collection = next(
+                filter(lambda c: c.name() == path[0] and c.id() != parent.id(), collections), None
+            )
             if not collection:
                 pytest.fail(f"Collection {collection_name} not found: {path[0]} does not exist!")
 
