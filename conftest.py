@@ -7,7 +7,7 @@ import os
 import tempfile
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
 from caldav.collection import Principal
@@ -140,10 +140,12 @@ def imap_server(imap_server_session: ImapServer) -> Generator[ImapServer]:
 
     imap_server_session.cleanup_test_environment()
 
+
 @pytest.fixture
 def dav_server(dav_server_session: DAVServer) -> Generator[DAVServer]:
     yield dav_server_session
     dav_server_session.cleanup_test_environment()
+
 
 @pytest.fixture()
 def akonadi_client(

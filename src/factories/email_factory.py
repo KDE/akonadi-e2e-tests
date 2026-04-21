@@ -6,6 +6,7 @@
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
+from typing import TypedDict
 
 import factory
 from AkonadiCore import Akonadi  # type: ignore
@@ -17,7 +18,13 @@ from src.akonadi.utils import AkonadiUtils
 
 fake = Faker()
 
-_clients: dict[str, BaseMailBox | ImapResource] = {}
+
+class _Clients(TypedDict):
+    imap: BaseMailBox
+    akonadi: ImapResource
+
+
+_clients: _Clients = {}  #  type: ignore[typeddict-item]
 
 
 def set_clients(imap: BaseMailBox, akonadi: ImapResource):
@@ -39,7 +46,9 @@ class Email:
 
     def save_to_akonadi(self, collection: Akonadi.Collection | None):
         collection = collection or _clients["akonadi"].resolve_collection(self.folder)
-        _clients["akonadi"].akonadi_client.add_item(collection.id(), self.as_bytes(), "message/rfc822")
+        _clients["akonadi"].akonadi_client.add_item(
+            collection.id(), self.as_bytes(), "message/rfc822"
+        )
 
 
 @dataclass

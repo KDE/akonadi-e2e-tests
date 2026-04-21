@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass, field
 from datetime import timedelta
+from typing import TypedDict
 
 import factory
 from AkonadiCore import Akonadi  # type: ignore
@@ -17,7 +18,13 @@ from src.akonadi.utils import AkonadiUtils
 
 fake = Faker()
 
-_clients: dict[str, Principal | DAVResource] = {}
+
+class _Clients(TypedDict):
+    dav: Principal
+    akonadi: DAVResource
+
+
+_clients: _Clients = {}  #  type: ignore[typeddict-item]
 
 
 def set_clients(dav: Principal, akonadi: DAVResource):
@@ -35,16 +42,15 @@ class GenericEvent:
         cal.add_component(self.event)
         return cal.to_ical()
 
-    def save_to_akonadi(self, collection: Akonadi.Collection|None):
-        collection = collection or _clients["akonadi"].collection_from_display_name(
-            self.calendar
-        )
+    def save_to_akonadi(self, collection: Akonadi.Collection | None):
+        collection = collection or _clients["akonadi"].collection_from_display_name(self.calendar)
         _clients["akonadi"].akonadi_client.add_item(
             collection.id(), self.to_ical(), "application/x-vnd.akonadi.calendar.event"
         )
 
     def save_to_dav_server(self):
         _clients["dav"].calendar(self.calendar).add_event(self.event)
+
 
 @dataclass
 class GenericCalendar:

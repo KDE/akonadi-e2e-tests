@@ -86,7 +86,7 @@ class DAVResource(Resource):
 
         return collection
 
-    def collection_from_display_name(self, name: str) -> None:
+    def collection_from_display_name(self, name: str) -> Akonadi.Collection:
         resource_root = self.get_root_collection()
 
         collections = self.akonadi_client.list_collections(
