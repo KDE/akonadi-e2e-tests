@@ -11,6 +11,7 @@ import pytest
 from imap_tools import BaseMailBox
 
 from akonadi.client import AkonadiClient
+from src.factories.email_factory import ImapFolderFactory, ImapEmailFactory
 from imap.email_utils import create_message
 from src.akonadi.imap_resource import ImapResource
 from src.imap.test_utils import assert_collection_equal_mailbox, old_prepare
@@ -87,12 +88,12 @@ def test_add_item_in_akonadi_on_collection_removed_on_server(
         akonadi_client: AkonadiClient,
 ) -> None:
     collection_name = "Test7"
-    imap_client.folder.create(collection_name)
-    imap_client.folder.set(collection_name)
-    server_items_on_collection_creation = list(imap_client.fetch(mark_seen=False))
+    ImapFolderFactory.create(name=collection_name, nb_items=0)
     imap_resource.synchronize()
-    assert collection_name in (c.name() for c in imap_resource.list_collections())
-    assert len(imap_resource.list_items(collection_name)) == len(server_items_on_collection_creation) == 0
+    assert_collection_equal_mailbox(collection_name, imap_resource, imap_client)
+
+    nb_items_on_server_on_collection = len(list(imap_client.fetch(mark_seen=False)))
+    assert nb_items_on_server_on_collection == 0
 
     collection = imap_resource.resolve_collection(collection_name)
     imap_resource.set_online(False)
@@ -103,7 +104,7 @@ def test_add_item_in_akonadi_on_collection_removed_on_server(
         "message/rfc822",
     )
 
-    assert len(list(imap_client.fetch(mark_seen=False))) == len(server_items_on_collection_creation) # no message added to folder
+    assert len(list(imap_client.fetch(mark_seen=False))) == nb_items_on_server_on_collection # no message added to folder
 
     imap_client.folder.delete(collection_name)
 
@@ -120,19 +121,19 @@ def test_remove_item_in_akonadi_on_collection_removed_on_server(
         akonadi_client: AkonadiClient,
 ) -> None:
     collection_name = "Test7"
-    imap_client.folder.create(collection_name)
-    imap_client.folder.set(collection_name)
-    imap_client.append(create_message().as_bytes(), collection_name)
+    ImapFolderFactory.create(name=collection_name, nb_items=1)
     imap_resource.synchronize()
-    assert collection_name in (c.name() for c in imap_resource.list_collections())
-    pre_delete_items = list(imap_client.fetch(mark_seen=False))
+    assert_collection_equal_mailbox(collection_name, imap_resource, imap_client)
+
+    imap_client.folder.set(collection_name)
+    nb_server_items_before_delete = len(list(imap_client.fetch(mark_seen=False)))
 
     pre_delete_items_on_resource = imap_resource.list_items(collection_name)
     imap_resource.set_online(False)
 
     akonadi_client.delete_item(pre_delete_items_on_resource[-1].id()) # the last item is the one we added earlier, so it is the one we remove
 
-    assert len(list(imap_client.fetch(mark_seen=False))) == len(pre_delete_items)
+    assert len(list(imap_client.fetch(mark_seen=False))) == nb_server_items_before_delete
 
     imap_client.folder.delete(collection_name)
 
@@ -150,15 +151,15 @@ def test_update_item_in_akonadi_on_collection_removed_on_server(
 ) -> None:
     collection_name = "Test7"
     flag_to_add = "\\Draft"
-    imap_client.folder.create(collection_name)
-    imap_client.folder.set(collection_name)
-    imap_client.append(create_message().as_bytes(), collection_name)
+    ImapFolderFactory.create(name=collection_name, nb_items=1)
     imap_resource.synchronize()
-    assert collection_name in (c.name() for c in imap_resource.list_collections())
+    assert_collection_equal_mailbox(collection_name, imap_resource, imap_client)
+
     pre_update_items_on_resource = imap_resource.list_items(collection_name)
+    imap_client.folder.set(collection_name)
     pre_update_items_on_server = list(imap_client.fetch(mark_seen=False))
     assert len(pre_update_items_on_server) == len(pre_update_items_on_resource) == 1
-    assert flag_to_add not in pre_update_items_on_server[0].flags
+    assert len(pre_update_items_on_server[0].flags) == 0
 
     imap_resource.set_online(False)
 
