@@ -35,6 +35,16 @@ class GenericEvent:
         cal.add_component(self.event)
         return cal.to_ical()
 
+    def save_to_akonadi(self, collection: Akonadi.Collection|None):
+        collection = collection or _clients["akonadi"].collection_from_display_name(
+            self.calendar
+        )
+        _clients["akonadi"].akonadi_client.add_item(
+            collection.id(), self.to_ical(), "application/x-vnd.akonadi.calendar.event"
+        )
+
+    def save_to_dav_server(self):
+        _clients["dav"].calendar(self.calendar).add_event(self.event)
 
 @dataclass
 class GenericCalendar:
@@ -86,7 +96,7 @@ class DavEventFactory(BaseEventFactory):
     @classmethod
     def _create(cls, model_class, **kwargs):
         event = cls._build(model_class, **kwargs)
-        _clients["dav"].calendar(event.calendar).add_event(event.event)
+        event.save_to_dav_server()
         return event
 
 
@@ -97,12 +107,7 @@ class AkonadiEventFactory(BaseEventFactory):
     @classmethod
     def _create(cls, model_class, **kwargs):
         event = cls._build(model_class, **kwargs)
-        collection = kwargs.get("collection") or _clients["akonadi"].collection_from_display_name(
-            event.calendar
-        )
-        _clients["akonadi"].akonadi_client.add_item(
-            collection.id(), event.to_ical(), "application/x-vnd.akonadi.calendar.event"
-        )
+        event.save_to_akonadi(kwargs.get("collection"))
         return event
 
 
@@ -134,9 +139,9 @@ class DavCalendarFactory(BaseCalendarFactory):
     def _create(cls, model_class, **kwargs):
         generic_calendar = cls._build(model_class, **kwargs)
         client = _clients["dav"]
-        calendar = client.make_calendar(generic_calendar.name)
+        client.make_calendar(generic_calendar.name)
         for event in generic_calendar.events:
-            calendar.add_event(event.event)
+            event.save_to_dav_server()
         return generic_calendar
 
 
@@ -162,7 +167,5 @@ class AkonadiCalendarFactory(BaseCalendarFactory):
         AkonadiUtils.wait_for_job(job)
         collection = job.collection()
         for event in calendar.events:
-            client.akonadi_client.add_item(
-                collection.id(), event.as_bytes(), "message/rfc822"
-            )  # TODO mime types
+            event.save_to_akonadi(collection)
         return calendar

@@ -34,6 +34,13 @@ class Email:
     def as_bytes(self) -> bytes:
         return self.message.as_bytes()
 
+    def save_to_imap_server(self):
+        _clients["imap"].append(self.as_bytes(), folder=self.folder, flag_set=self.flags)
+
+    def save_to_akonadi(self, collection: Akonadi.Collection | None):
+        collection = collection or _clients["akonadi"].resolve_collection(self.folder)
+        _clients["akonadi"].akonadi_client.add_item(collection.id(), self.as_bytes(), "message/rfc822")
+
 
 @dataclass
 class Folder:
@@ -75,7 +82,7 @@ class ImapEmailFactory(BaseEmailFactory):
     @classmethod
     def _create(cls, model_class, **kwargs):
         email = cls._build(model_class, **kwargs)
-        _clients["imap"].append(email.as_bytes(), folder=email.folder, flag_set=email.flags)
+        email.save_to_imap_server()
         return email
 
 
@@ -86,12 +93,7 @@ class AkonadiEmailFactory(BaseEmailFactory):
     @classmethod
     def _create(cls, model_class, **kwargs):
         email = cls._build(model_class, **kwargs)
-        collection = kwargs.get("collection") or _clients["akonadi"].resolve_collection(
-            email.folder
-        )
-        _clients["akonadi"].akonadi_client.add_item(
-            collection.id(), email.as_bytes(), "message/rfc822"
-        )
+        email.save_to_akonadi(kwargs.get("collection"))
         return email
 
 
@@ -152,5 +154,5 @@ class AkonadiFolderFactory(BaseFolderFactory):
         AkonadiUtils.wait_for_job(job)
         collection = job.collection()
         for email in folder.messages:
-            client.akonadi_client.add_item(collection.id(), email.as_bytes(), "message/rfc822")
+            email.save_to_akonadi(collection)
         return folder
