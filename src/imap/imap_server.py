@@ -26,6 +26,7 @@ class ImapServer:
     USERNAME: ClassVar[str]
     PASSWORD: ClassVar[str]
     CONTAINER_NAME: ClassVar[str]
+    DELIMITER: ClassVar[str]
 
     def __init__(self):
         self.container = None
@@ -65,6 +66,10 @@ class ImapServer:
     @property
     def password(self) -> str:
         return self.PASSWORD
+
+    @property
+    def delimiter(self) -> str:
+        return self.DELIMITER
 
     def cleanup_test_environment(self):
         """

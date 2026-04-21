@@ -40,7 +40,10 @@ class ImapResource(Resource):
         super().__init__(akonadi_client, dbus, identifier)
         self._kwallet_key = f"{self._identifier}_{self.akonadi_client.akonadi_instance_name}rc"
 
-    async def configure(self, host: str, port: int, username: str, password: str) -> None:
+    async def configure(
+        self, host: str, port: int, username: str, password: str, delim: str
+    ) -> None:
+        self.delimiter = delim
         settings = OrgKdeAkonadiImapSettingsInterface.new_proxy(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
@@ -78,7 +81,7 @@ class ImapResource(Resource):
 
     @override
     def resolve_collection(self, collection_name: str) -> Akonadi.Collection:
-        path = collection_name.split("/")
+        path = collection_name.split(self.delimiter)
 
         def resolve_recursive(parent: Akonadi.Collection, path: list[str]):
             if not path:

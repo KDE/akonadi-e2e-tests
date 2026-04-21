@@ -167,6 +167,7 @@ async def imap_resource(
         port=imap_server.port,
         username=imap_server.username,
         password=imap_server.password,
+        delim=imap_server.delimiter,
     )
     resource.synchronize()
     resource.wait_resource_is_idle()

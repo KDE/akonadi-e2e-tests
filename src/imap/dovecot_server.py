@@ -15,3 +15,4 @@ class DovecotServer(ImapServer):
     USERNAME = "admin"
     PASSWORD = "admin"
     CONTAINER_NAME = "dovecot-akonadi-e2e-tests"
+    DELIMITER = "."
