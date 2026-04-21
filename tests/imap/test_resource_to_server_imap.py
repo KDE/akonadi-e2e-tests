@@ -12,9 +12,9 @@ import pytest
 from AkonadiCore import Akonadi
 from imap_tools import BaseMailBox
 
-from akonadi.utils import AkonadiUtils
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
+from src.akonadi.utils import AkonadiUtils
 from src.imap.email_utils import create_message
 from src.imap.test_utils import (
     assert_collection_equal_mailbox,
@@ -23,7 +23,7 @@ from src.imap.test_utils import (
     message_deleted,
     old_prepare,
 )
-from test import wait_until
+from src.test import wait_until
 
 log = getLogger(__name__)
 
