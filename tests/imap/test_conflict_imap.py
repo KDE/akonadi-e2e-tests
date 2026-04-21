@@ -10,7 +10,8 @@ import pytest
 from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
-from src.imap.test_utils import assert_collection_equal_mailbox, old_prepare
+from src.factories.email_factory import ImapFolderFactory
+from src.imap.test_utils import assert_collection_equal_mailbox
 
 log = getLogger(__name__)
 
@@ -25,21 +26,25 @@ def test_mailbox_deleted_on_server_is_unsynced(
     Deleting a collection from an offline resource and deleting a mailbox from a server
     When going back online, both collection/mailbox are deleted
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    mailbox_to_delete = ImapFolderFactory.create().name
+    collection_to_delete = ImapFolderFactory.create().name
+    imap_resource.synchronize()
+
+    assert_collection_equal_mailbox(mailbox_to_delete, imap_resource, imap_client)
+    assert_collection_equal_mailbox(collection_to_delete, imap_resource, imap_client)
 
     imap_resource.set_online(False)
 
     imap_client.folder.set(
         "INBOX"
     )  # Needed to avoid CREATE => Selected mailbox was deleted, have to disconnect
-    imap_client.folder.delete("Test")
-    imap_resource.delete_collection("Test2")
+    imap_client.folder.delete(mailbox_to_delete)
+    imap_resource.delete_collection(collection_to_delete)
 
     # check mailboxes in disconnected state
     collections_akonadi = imap_resource.list_collections()
-    assert "Test" in list(map(lambda c: c.name(), collections_akonadi))
-    assert imap_client.folder.exists("Test2")
+    assert mailbox_to_delete in list(map(lambda c: c.name(), collections_akonadi))
+    assert imap_client.folder.exists(collection_to_delete)
 
     # reconnect
     imap_resource.set_online(True)
@@ -47,8 +52,8 @@ def test_mailbox_deleted_on_server_is_unsynced(
 
     # check that both imap and akonadi server are properly synchronised
     collections_akonadi = imap_resource.list_collections()
-    assert "Test" not in list(map(lambda c: c.name(), collections_akonadi))
-    assert not imap_client.folder.exists("Test2")
+    assert mailbox_to_delete not in list(map(lambda c: c.name(), collections_akonadi))
+    assert not imap_client.folder.exists(collection_to_delete)
 
 
 @pytest.mark.xfail(
@@ -59,20 +64,22 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     Flag change on an item from an offline resource and flag mail from a server
     When going back online, both items/mails are correctly flagged
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    folder = ImapFolderFactory.create(nb_items=2).name
+    imap_resource.synchronize()
+
+    assert_collection_equal_mailbox(folder, imap_resource, imap_client)
 
     imap_resource.set_online(False)
 
-    collection = imap_resource.resolve_collection("Test")
+    collection = imap_resource.resolve_collection(folder)
     items = imap_resource.list_items(collection.id())
     item = items[0]
     imap_uid = item.remoteId()
 
-    imap_client.folder.set("Test")
+    imap_client.folder.set(folder)
     imap_client.flag([imap_uid], "$TestFlag", True)
     imap_resource.add_flag(item.id(), "$TestFlag2")
 
     imap_resource.set_online(True)
-    imap_resource.sync_collection("Test")
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    imap_resource.sync_collection(folder)
+    assert_collection_equal_mailbox(folder, imap_resource, imap_client)
