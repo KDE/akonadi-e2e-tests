@@ -15,16 +15,19 @@ from imap_tools import BaseMailBox
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.utils import AkonadiUtils
-from src.imap.email_utils import create_message
+from src.factories.email_factory import (
+    AkonadiEmailFactory,
+    AkonadiFolderFactory,
+    ImapFolderFactory,
+    fake,
+)
 from src.imap.test_utils import (
     assert_akonadi_items_are_equal,
     assert_collection_equal_mailbox,
     has_flag,
     message_added,
     message_deleted,
-    old_prepare,
 )
-from src.factories.email_factory import ImapFolderFactory
 from src.test import wait_until
 
 log = getLogger(__name__)
@@ -34,33 +37,15 @@ def test_akonadi_sync_add_collection(imap_resource: ImapResource, imap_client: B
     """
     Adding a collection in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    root_collection = imap_resource.get_root_collection()
-    mime_types = ["inode/directory", "message/rfc822"]
-
-    assert not imap_client.folder.exists("TestTopLevel")
-    assert not imap_client.folder.list("", "TestTopLevel*TestChild")
-
     # Create toplevel collection
-    toplevel_collection = Akonadi.Collection()
-    toplevel_collection.setName("TestTopLevel")
-    toplevel_collection.setContentMimeTypes(mime_types)
-    toplevel_collection.setParentCollection(root_collection)
-    job = Akonadi.CollectionCreateJob(toplevel_collection)
+    toplevel_folder = AkonadiFolderFactory.create()
+    wait_until(lambda: imap_client.folder.exists(toplevel_folder.name))
 
-    AkonadiUtils.wait_for_job(job)
-    wait_until(lambda: imap_client.folder.exists("TestTopLevel"))
+    child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
+    wait_until(lambda: imap_client.folder.exists(child_folder.imap_path))
 
-    # Creat child collection
-    toplevel_collection = imap_resource.resolve_collection("TestTopLevel")
-    child_collection = Akonadi.Collection()
-    child_collection.setName("TestChild")
-    child_collection.setContentMimeTypes(mime_types)
-    child_collection.setParentCollection(toplevel_collection)
-    job = Akonadi.CollectionCreateJob(child_collection)
-
-    AkonadiUtils.wait_for_job(job)
-    wait_until(lambda: len(imap_client.folder.list("", "TestTopLevel*TestChild")) > 0)
+    assert_collection_equal_mailbox(toplevel_folder.name, imap_resource, imap_client)
+    assert_collection_equal_mailbox(child_folder.imap_path, imap_resource, imap_client)
 
 
 def test_akonadi_sync_delete_collection(
@@ -69,26 +54,15 @@ def test_akonadi_sync_delete_collection(
     """
     Deleting a collection in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    mime_types = ["inode/directory", "message/rfc822"]
-    toplevel_collection = imap_resource.resolve_collection("Test")
-
-    # Creat child collection
-    child_collection = Akonadi.Collection()
-    child_collection.setName("TestChild")
-    child_collection.setContentMimeTypes(mime_types)
-    child_collection.setParentCollection(toplevel_collection)
-    job = Akonadi.CollectionCreateJob(child_collection)
-
-    AkonadiUtils.wait_for_job(job)
-    wait_until(lambda: len(imap_client.folder.list("", "Test*TestChild")) > 0)
+    toplevel_folder = AkonadiFolderFactory.create()
+    child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
+    wait_until(lambda: imap_client.folder.exists(toplevel_folder.name) and imap_client.folder.exists(child_folder.imap_path))
 
     # Delete parent collection
-    job = Akonadi.CollectionDeleteJob(toplevel_collection)
+    job = Akonadi.CollectionDeleteJob(toplevel_folder.get_collection())
     AkonadiUtils.wait_for_job(job)
 
-    wait_until(lambda: not imap_client.folder.exists("Test"))
-    wait_until(lambda: len(imap_client.folder.list("", "Test*TestChild")) == 0)
+    wait_until(lambda: not imap_client.folder.exists(toplevel_folder.name) and not imap_client.folder.exists(child_folder.imap_path))
 
 
 def test_rename_collection(
@@ -98,29 +72,32 @@ def test_rename_collection(
     """
     Test renaming a collection in akonadi side when online and verifying the change in both Akonadi and IMAP server.
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    initial_collections = imap_resource.list_collections()
-    initial_items = imap_resource.list_items("Test")
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    assert "Test" in [c.name() for c in initial_collections]
-    assert "Test3" not in [c.name() for c in initial_collections]
+    initial_collections = imap_resource.list_collections()
+    initial_items = imap_resource.list_items(folder.name)
+
+    old_name, new_name = folder.name, fake.word()
+    assert old_name in [c.name() for c in initial_collections]
+    assert new_name not in [c.name() for c in initial_collections]
 
     # If the rename request arrives to quickly after the sync and list
     # somehow the rename never reaches the resource... there is a bug
     # somewhere in the chain
     time.sleep(0.1)
-    imap_resource.rename_collection("Test", "Test3")
+    imap_resource.rename_collection(old_name, new_name)
 
     updated_collections = imap_resource.list_collections()
-    updated_items = imap_resource.list_items("Test3")
+    updated_items = imap_resource.list_items(new_name)
 
-    assert "Test3" in [c.name() for c in updated_collections]
-    assert "Test" not in [c.name() for c in updated_collections]
+    assert new_name in [c.name() for c in updated_collections]
+    assert old_name not in [c.name() for c in updated_collections]
 
     # Check in imap server that the new collection exists and the old one is deleted
-    wait_until(lambda: not imap_client.folder.exists("Test"))
-    assert_collection_equal_mailbox("Test3", imap_resource, imap_client)
+    wait_until(lambda: not imap_client.folder.exists(old_name))
+    assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
 
     # Check that the renamed collection has the same items as the original one
     assert len(initial_items) == len(updated_items)
@@ -136,25 +113,14 @@ def test_akonadi_offline_delete_collection(
     """
     Removing a collection from the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    mime_types = ["inode/directory", "message/rfc822"]
-    toplevel_collection = imap_resource.resolve_collection("Test")
-
-    # Create child collection
-    child_collection = Akonadi.Collection()
-    child_collection.setName("TestChild")
-    child_collection.setContentMimeTypes(mime_types)
-    child_collection.setParentCollection(toplevel_collection)
-    job = Akonadi.CollectionCreateJob(child_collection)
-
-    AkonadiUtils.wait_for_job(job)
-    assert "TestChild" in list(map(lambda c: c.name(), imap_resource.list_collections()))
-    wait_until(lambda: len(imap_client.folder.list("", "*TestChild")) > 0)
+    toplevel_folder = AkonadiFolderFactory.create()
+    child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
+    wait_until(lambda: imap_client.folder.exists(toplevel_folder.name) and imap_client.folder.exists(child_folder.imap_path))
 
     imap_resource.set_online(False)
 
     # Delete parent collection
-    job = Akonadi.CollectionDeleteJob(toplevel_collection)
+    job = Akonadi.CollectionDeleteJob(toplevel_folder.get_collection())
     # This context manager is needed as we need to wait for the ChangeReplay
     # to be queued before set_online(True) is called, otherwise the ChangeReplay
     # might be lost, this is sign of a bug in Akonadi
@@ -162,20 +128,18 @@ def test_akonadi_offline_delete_collection(
         AkonadiUtils.wait_for_job(job)
 
     resource_collections = imap_resource.list_collections()
-
-    assert "Test" not in list(map(lambda c: c.name(), resource_collections))
-    assert "TestChild" not in list(map(lambda c: c.name(), resource_collections))
-    assert imap_client.folder.exists("Test")
-    assert len(imap_client.folder.list("", "*TestChild")) > 0
+    assert toplevel_folder.name not in [c.name() for c in resource_collections]
+    assert child_folder.name not in [c.name() for c in resource_collections]
+    assert imap_client.folder.exists(toplevel_folder.name)
+    assert imap_client.folder.exists(child_folder.imap_path)
 
     imap_resource.set_online(True)
 
     resource_collections = imap_resource.list_collections()
-
-    assert "Test" not in list(map(lambda c: c.name(), resource_collections))
-    assert "TestChild" not in list(map(lambda c: c.name(), resource_collections))
-    wait_until(lambda: not imap_client.folder.exists("Test"))
-    wait_until(lambda: len(imap_client.folder.list("", "*TestChild")) == 0)
+    assert toplevel_folder.name not in [c.name() for c in resource_collections]
+    assert child_folder.name not in [c.name() for c in resource_collections]
+    wait_until(lambda: not imap_client.folder.exists(toplevel_folder.name))
+    wait_until(lambda: not imap_client.folder.exists(child_folder.imap_path))
 
 
 def test_akonadi_offline_rename_collection(
@@ -185,9 +149,10 @@ def test_akonadi_offline_rename_collection(
     Renaming a collection in the server, nothing happens, when the resource is set online, the collection is also
     renamed in the akonadi server, no other change occurred (other than timestamps book keeping)
     """
-    old_prepare(imap_client, imap_resource)
-    old_name = "Test"
-    new_name = "Test0"
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+
+    old_name, new_name = folder.name, fake.word()
     initial_collections = imap_resource.list_collections()
 
     assert old_name in (collection.name() for collection in initial_collections)
@@ -196,6 +161,10 @@ def test_akonadi_offline_rename_collection(
     assert not imap_client.folder.exists(new_name)
 
     imap_resource.set_online(False)
+    # If the rename request arrives to quickly after the sync and list
+    # somehow the rename never reaches the resource... there is a bug
+    # somewhere in the chain
+    time.sleep(0.1)
     imap_resource.rename_collection(old_name, new_name)
 
     updated_offline_collections = imap_resource.list_collections()
@@ -222,24 +191,22 @@ def test_append_message(
     """
     Adding an item to a collection in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    collection = imap_resource.resolve_collection("Test")
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
     # Append the item to Akonadi
-    akonadi_client.add_item(
-        collection.id(),
-        create_message(subject="test_append_message").as_bytes(),
-        "message/rfc822",
-    )
+    AkonadiEmailFactory.create(folder=folder.name)
 
     # List items from Akonadi, there should be 3 now.
+    collection = imap_resource.resolve_collection(folder.name)
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 3
+    new_count = len(folder.messages) + 1
+    assert len(items) == len(folder.messages) + 1
 
-    wait_until(lambda: message_added(imap_client, "Test", "3"))
+    wait_until(lambda: message_added(imap_client, folder.name, f"{new_count}"))
 
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
 def test_delete_message(
@@ -250,23 +217,24 @@ def test_delete_message(
     """
     Removing an item from a collection in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    collection = imap_resource.resolve_collection("Test")
+    collection = imap_resource.resolve_collection(folder.name)
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 2
+    assert len(items) == len(folder.messages)
     item = items[0]
 
     akonadi_client.delete_item(item.id())
 
-    wait_until(lambda: message_deleted(imap_client, item, "Test"), timeout=10.0)
+    wait_until(lambda: message_deleted(imap_client, item, folder.name))
 
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 1
+    assert len(items) == len(folder.messages) - 1
     assert item.id() not in [i.id() for i in items]
 
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
 def test_offline_append_message(
@@ -278,9 +246,9 @@ def test_offline_append_message(
     Adding an item to a collection in the offline akonadi server, nothing happens
     When the resource is set online, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
-    collection = imap_resource.resolve_collection("TestEmpty")
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
     imap_resource.set_online(False)
 
@@ -289,29 +257,27 @@ def test_offline_append_message(
     # to be queued before set_online(True) is called, otherwise the ChangeReplay
     # might be lost, this is sign of a bug in Akonadi
     with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
-        akonadi_client.add_item(
-            collection.id(),
-            create_message(subject="test_append_message").as_bytes(),
-            "message/rfc822",
-        )
+        AkonadiEmailFactory.create(folder=folder.name)
 
+    new_count = len(folder.messages) + 1
+    collection = imap_resource.resolve_collection(folder.name)
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 1
+    assert len(items) == new_count
 
     # No messages should have been added to imap server at this point
-    imap_client.folder.set("TestEmpty")
+    imap_client.folder.set(folder.name)
     messages = list(imap_client.fetch(mark_seen=False))
-    assert len(messages) == 0
+    assert len(messages) == len(folder.messages)
 
     imap_resource.set_online(True)
 
-    wait_until(lambda: message_added(imap_client, "TestEmpty", "1"))
+    wait_until(lambda: message_added(imap_client, folder.name, f"{new_count}"))
 
-    imap_client.folder.set("TestEmpty")
+    imap_client.folder.set(folder.name)
     messages = list(imap_client.fetch(mark_seen=False))
-    assert len(messages) == 1
+    assert len(messages) == new_count
 
-    assert_collection_equal_mailbox("TestEmpty", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
 def test_offline_delete_message(
@@ -323,16 +289,16 @@ def test_offline_delete_message(
     Removing an item from a collection in the offline akonadi server, nothing happens
     When the resource is set online, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    collection = imap_resource.resolve_collection("Test")
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
+    collection = imap_resource.resolve_collection(folder.name)
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 2
+    assert len(items) == len(folder.messages)
     item = items[0]
 
-    # Issuing set_online(False) while the IMAP resource is not idle
-    # might lead to crashes
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
     imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
@@ -342,24 +308,25 @@ def test_offline_delete_message(
     with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
         akonadi_client.delete_item(item.id())
 
+    new_count = len(folder.messages) - 1
     items = akonadi_client.list_items(collection.id())
-    assert len(items) == 1
+    assert len(items) == new_count
     assert item.id() not in [i.id() for i in items]
 
     # No messages should have been deleted on imap server at this point
-    imap_client.folder.set("Test")
+    imap_client.folder.set(folder.name)
     messages = list(imap_client.fetch(mark_seen=False))
-    assert len(messages) == 2
+    assert len(messages) == len(folder.messages)
 
     imap_resource.set_online(True)
 
-    wait_until(lambda: message_deleted(imap_client, item, "Test"), timeout=10.0)
+    wait_until(lambda: message_deleted(imap_client, item, folder.name))
 
-    imap_client.folder.set("Test")
+    imap_client.folder.set(folder.name)
     messages = list(imap_client.fetch(mark_seen=False))
-    assert len(messages) == 1
+    assert len(messages) == new_count
 
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
 def test_move_message_on_resource_is_synced(
@@ -370,26 +337,29 @@ def test_move_message_on_resource_is_synced(
     """
     Moving an item from one collection to another in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
+    folder1 = ImapFolderFactory.create()
+    folder2 = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder1.name, imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
 
-    source = imap_resource.resolve_collection("Test")
+    source = imap_resource.resolve_collection(folder1.name)
     items_source = akonadi_client.list_items(source.id())
-    assert len(items_source) == 2
+    assert len(items_source) == len(folder1.messages)
 
-    destination = imap_resource.resolve_collection("Test2")
+    destination = imap_resource.resolve_collection(folder2.name)
     items_destination = akonadi_client.list_items(destination.id())
-    assert len(items_destination) == 2
+    assert len(items_destination) == len(folder2.messages)
 
     item = items_source[0]
     akonadi_client.move_item(item.id(), destination.id())
 
-    wait_until(lambda: message_deleted(imap_client, item, "Test"))
-    wait_until(lambda: message_added(imap_client, "Test2", "3"))
+    uid2 = len(folder2.messages) + 1
+    wait_until(lambda: message_deleted(imap_client, item, folder1.name))
+    wait_until(lambda: message_added(imap_client, folder2.name, f"{uid2}"))
 
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder1.name, imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
 
 
 @pytest.mark.xfail(
@@ -403,26 +373,29 @@ def test_copy_message_on_server_is_synced(
     """
     Copying an item from one collection to another in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
+    folder1 = ImapFolderFactory.create()
+    folder2 = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder1.name, imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
 
-    source = imap_resource.resolve_collection("Test")
+    source = imap_resource.resolve_collection(folder1.name)
     items_source = akonadi_client.list_items(source.id())
-    assert len(items_source) == 2
+    assert len(items_source) == len(folder1.messages)
 
-    destination = imap_resource.resolve_collection("Test2")
+    destination = imap_resource.resolve_collection(folder2.name)
     items_destination = akonadi_client.list_items(destination.id())
-    assert len(items_destination) == 2
+    assert len(items_destination) == len(folder2.messages)
 
     item = items_source[0]
     akonadi_client.copy_item(item.id(), destination.id())
 
-    wait_until(lambda: message_added(imap_client, "Test", "2"))
-    wait_until(lambda: message_added(imap_client, "Test2", "3"))
+    uid_1, uid_2 = len(folder1.messages), len(folder2.messages) + 1
+    wait_until(lambda: message_added(imap_client, folder1.name, f"{uid_1}"))
+    wait_until(lambda: message_added(imap_client, folder2.name, f"{uid_2}"))
 
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
-    assert_collection_equal_mailbox("Test2", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder1.name, imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
 
 
 @pytest.mark.xfail(
@@ -432,28 +405,29 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
     """
     When changing flags of an item in the akonadi server, the change is replayed on the server
     """
-    old_prepare(imap_client, imap_resource)
-    imap_client.folder.set("Test")
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    folder = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    items = imap_resource.list_items("Test")
+    imap_client.folder.set(folder.name)
+    items = imap_resource.list_items(folder.name)
     item = items[0]
 
     flags = ["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
     for flag in flags:
         imap_resource.add_flag(item.id(), flag)
 
-        imap_resource.sync_collection("Test")
-        wait_until(lambda: has_flag(imap_client, item, "Test", flag))  # noqa: B023
-        assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+        imap_resource.sync_collection(folder.name)
+        wait_until(lambda: has_flag(imap_client, item, folder.name, flag))  # noqa: B023
+        assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
     for flag in flags:
         imap_resource.clear_flag(item.id(), flag)
 
-        imap_resource.sync_collection("Test")
-        wait_until(lambda: not has_flag(imap_client, item, "Test", flag))  # noqa: B023
+        imap_resource.sync_collection(folder.name)
+        wait_until(lambda: not has_flag(imap_client, item, folder.name, flag))  # noqa: B023
 
-        assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+        assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
 def test_offline_rename_collection(
@@ -463,15 +437,16 @@ def test_offline_rename_collection(
     """
     Renaming a collection in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server.
     """
-    ImapFolderFactory.create(name="Test")
+    folder = ImapFolderFactory.create()
     imap_resource.synchronize()
 
-    assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
     initial_collections = imap_resource.list_collections()
-    initial_items = imap_resource.list_items("Test")
+    initial_items = imap_resource.list_items(folder.name)
 
-    assert "Test" in [c.name() for c in initial_collections]
-    assert "Test3" not in [c.name() for c in initial_collections]
+    old_name, new_name = folder.name, fake.word()
+    assert old_name in [c.name() for c in initial_collections]
+    assert new_name not in [c.name() for c in initial_collections]
 
     imap_resource.set_online(False)
 
@@ -479,25 +454,27 @@ def test_offline_rename_collection(
     # somehow the rename never reaches the resource... there is a bug
     # somewhere in the chain
     time.sleep(0.1)
-    imap_resource.rename_collection("Test", "Test3")
+    imap_resource.rename_collection(old_name, new_name)
 
     updated_collections = imap_resource.list_collections()
-    updated_items = imap_resource.list_items("Test3")
+    updated_items = imap_resource.list_items(new_name)
 
-    assert "Test3" in [c.name() for c in updated_collections]
-    assert "Test" not in [c.name() for c in updated_collections]
+    assert new_name in [c.name() for c in updated_collections]
+    assert old_name not in [c.name() for c in updated_collections]
 
     # Check that nothing changed on the imap server side
-    wait_until(lambda: imap_client.folder.exists("Test") and (not imap_client.folder.exists("Test3")))
+    wait_until(
+        lambda: imap_client.folder.exists(old_name) and (not imap_client.folder.exists(new_name))
+    )
 
     imap_resource.set_online(True)
 
-    assert "Test3" in [c.name() for c in updated_collections]
-    assert "Test" not in [c.name() for c in updated_collections]
+    assert new_name in [c.name() for c in updated_collections]
+    assert old_name not in [c.name() for c in updated_collections]
 
     # Check in imap server that the new collection exists and the old one is deleted
-    wait_until(lambda: not imap_client.folder.exists("Test"))
-    assert_collection_equal_mailbox("Test3", imap_resource, imap_client)
+    wait_until(lambda: not imap_client.folder.exists(old_name))
+    assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
 
     # Check that the renamed collection has the same items as the original one
     assert len(initial_items) == len(updated_items)

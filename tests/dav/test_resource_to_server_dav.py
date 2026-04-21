@@ -8,7 +8,11 @@ from caldav.collection import Principal
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.utils import AkonadiUtils
 from src.dav.test_utils import assert_all_collections_are_equals
-from src.factories.event_factory import AkonadiCalendarFactory, DavCalendarFactory, AkonadiEventFactory
+from src.factories.event_factory import (
+    AkonadiCalendarFactory,
+    DavCalendarFactory,
+    AkonadiEventFactory,
+)
 from src.test import wait_until
 
 
@@ -53,9 +57,7 @@ def test_akonadi_sync_remove_collection(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-def test_akonadi_sync_add_item(
-        dav_principal: Principal, groupware_resource: DAVResource
-) -> None:
+def test_akonadi_sync_add_item(dav_principal: Principal, groupware_resource: DAVResource) -> None:
     """
     Adding an item to a collection in the akonadi server, the change is replayed on the server
     """
@@ -64,9 +66,11 @@ def test_akonadi_sync_add_item(
 
     AkonadiEventFactory.create(calendar=calendar.name)
     collection = groupware_resource.collection_from_display_name(calendar.name)
-    assert len(groupware_resource.list_items(collection.id())) == len(calendar.events) +  1
+    assert len(groupware_resource.list_items(collection.id())) == len(calendar.events) + 1
     groupware_resource.synchronize()
 
-    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(calendar.events) + 1)
+    wait_until(
+        lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(calendar.events) + 1
+    )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
