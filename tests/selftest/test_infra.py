@@ -62,23 +62,23 @@ async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
     assert imap_resource.identifier.startswith("akonadi_imap_resource_")
     collections = imap_resource.list_collections()
 
-    assert len(collections) == 8
+    assert len(collections) == 2
 
     imap_resource.sync_collection("INBOX")
     items = imap_resource.list_items("INBOX")
-    assert len(items) == 2
+    assert len(items) == 0
 
 
 def test_akonadi_dav_resource(groupware_resource: DAVResource) -> None:
     assert groupware_resource.identifier.startswith("akonadi_davgroupware_resource_")
     collections = groupware_resource.list_collections()
 
-    assert len(collections) == 5
+    assert len(collections) == 2
 
-    collection = groupware_resource.collection_from_display_name("Test1")
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
     groupware_resource.sync_collection(collection.remoteId())
     items = groupware_resource.list_items(collection.remoteId())
-    assert len(items) == 3
+    assert len(items) == 0
 
 
 def test_akonadi_client_list_agents_dav(

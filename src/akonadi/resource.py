@@ -143,7 +143,6 @@ class Resource(ABC):
             self.wait_resource_is_idle()
 
     def wait_resource_is_idle(self, timeout_ms: int = 30000):
-        time.sleep(0.2)
         assert self.instance.isOnline(), "Resource must be online to wait for idle"
         start_time = time.monotonic()
         timeout_s = timeout_ms / 1000.0

@@ -48,8 +48,7 @@ def test_dav_factory(groupware_resource: DAVResource, dav_principal: Principal):
 
 def test_dav_resource_factory(groupware_resource: DAVResource, dav_principal: Principal):
     AkonadiEventFactory.create_batch(10, calendar="Default Calendar")
-
     groupware_resource.wait_resource_is_idle()
-    assert len(groupware_resource.list_collections()) == 2  # INBOX, Test and IMAP Account
+    assert len(groupware_resource.list_collections()) == 2  # Default Calendar and resource collection
     collection = groupware_resource.collection_from_display_name("Default Calendar")
     assert len(groupware_resource.list_items(collection.id())) == 10

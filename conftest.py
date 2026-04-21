@@ -98,7 +98,7 @@ def qcore_app(_akonadi_env: AkonadiEnv):
 
 
 @pytest.fixture(scope="session", params=list(DAVServerType))
-async def dav_server(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer]:
+async def dav_server_session(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer]:
     server_type = request.param
     match server_type:
         case DAVServerType.NEXTCLOUD:
@@ -106,11 +106,10 @@ async def dav_server(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer
         case DAVServerType.RADICALE:
             server = RadicaleServer()
         case _:
-            pytest.fail(f"Unknown DAV server type: {dav_server}")
+            pytest.fail(f"Unknown DAV server type: {server_type}")
 
     await server.start()
     yield server
-    server.cleanup_test_environment()
     await server.stop()
 
 
@@ -141,6 +140,10 @@ def imap_server(imap_server_session: ImapServer) -> Generator[ImapServer]:
 
     imap_server_session.cleanup_test_environment()
 
+@pytest.fixture
+def dav_server(dav_server_session: DAVServer) -> Generator[DAVServer]:
+    yield dav_server_session
+    dav_server_session.cleanup_test_environment()
 
 @pytest.fixture()
 def akonadi_client(

@@ -106,7 +106,11 @@ class DAVServer(abc.ABC):
         )
         dav_principal = dav_client.principal()
         for calendar in dav_principal.calendars():
-            if calendar.get_display_name().startswith("Test"):
+            if calendar.get_display_name() != "Default Calendar":
                 calendar.delete()
+            else:
+                for event in calendar.get_events():
+                    event.delete()
         assert len(dav_principal.calendars()) == 1
+        assert len(dav_principal.calendar("Default Calendar").get_events()) == 0
         dav_client.close()
