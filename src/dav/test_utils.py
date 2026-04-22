@@ -38,12 +38,12 @@ def assert_collection_equal_calendar(
     name: str, dav_resource: DAVResource, dav_principal: Principal, payload_test: bool = True
 ) -> None:
     items = dav_resource.list_items(name)
-    items.sort(key=lambda i: i.remoteId() or "-1")
+    items.sort(key=lambda i: unquote_plus(i.remoteId()) or "-1")
 
     calendar = dav_principal.calendar(cal_url=name)
 
     events = calendar.get_events()
-    events.sort(key=lambda e: str(e.get_icalendar_instance().events[0]["UID"]) or "-1")
+    events.sort(key=lambda e: unquote_plus(e.canonical_url) or "-1")
     assert len(events) == len(items)
 
     for event, item in zip(events, items, strict=False):

@@ -62,11 +62,11 @@ def test_akonadi_sync_add_item(
     calendar = DavCalendarFactory.create()
     groupware_resource.synchronize()
 
-    AkonadiEventFactory.create(calendar=calendar_name)
+    AkonadiEventFactory.create(calendar=calendar.name)
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    assert len(groupware_resource.list_items(collection.id())) == len(calendar.events) +  1
     groupware_resource.synchronize()
 
-    collection = groupware_resource.collection_from_display_name(calendar_name)
-    assert len(groupware_resource.list_items(collection.id())) == 1
-    wait_until(lambda: len(dav_principal.calendar(calendar_name).get_events()) == 1)
+    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(calendar.events) + 1)
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
