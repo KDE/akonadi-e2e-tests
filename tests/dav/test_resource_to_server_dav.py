@@ -25,11 +25,11 @@ def test_akonadi_sync_add_collection(
     """
     Adding a collection in the akonadi server, the change is replayed on the server
     """
-    AkonadiCalendarFactory.create(name="TestTopLevel", nb_items=0)
+    calendar = AkonadiCalendarFactory.create()
     groupware_resource.synchronize()
 
     wait_until(
-        lambda: "TestTopLevel" in [c.get_display_name() for c in dav_principal.get_calendars()]
+        lambda: calendar.name in [c.get_display_name() for c in dav_principal.get_calendars()]
     )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
@@ -41,17 +41,17 @@ def test_akonadi_sync_remove_collection(
     """
     Removing a collection in the akonadi server, the change is replayed on the server
     """
-    DavCalendarFactory.create(name="TestTopLevel", nb_items=0)
+    calendar = DavCalendarFactory.create()
     groupware_resource.synchronize()
     wait_until(
-        lambda: "TestTopLevel" in [c.displayName() for c in groupware_resource.list_collections()]
+        lambda: calendar.name in [c.displayName() for c in groupware_resource.list_collections()]
     )
 
-    collection = groupware_resource.collection_from_display_name("TestTopLevel")
+    collection = groupware_resource.collection_from_display_name(calendar.name)
     job = Akonadi.CollectionDeleteJob(collection)
     AkonadiUtils.wait_for_job(job)
     wait_until(
-        lambda: "TestTopLevel" not in [c.get_display_name() for c in dav_principal.get_calendars()]
+        lambda: calendar.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
     )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)

@@ -16,8 +16,8 @@ def test_initial_sync(dav_principal: Principal, groupware_resource: DAVResource)
     """
     Test that the initial setup is synced between the server and the resource
     """
-    DavCalendarFactory.create(name="Test 5", nb_items=5)
-    DavCalendarFactory.create(name="Test 10", nb_items=10)
+    DavCalendarFactory.create(nb_items=5)
+    DavCalendarFactory.create(nb_items=10)
     DavEventFactory.create_batch(10, calendar="Default Calendar")
     groupware_resource.synchronize()
     assert (
@@ -31,7 +31,7 @@ def test_list_calendars(dav_principal: Principal, groupware_resource: DAVResourc
     """
     Test that the initial setup has synced url/name between the server and the resource
     """
-    DavCalendarFactory.create(name="Test", nb_items=5)
+    DavCalendarFactory.create(nb_items=5)
     groupware_resource.synchronize()
 
     server_calendars = dav_principal.calendars()
