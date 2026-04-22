@@ -67,6 +67,7 @@ class AkonadiEnv:
         env["AKONADI_INSTANCE"] = self._instance_id
         env["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
         env["LC_ALL"] = "C"
+        env["QTKEYCHAIN_BACKEND"] = "kwallet6" # not all DEs will use kwallet by default
         env["QT_LOGGING_RULES"] = ";".join(
             [
                 "kf.dav=true",
