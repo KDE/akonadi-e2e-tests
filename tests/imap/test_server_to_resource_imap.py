@@ -17,6 +17,7 @@ from src.factories.email_factory import (
 )
 from src.imap.email_utils import create_message
 from src.imap.test_utils import assert_collection_equal_mailbox, assert_partial_sync, old_prepare
+from src.test.wait import wait_until
 
 log = getLogger(__name__)
 
@@ -308,4 +309,26 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
     assert len(updated_items) == 7
     assert len(items_added) == 5
     assert_collection_equal_mailbox("Test", imap_resource, imap_client)
+    assert_partial_sync(initial_items, updated_items, items_added)
+
+def test_total_sync_on_append_msg(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    When an item has been added to INBOX mailbox server-side, the change is replayed on the akonadi server without the need to sync
+    """
+    # Create some items that should not have been synced at the end of the test
+    ImapEmailFactory.create_batch(10, folder="INBOX")
+    imap_resource.synchronize()
+
+    assert_collection_equal_mailbox("INBOX", imap_resource, imap_client)
+    initial_items = imap_resource.list_items("INBOX")
+    assert len(initial_items) == 10
+
+    ImapEmailFactory.create(folder="INBOX")
+
+    wait_until(lambda: len(imap_resource.list_items("INBOX")) == 11)
+
+    updated_items = imap_resource.list_items("INBOX")
+    items_added = [item for item in updated_items if item not in initial_items]
+
+    assert_collection_equal_mailbox("INBOX", imap_resource, imap_client)
     assert_partial_sync(initial_items, updated_items, items_added)
