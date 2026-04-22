@@ -53,7 +53,7 @@ def test_akonadi_sync_delete_collection(
     imap_client: BaseMailBox,
 ) -> None:
     """
-    Deleting a collection in the akonadi server, the change is replayed on the server
+    Removing a collection from the akonadi server, the change is replayed on the server
     """
     toplevel_folder = AkonadiFolderFactory.create()
     child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
@@ -81,7 +81,7 @@ def test_rename_collection(
     imap_client: BaseMailBox,
 ) -> None:
     """
-    Test renaming a collection in akonadi side when online and verifying the change in both Akonadi and IMAP server.
+    Renaming a collection in the akonadi server, the change is replayed on the server
     """
     folder = ImapFolderFactory.create()
     imap_resource.synchronize()
@@ -161,7 +161,6 @@ def test_akonadi_offline_delete_collection(
 def test_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
-    akonadi_client: AkonadiClient,
 ) -> None:
     """
     Adding an item to a collection in the akonadi server, the change is replayed on the server
@@ -173,9 +172,8 @@ def test_append_message(
     # Append the item to Akonadi
     AkonadiEmailFactory.create(folder=folder.name)
 
-    # List items from Akonadi, there should be 3 now.
-    collection = imap_resource.resolve_collection(folder.name)
-    items = akonadi_client.list_items(collection.id())
+    # List items from Akonadi, there should be one more now.
+    items = imap_resource.list_items(folder.name)
     new_count = len(folder.messages) + 1
     assert len(items) == len(folder.messages) + 1
 
@@ -196,8 +194,7 @@ def test_delete_message(
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    collection = imap_resource.resolve_collection(folder.name)
-    items = akonadi_client.list_items(collection.id())
+    items = imap_resource.list_items(folder.name)
     assert len(items) == len(folder.messages)
     item = items[0]
 
@@ -205,7 +202,7 @@ def test_delete_message(
 
     wait_until(lambda: message_deleted(imap_client, item, folder.name))
 
-    items = akonadi_client.list_items(collection.id())
+    items = imap_resource.list_items(folder.name)
     assert len(items) == len(folder.messages) - 1
     assert item.id() not in [i.id() for i in items]
 
@@ -215,10 +212,9 @@ def test_delete_message(
 def test_offline_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
-    akonadi_client: AkonadiClient,
 ) -> None:
     """
-    Adding an item to a collection in the offline akonadi server, nothing happens
+    Adding an item to a collection in the akonadi server, nothing happens
     When the resource is set online, the change is replayed on the server
     """
     folder = ImapFolderFactory.create()
@@ -235,8 +231,7 @@ def test_offline_append_message(
         AkonadiEmailFactory.create(folder=folder.name)
 
     new_count = len(folder.messages) + 1
-    collection = imap_resource.resolve_collection(folder.name)
-    items = akonadi_client.list_items(collection.id())
+    items = imap_resource.list_items(folder.name)
     assert len(items) == new_count
 
     # No messages should have been added to imap server at this point
@@ -261,15 +256,14 @@ def test_offline_delete_message(
     akonadi_client: AkonadiClient,
 ) -> None:
     """
-    Removing an item from a collection in the offline akonadi server, nothing happens
+    Removing an item from a collection in the akonadi server, nothing happens
     When the resource is set online, the change is replayed on the server
     """
     folder = ImapFolderFactory.create()
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    collection = imap_resource.resolve_collection(folder.name)
-    items = akonadi_client.list_items(collection.id())
+    items = imap_resource.list_items(folder.name)
     assert len(items) == len(folder.messages)
     item = items[0]
 
@@ -284,7 +278,7 @@ def test_offline_delete_message(
         akonadi_client.delete_item(item.id())
 
     new_count = len(folder.messages) - 1
-    items = akonadi_client.list_items(collection.id())
+    items = imap_resource.list_items(folder.name)
     assert len(items) == new_count
     assert item.id() not in [i.id() for i in items]
 
@@ -378,7 +372,7 @@ def test_copy_message_on_server_is_synced(
 )
 def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
-    When changing flags of an item in the akonadi server, the change is replayed on the server
+    Changing flags of an item in the akonadi server, the change is replayed on the server
     """
     folder = ImapFolderFactory.create()
     imap_resource.synchronize()

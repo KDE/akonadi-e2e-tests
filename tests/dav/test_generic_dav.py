@@ -14,7 +14,7 @@ from src.factories.event_factory import DavCalendarFactory, DavEventFactory
 
 def test_initial_sync(dav_principal: Principal, groupware_resource: DAVResource) -> None:
     """
-    Test that the initial setup is synced between the server and the resource
+    Starting a first full sync leads to all the items and collections being replicated in the akonadi server
     """
     DavCalendarFactory.create(nb_items=5)
     DavCalendarFactory.create(nb_items=10)

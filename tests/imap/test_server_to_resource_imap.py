@@ -47,7 +47,9 @@ def test_new_mailbox_on_server_is_synced(
     imap_client: BaseMailBox,  # noqa: ARG001
 ) -> None:
     """
-    Creating a new mailbox on the server, the change is replayed on the resource
+    Adding a collection in the server implicitly triggers a partial sync
+    The added collection is replicated in the akonadi server
+    No other change occurred (other than timestamps book keeping)
     """
     folder = ImapFolderFactory.create(nb_items=0)
     imap_resource.synchronize()
@@ -60,7 +62,9 @@ def test_mailbox_deleted_on_server_is_synced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
     """
-    Deleting a mailbox on the server, the change is replayed on the resource
+    Removing a collection from the server implicitly triggers a partial sync
+    The removed collection is also removed from the akonadi server
+    No other change occurred (other than timestamps book keeping)
     """
     folder = ImapFolderFactory.create()
     imap_resource.synchronize()
@@ -279,7 +283,9 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
 @pytest.mark.xfail(reason="Akonadi bug? ModificationTime is not updated")
 def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
-    Check that only the updated item has been sync
+    Changing flags of an item on the server implicitly triggers a partial sync
+    The flags are also changed on the corresponding item in the akonadi server
+    No other change occurred (other than timestamps book keeping)
     """
     folder = ImapFolderFactory.create()
     imap_resource.synchronize()
@@ -299,7 +305,9 @@ def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: B
 
 def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
-    Check that only the added items have been sync
+    Adding an item to a collection on the server implicitly triggers a partial sync
+    The added item is replicated in the akonadi server
+    No other change occurred (other than timestamps book keeping)
     """
     folder = ImapFolderFactory.create(nb_items=5)
     imap_resource.synchronize()
