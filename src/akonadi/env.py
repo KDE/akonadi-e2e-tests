@@ -82,6 +82,6 @@ class AkonadiEnv:
             ]
         )
         if "QT_MESSAGE_PATTERN" not in env:
-            env["QT_MESSAGE_PATTERN"] = "FOOO %{category} %{type}: %{function} - %{message}"
+            env["QT_MESSAGE_PATTERN"] = "%{category} %{type}: %{function} - %{message}"
 
         return env
