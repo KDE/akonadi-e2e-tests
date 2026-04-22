@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Kevin Ottens <kevin.ottens@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from email.message import EmailMessage
@@ -34,18 +35,25 @@ def set_clients(imap: BaseMailBox, akonadi: ImapResource):
 
 @dataclass
 class Email:
+    """
+    Note: folder must be a Folder object or the folder path with correct delimiters
+    """
+
     message: EmailMessage
-    folder: str
+    folder: Folder | str
     flags: list[str] = field(default_factory=list)
 
     def as_bytes(self) -> bytes:
         return self.message.as_bytes()
 
+    def _folder_path(self) -> str:
+        return self.folder.imap_path if isinstance(self.folder, Folder) else self.folder
+
     def save_to_imap_server(self):
-        _clients["imap"].append(self.as_bytes(), folder=self.folder, flag_set=self.flags)
+        _clients["imap"].append(self.as_bytes(), folder=self._folder_path(), flag_set=self.flags)
 
     def save_to_akonadi(self, collection: Akonadi.Collection | None):
-        collection = collection or _clients["akonadi"].resolve_collection(self.folder)
+        collection = collection or _clients["akonadi"].resolve_collection(self._folder_path())
         _clients["akonadi"].akonadi_client.add_item(
             collection.id(), self.as_bytes(), "message/rfc822"
         )
@@ -55,6 +63,41 @@ class Email:
 class Folder:
     name: str
     messages: list[Email] = field(default_factory=list)
+    parent: Folder | None = None
+
+    @property
+    def imap_path(self, delim: str | None = None) -> str:
+        if delim is None:
+            delim = _clients["imap"].delimiter  # type: ignore[attr-defined]
+        if self.parent:
+            return f"{self.parent.imap_path}{delim}{self.name}"
+        return self.name
+
+    def get_collection(self) -> Akonadi.Collection:
+        return _clients["akonadi"].resolve_collection(self.imap_path)
+
+    def save_to_imap_server(self):
+        _clients["imap"].folder.create(self.imap_path)
+        for email in self.messages:
+            email.save_to_imap_server()
+
+    def save_to_akonadi(self):
+        client = _clients["akonadi"]
+        if self.parent:
+            parent = client.resolve_collection(self.parent.imap_path)
+        else:
+            parent = client.get_root_collection()
+        assert parent
+
+        collection = Akonadi.Collection()
+        collection.setName(self.name)
+        collection.setContentMimeTypes(["inode/directory", "message/rfc822"])
+        collection.setParentCollection(parent)
+        job = Akonadi.CollectionCreateJob(collection)
+        AkonadiUtils.wait_for_job(job)
+        collection = job.collection()
+        for email in self.messages:
+            email.save_to_akonadi(collection)
 
 
 class BaseEmailFactory(factory.Factory):
@@ -111,19 +154,17 @@ class BaseFolderFactory(factory.Factory):
         model = Folder
         abstract = True
 
-    folder_depth = 1
+    name = factory.Faker("word")
     nb_items = factory.Faker("random_int", min=1, max=8)
     email_factory: type[BaseEmailFactory] | None = None
-
-    @factory.lazy_attribute
-    def name(obj):
-        depth = obj.folder_depth
-        return "/".join(fake.word() for _ in range(depth)) if depth > 1 else fake.word()
+    parent: Folder | None = None
 
     @classmethod
     def _build(cls, model_class, **kwargs):
-        folder = model_class(name=kwargs["name"])
-        folder.messages = cls.email_factory.build_batch(kwargs.get("nb_items"), folder=folder.name)
+        folder = model_class(name=kwargs["name"], parent=kwargs.get("parent"))
+        folder.messages = cls.email_factory.build_batch(
+            kwargs.get("nb_items"), folder=folder.imap_path
+        )
         return folder
 
 
@@ -136,10 +177,7 @@ class ImapFolderFactory(BaseFolderFactory):
     @classmethod
     def _create(cls, model_class, **kwargs):
         folder = cls._build(model_class, **kwargs)
-        client = _clients["imap"]
-        client.folder.create(folder.name)
-        for email in folder.messages:
-            client.append(email.as_bytes(), folder=folder.name, flag_set=email.flags)
+        folder.save_to_imap_server()
         return folder
 
 
@@ -152,16 +190,5 @@ class AkonadiFolderFactory(BaseFolderFactory):
     @classmethod
     def _create(cls, model_class, **kwargs):
         folder = cls._build(model_class, **kwargs)
-        client = _clients["akonadi"]
-
-        root = client.get_root_collection()
-        collection = Akonadi.Collection()
-        collection.setName(folder.name)
-        collection.setContentMimeTypes(["inode/directory", "message/rfc822"])
-        collection.setParentCollection(root)
-        job = Akonadi.CollectionCreateJob(collection)
-        AkonadiUtils.wait_for_job(job)
-        collection = job.collection()
-        for email in folder.messages:
-            email.save_to_akonadi(collection)
+        folder.save_to_akonadi()
         return folder

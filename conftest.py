@@ -183,6 +183,7 @@ def imap_client(
 ) -> Generator[BaseMailBox]:
     mailbox = MailBoxUnencryptedWithOriginalPayload(imap_server.host_or_ip, imap_server.port)
     mailbox.login(imap_server.username, imap_server.password)
+    mailbox.delimiter = imap_server.delimiter
     yield mailbox
     mailbox.logout()
 

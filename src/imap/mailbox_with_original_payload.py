@@ -18,3 +18,4 @@ class MailMessageWithOriginalPayload(MailMessage):
 
 class MailBoxUnencryptedWithOriginalPayload(MailBoxUnencrypted):
     email_message_class = MailMessageWithOriginalPayload
+    delimiter: str
