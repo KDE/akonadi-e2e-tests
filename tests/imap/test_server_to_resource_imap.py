@@ -11,10 +11,7 @@ import pytest
 from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
-from src.factories.email_factory import (
-    ImapEmailFactory,
-    ImapFolderFactory,
-)
+from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
 from src.imap.email_utils import create_message
 from src.imap.test_utils import assert_collection_equal_mailbox, assert_partial_sync
 
@@ -322,3 +319,45 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
     assert_partial_sync(initial_items, updated_items, items_added)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+
+def test_server_offline_rename_collection(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Renaming a collection in the server, nothing happens, when the resource is set online, the collection is also
+    renamed in the akonadi server, no other change occurred (other than timestamps book keeping)
+    """
+    old_name = ImapFolderFactory.create().name
+    imap_resource.synchronize()
+
+    new_name = fake.word()
+    initial_collections = imap_resource.list_collections()
+
+    assert old_name in (collection.name() for collection in initial_collections)
+    assert new_name not in (collection.name() for collection in initial_collections)
+    assert imap_client.folder.exists(old_name)
+    assert not imap_client.folder.exists(new_name)
+
+    imap_resource.set_online(False)
+    imap_client.folder.rename(old_name, new_name)
+
+    assert not imap_client.folder.exists(old_name)
+    assert imap_client.folder.exists(new_name)
+
+    # Here we need to test that nothing happens in the akonadi server
+    offline_collections = imap_resource.list_collections()
+
+    assert old_name in (collection.name() for collection in offline_collections)
+    assert new_name not in (collection.name() for collection in offline_collections)
+
+    imap_resource.set_online(True)
+
+    updated_offline_collections = imap_resource.list_collections()
+
+    assert old_name not in (collection.name() for collection in updated_offline_collections)
+    assert new_name in (collection.name() for collection in updated_offline_collections)
+
+    imap_resource.sync_collection(new_name)
+
+    assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
