@@ -5,6 +5,7 @@
 import logging
 
 from caldav.collection import Principal
+from caldav.elements import dav
 
 from src.akonadi.dav_resource import DAVResource
 
@@ -41,3 +42,19 @@ def test_delete_collection_to_server_is_sync(
 
     assert str(created_calendar.url) not in (c.name() for c in groupware_resource.list_collections())
     assert "SomeCalendar" not in (c.displayName() for c in groupware_resource.list_collections())
+
+
+def test_update_collection_name_on_server_is_sync(
+        dav_principal: Principal,
+        groupware_resource: DAVResource,
+) -> None:
+    """
+    Changing the display name of a calendar on the DAV server gets updated on the akonadi server
+    """
+    created_calendar = dav_principal.make_calendar(name="SomeCalendar")
+    groupware_resource.synchronize()
+    created_calendar.set_properties([dav.DisplayName("some_new_name")])
+    updated_calendar = next(c for c in dav_principal.get_calendars() if c.get_display_name() == "some_new_name")
+    assert updated_calendar is not None
+    assert created_calendar.url == updated_calendar.url
+    assert_collection_equal_calendar(str(updated_calendar.url), dav_resource=groupware_resource, dav_principal=dav_principal)
