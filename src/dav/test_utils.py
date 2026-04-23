@@ -62,3 +62,17 @@ def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> No
     akonadi_event = _filter_lines(item_to_event(akonadi_item).content_lines())
     server_event = _filter_lines(dav_event.icalendar_instance.events[0].content_lines())
     assert akonadi_event == server_event
+
+
+def assert_akonadi_item_are_equal(item1: Akonadi.Item, item2: Akonadi.Item) -> None:
+    assert item1.id() == item2.id()
+    item1_payload = item1.payloadData().data().decode()
+    item2_payload = item2.payloadData().data().decode()
+    assert item1_payload == item2_payload
+
+
+def assert_akonadi_items_are_equal(items1: list[Akonadi.Item], items2: list[Akonadi.Item]) -> None:
+    items1.sort(key=lambda item: item.id())
+    items2.sort(key=lambda item: item.id())
+    for item1, item2 in zip(items1, items2, strict=True):
+        assert_akonadi_item_are_equal(item1, item2)

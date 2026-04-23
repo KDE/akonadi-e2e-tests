@@ -131,6 +131,12 @@ class Resource(ABC):
         collection = self.resolve_collection(collection_name)
         self.akonadi_client.rename_collection(collection.id(), new_name)
 
+    def update_displayname_collection(self, collection_name: str, new_name: str) -> None:
+        collection = self.resolve_collection(collection_name)
+        collection.attribute(bytes("ENTITYDISPLAY", "ascii")).setDisplayName(new_name)
+        job = Akonadi.CollectionModifyJob(collection)
+        AkonadiUtils.wait_for_job(job)
+
     def add_flag(self, item_id: int, flag: str) -> None:
         item = self.akonadi_client.item_by_id(item_id)
         item.setFlag(flag.encode())
