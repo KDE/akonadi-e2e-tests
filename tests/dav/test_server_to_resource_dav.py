@@ -7,8 +7,11 @@
 from urllib.parse import unquote
 
 import pytest
+from AkonadiCore import Akonadi  # type: ignore
 from caldav.collection import Principal
 from caldav.elements import dav, ical
+from caldav.elements.ical import CalendarColor
+from PySide6 import QtGui  # type: ignore
 
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.test_utils import (
@@ -84,6 +87,36 @@ def test_update_collection_name_on_server_is_sync(
     groupware_resource.synchronize()
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_update_collection_color_on_server_is_sync(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+) -> None:
+    """
+    Changing the color of a calendar on the DAV server gets updated on the akonadi server
+    """
+    new_color = fake.qcolor()
+    new_color_on_server = new_color.name(QtGui.QColor.NameFormat.HexRgb)
+
+    created_calendar = DavCalendarFactory.create()
+    remote_calendar = dav_principal.calendar(created_calendar.name)
+    assert remote_calendar.get_property(CalendarColor()) == created_calendar.color.name(
+        QtGui.QColor.NameFormat.HexRgb
+    )
+    groupware_resource.synchronize()
+
+    remote_calendar.set_properties([CalendarColor(new_color_on_server)])
+    assert remote_calendar.get_property(CalendarColor()) == new_color_on_server
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(created_calendar.name)
+    assert (
+        groupware_resource.get_collection_attribute(
+            collection, Akonadi.CollectionColorAttribute
+        ).color()
+        == new_color
+    )
 
 
 def test_multiple_sync_without_change(
