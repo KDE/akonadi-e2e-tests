@@ -62,3 +62,12 @@ def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> No
     akonadi_event = _filter_lines(item_to_event(akonadi_item).content_lines())
     server_event = _filter_lines(dav_event.icalendar_instance.events[0].content_lines())
     assert akonadi_event == server_event
+
+
+def get_collection_attributes(
+        name: str, dav_resource: DAVResource, dav_principal: Principal, payload_test: bool = True
+) -> dict[str, str]:
+    return {
+        attr.type().data().decode("utf-8"): attr.serialized().data().decode("utf-8")
+        for attr in dav_resource.resolve_collection(name).attributes()
+    }
