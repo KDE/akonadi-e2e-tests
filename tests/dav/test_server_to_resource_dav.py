@@ -60,6 +60,32 @@ def test_delete_collection_to_server_is_sync(
         groupware_resource.collection_from_display_name(created_calendar.name)
 
 
+@pytest.mark.xfail(
+    reason="Collection does not get a new display name in akonadi. See https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
+    strict=True,
+)
+def test_update_collection_name_on_server_is_sync(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+) -> None:
+    """
+    Changing the display name of a calendar on the DAV server gets updated on the akonadi server
+    """
+    created_calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+
+    new_display_name = created_calendar.name + fake.word()
+    assert new_display_name not in (c.displayName() for c in groupware_resource.list_collections())
+
+    calendar_to_update = dav_principal.calendar(created_calendar.name)
+    calendar_to_update.set_properties([dav.DisplayName(new_display_name)])
+    assert created_calendar.name not in (c.get_display_name() for c in dav_principal.calendars())
+    assert new_display_name in (c.get_display_name() for c in dav_principal.calendars())
+    groupware_resource.synchronize()
+
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
 def test_multiple_sync_without_change(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
