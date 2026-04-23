@@ -9,6 +9,7 @@ from urllib.parse import unquote
 
 import pytest
 from AkonadiCore import Akonadi  # type: ignore
+from PySide6.QtGui import QColor  # type: ignore
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
@@ -97,3 +98,20 @@ class DAVResource(Resource):
             pytest.fail(f"Collection {name} not found")
 
         return collection
+
+    def get_collection_color(self, collection_name: str) -> str | None:
+        collection = self.resolve_collection(collection_name)
+        attribute = collection.attribute(b"collectioncolor")
+        return bytes(attribute.serialized()).decode() if attribute else None
+
+    def set_collection_color(self, collection_name: str, hex_color: str) -> None:
+        collection = self.resolve_collection(collection_name)
+        attr = Akonadi.CollectionColorAttribute()
+        attr.setColor(QColor.fromString(hex_color))
+
+        new = Akonadi.Collection()
+        new.setId(collection.id())
+        new.addAttribute(attr.clone())  # clone to give an unmanaged object
+        job = Akonadi.CollectionModifyJob(new)
+
+        AkonadiUtils.wait_for_job(job)
