@@ -108,7 +108,7 @@ class AkonadiClient:
         agent = Akonadi.AgentManager.self().instance(identifier)
         return agent if agent.isValid() else None
 
-    def add_item(self, collection_id: int, data: bytes, mime_type: str) -> None:
+    def add_item(self, collection_id: int, data: bytes, mime_type: str) -> Akonadi.Item:
         item = Akonadi.Item()
         item.setMimeType(mime_type)
         item.setPayloadFromData(data)
@@ -118,6 +118,7 @@ class AkonadiClient:
 
         job = Akonadi.ItemCreateJob(item, collection)
         AkonadiUtils.wait_for_job(job)
+        return job.item()
 
     def delete_item(self, item_id: int) -> None:
         item = Akonadi.Item()

@@ -54,9 +54,11 @@ class Email:
 
     def save_to_akonadi(self, collection: Akonadi.Collection | None):
         collection = collection or _clients["akonadi"].resolve_collection(self._folder_path())
-        _clients["akonadi"].akonadi_client.add_item(
+        item = _clients["akonadi"].akonadi_client.add_item(
             collection.id(), self.as_bytes(), "message/rfc822"
         )
+        for flag in self.flags:
+            _clients["akonadi"].add_flag(item.id(), flag)
 
 
 @dataclass
@@ -113,6 +115,9 @@ class BaseEmailFactory(factory.Factory):
     to_email = factory.Faker("email")
     date = factory.Faker("date_time_this_decade")
     message_id = factory.LazyFunction(make_msgid)
+    flags = fake.random_elements(
+        elements=["\\Answered", "\\Flagged", "\\Draft", "\\Seen"], unique=True
+    )
 
     @classmethod
     def _build(cls, model_class, **kwargs):
@@ -124,7 +129,7 @@ class BaseEmailFactory(factory.Factory):
         msg["To"] = f"{kwargs.get('to_name')} <{kwargs.get('to_email')}>"
         msg["Date"] = formatdate(timeval=kwargs.get("date").timestamp(), localtime=True)
         msg["Message-ID"] = kwargs.get("message_id")
-        return model_class(message=msg, folder=kwargs["folder"], flags=kwargs.get("flags", []))
+        return model_class(message=msg, folder=kwargs["folder"], flags=kwargs.get("flags"))
 
 
 class ImapEmailFactory(BaseEmailFactory):
