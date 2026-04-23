@@ -38,6 +38,28 @@ def test_add_collection_to_server_is_sync(
     )
 
 
+def test_delete_collection_to_server_is_sync(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+) -> None:
+    """
+    Removing a calendar from the DAV server gets deleted from the akonadi server
+    """
+    created_calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+    matching_collection = groupware_resource.collection_from_display_name(created_calendar.name)
+
+    assert_collection_equal_calendar(
+        matching_collection.name(), dav_resource=groupware_resource, dav_principal=dav_principal
+    )
+
+    dav_principal.calendar(created_calendar.name).delete()
+    groupware_resource.synchronize()
+
+    with pytest.raises(pytest.fail.Exception):
+        groupware_resource.collection_from_display_name(created_calendar.name)
+
+
 def test_multiple_sync_without_change(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
