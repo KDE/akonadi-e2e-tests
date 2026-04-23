@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
+# SPDX-FileCopyrightText: 2026 Alan Thouvenin <alan.thouvenin@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 from logging import getLogger
@@ -60,6 +61,41 @@ def test_mailbox_deleted_on_server_is_unsynced(
     collections_akonadi = imap_resource.list_collections()
     assert mailbox_to_delete not in list(map(lambda c: c.name(), collections_akonadi))
     assert not imap_client.folder.exists(collection_to_delete)
+
+
+def test_remove_collection_on_server(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+    """
+    Removing a collection from the akonadi server, adding an item to the collection on the server, nothing happens, when
+    the resource is set online, the change is replayed on the server and the collection is removed (including the newly
+    added item)
+    """
+
+    # Create an initial collection with 5 items
+    folder_to_delete = ImapFolderFactory.create()
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder_to_delete.name, imap_resource, imap_client)
+    assert len(list(imap_client.fetch(mark_seen=False))) == len(folder_to_delete.messages)
+
+    imap_resource.set_online(False)
+
+    # Remove collection from resource, add an item on the server
+    imap_resource.delete_collection(folder_to_delete.name)
+    ImapEmailFactory.create(folder=folder_to_delete.name)
+
+    # Change is not propagated when offline
+    assert folder_to_delete.name not in [c.name() for c in imap_resource.list_collections()]
+    assert imap_client.folder.exists(folder_to_delete.name)
+    assert len(list(imap_client.fetch(mark_seen=False))) == len(folder_to_delete.messages) + 1
+
+    imap_resource.set_online(True)
+    # Then the collection and its new item are removed from the server
+    assert folder_to_delete.name not in [c.name() for c in imap_resource.list_collections()]
+    assert not imap_client.folder.exists(folder_to_delete.name)
+
+    imap_resource.synchronize()
+    # Check that the collection does still not exist after a synchronize()
+    assert folder_to_delete.name not in [c.name() for c in imap_resource.list_collections()]
+    assert not imap_client.folder.exists(folder_to_delete.name)
 
 
 @pytest.mark.xfail(
