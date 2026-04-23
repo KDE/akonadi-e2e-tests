@@ -5,14 +5,21 @@
 import logging
 
 from caldav.collection import Principal
+
 from src.akonadi.dav_resource import DAVResource
 
+from src.dav.test_utils import assert_collection_equal_calendar
 
 log = logging.getLogger("caldav")
 
 def test_add_collection_to_server_is_sync(
-    dav_principal: Principal, groupware_resource: DAVResource
+        dav_principal: Principal,
+        groupware_resource: DAVResource,
 ) -> None:
-    calendars = dav_principal.calendars()
-    log.error(f"hello {calendars=}")
-    # dav_client.calendar(url="http://example.com/some-calendar", parent=None, name="SomeCalendar")
+    """
+    Adding a calendar to the DAV server gets replicated to the akonadi server
+    """
+    created_calendar = dav_principal.make_calendar(name="SomeCalendar")
+    groupware_resource.synchronize()
+
+    assert_collection_equal_calendar(str(created_calendar.url), dav_resource=groupware_resource, dav_principal=dav_principal)
