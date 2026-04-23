@@ -18,6 +18,7 @@ from src.akonadi.utils import AkonadiUtils
 from src.factories.email_factory import (
     AkonadiEmailFactory,
     AkonadiFolderFactory,
+    ImapEmailFactory,
     ImapFolderFactory,
     fake,
 )
@@ -374,7 +375,8 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
     """
     Changing flags of an item in the akonadi server, the change is replayed on the server
     """
-    folder = ImapFolderFactory.create()
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 

@@ -66,7 +66,8 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     Flag change on an item from an offline resource and flag mail from a server
     When going back online, both items/mails are correctly flagged
     """
-    folder = ImapFolderFactory.create(nb_items=2).name
+    folder = ImapFolderFactory.create(nb_items=0).name
+    ImapEmailFactory.create_batch(2, folder=folder, flags=[])
     imap_resource.synchronize()
 
     assert_collection_equal_mailbox(folder, imap_resource, imap_client)

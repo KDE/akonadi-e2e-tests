@@ -166,7 +166,8 @@ def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMai
     """
     Changing the flag of a message on the server, the change is replayed on the resource
     """
-    folder = ImapFolderFactory.create()
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -183,7 +184,8 @@ def test_sync_flag_change_and_removed_message(
     """
     Changing the flag and deleting a different message on the server, the changes are replayed on the resource
     """
-    folder = ImapFolderFactory.create(nb_items=2)
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -201,7 +203,8 @@ def test_sync_flag_change_and_added_message(
     """
     Changing the flag and adding a different message on the server, the changes are replayed on the resource
     """
-    folder = ImapFolderFactory.create(nb_items=2)
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -219,7 +222,8 @@ def test_sync_flag_change_and_added_and_removed_message(
     """
     Changing the flag, adding and removing a different message on the server, the changes are replayed on the resource
     """
-    folder = ImapFolderFactory.create(nb_items=2)
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -292,7 +296,8 @@ def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: B
     The flags are also changed on the corresponding item in the akonadi server
     No other change occurred (other than timestamps book keeping)
     """
-    folder = ImapFolderFactory.create()
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
