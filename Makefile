@@ -16,4 +16,4 @@ docker:
 	make -C docker
 
 lint:
-	uv run pytest --ignore-glob='test_*.py' --ignore-glob='*_test.py' --ignore-glob='tests/*' --ruff --ruff-format --mypy
+	uv run pytest -k "ruff or mypy" --ruff --ruff-format --mypy
