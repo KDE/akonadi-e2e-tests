@@ -49,7 +49,8 @@ def test_akonadi_sync_add_collection(imap_resource: ImapResource, imap_client: B
 
 
 def test_akonadi_sync_delete_collection(
-    imap_resource: ImapResource, imap_client: BaseMailBox  # noqa: ARG001
+    imap_resource: ImapResource,  # noqa: ARG001
+    imap_client: BaseMailBox,
 ) -> None:
     """
     Deleting a collection in the akonadi server, the change is replayed on the server

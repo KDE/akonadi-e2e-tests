@@ -46,7 +46,8 @@ def test_initial_sync(imap_resource: ImapResource, imap_client: BaseMailBox) -> 
 
 
 def test_new_mailbox_on_server_is_synced(
-    imap_resource: ImapResource, imap_client: BaseMailBox  # noqa: ARG001
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,  # noqa: ARG001
 ) -> None:
     """
     Creating a new mailbox on the server, the change is replayed on the resource
