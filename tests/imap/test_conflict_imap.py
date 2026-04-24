@@ -86,6 +86,7 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
     imap_resource.sync_collection(folder)
     assert_collection_equal_mailbox(folder, imap_resource, imap_client)
 
+
 def test_conflict_append_message(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,

@@ -10,7 +10,6 @@ from AkonadiCore import Akonadi  # type: ignore
 from imap_tools import AND, A, BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
-from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory
 from src.imap.mailbox_with_original_payload import MailMessageWithOriginalPayload
 
 log = getLogger(__name__)

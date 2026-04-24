@@ -11,8 +11,8 @@ from src.akonadi.utils import AkonadiUtils
 from src.dav.test_utils import assert_all_collections_are_equals
 from src.factories.event_factory import (
     AkonadiCalendarFactory,
-    DavCalendarFactory,
     AkonadiEventFactory,
+    DavCalendarFactory,
 )
 from src.test import wait_until
 
