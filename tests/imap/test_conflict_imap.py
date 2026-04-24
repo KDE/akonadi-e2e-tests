@@ -185,3 +185,46 @@ def test_akonadi_conflict_rename_collection(
 
     assert_collection_equal_mailbox(server_new_name, imap_resource, imap_client)
     assert_all_collections_are_equals(imap_client, imap_resource)
+
+
+@pytest.mark.xfail(
+    reason="On dovecot only => IMAP session state is inconsistent after this conflict."
+)
+def test_offline_delete_item_server_side_delete_collection_akonadi_side(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    Removing an item from a collection on the server, removing the collection in akonadi server, nothing happens, when the resource is set online, the collection is removed on the server
+    """
+    folder = ImapFolderFactory.create(nb_items=5)
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    collection_to_delete = imap_resource.resolve_collection(folder.name)
+
+    items = imap_resource.list_items(collection_to_delete.id())
+    items_to_delete = items[:3]
+
+    imap_resource.set_online(False)
+    imap_client.folder.set(folder.name)
+    imap_client.delete([item.remoteId() for item in items_to_delete])
+    imap_resource.delete_collection(folder.name)
+
+    # check state before reconnect
+    collections_akonadi = imap_resource.list_collections()
+    assert collection_to_delete.name() not in [coll.name() for coll in collections_akonadi]
+    assert imap_client.folder.exists(collection_to_delete.name())
+    assert len(list(imap_client.fetch(mark_seen=False))) == len(folder.messages) - len(
+        items_to_delete
+    )
+
+    imap_resource.set_online(True)
+    imap_resource.synchronize()
+
+    # check state after reconnection, collection should be deleted on the server side
+    assert collection_to_delete.name() not in [coll.name() for coll in collections_akonadi]
+    assert not imap_client.folder.exists(collection_to_delete.name())
+
+    # Not efficient but highlight inconsistent session issue
+    for item in items_to_delete:
+        assert len(list(imap_client.fetch(item.remoteId()))) == 0
