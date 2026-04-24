@@ -9,7 +9,7 @@ import time
 from logging import getLogger
 
 import pytest
-from AkonadiCore import Akonadi
+from AkonadiCore import Akonadi  # type: ignore
 from imap_tools import BaseMailBox
 
 from src.akonadi.client import AkonadiClient

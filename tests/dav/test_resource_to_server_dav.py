@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import pytest
-from AkonadiCore import Akonadi
+from AkonadiCore import Akonadi  # type: ignore
 from caldav.collection import Principal
 
 from src.akonadi.client import AkonadiClient
