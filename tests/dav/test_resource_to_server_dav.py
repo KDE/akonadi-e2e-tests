@@ -225,3 +225,48 @@ def test_akonadi_sync_rename_collection(
 
     # Check the items are matching between resource and server
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91"
+)
+def test_offline_rename_collection(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Renaming a collection in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server.
+    """
+    calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+    old_name, new_name = calendar.name, f"{calendar.name}{fake.word()}"
+    initial_collection = groupware_resource.collection_from_display_name(old_name)
+    initial_items = groupware_resource.list_items(initial_collection.id())
+
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+    groupware_resource.set_online(False)
+    groupware_resource.update_displayname_collection(initial_collection.name(), new_name)
+
+    # Check the rename occurred locally and not on remote
+    updated_collection_names = [c.displayName() for c in groupware_resource.list_collections()]
+    assert old_name not in updated_collection_names
+    assert new_name in updated_collection_names
+
+    unsynced_calendars = [c.get_display_name() for c in dav_principal.get_calendars()]
+    assert old_name in unsynced_calendars
+    assert new_name not in unsynced_calendars
+
+    # Set online do a full sync
+    groupware_resource.set_online(True)
+
+    synced_calendars = [c.get_display_name() for c in dav_principal.get_calendars()]
+    assert old_name not in synced_calendars
+    assert new_name in synced_calendars
+
+    updated_collection = groupware_resource.collection_from_display_name(new_name)
+    updated_items = groupware_resource.list_items(updated_collection.id())
+    assert len(initial_items) == len(updated_items)
+    assert_akonadi_items_are_equal(initial_items, updated_items)
+
+    # Check the items are matching between resource and server
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
