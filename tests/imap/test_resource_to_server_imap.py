@@ -393,6 +393,7 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
 
         imap_resource.sync_collection(folder.name)
         wait_until(lambda: not has_flag(imap_client, item, folder.name, flag))  # noqa: B023
+
         assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
@@ -475,14 +476,48 @@ def test_akonadi_offline_add_flag(imap_resource: ImapResource, imap_client: Base
 
     imap_resource.set_online(False)
 
-    for flag in flags:
-        imap_resource.clear_flag(item.id(), flag)
-    item = imap_resource.akonadi_client.item_by_id(item.id())
-    for flag in flags:
-        assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023
 
-    imap_resource.set_online(True)
+flagBatchs = [
+    [["\\Answered"], ["\\Flagged"], ["\\Draft"], ["\\Seen"]],
+    [["\\Answered", "\\Flagged"], ["\\Draft", "\\Seen"]],
+]
 
-    for flag in flags:
-        assert not has_flag(imap_client, item, folder_name, flag)  # noqa: B023
+
+@pytest.mark.parametrize("batchs", flagBatchs, ids=["batchs_of_one", "batchs_of_two"])
+def test_akonadi_offline_remove_flag(
+    imap_resource: ImapResource, imap_client: BaseMailBox, batchs: list[list[str]]
+) -> None:
+    """
+    Changing flags of an item in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
+    """
+    folder_name = ImapFolderFactory.create(nb_items=0).name
+    ImapEmailFactory.create(
+        folder=folder_name, flags=["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
+    )
+    imap_resource.synchronize()
     assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
+    items = imap_resource.list_items(folder_name)
+    assert len(items) == 1
+    item = items[0]
+    assert all(
+        flag in [bytes(f).decode().lower() for f in item.flags()]
+        for flag in ["\\answered", "\\flagged", "\\draft", "\\seen"]
+    )
+
+    for batch in batchs:
+        imap_resource.set_online(False)
+
+        for flag in batch:
+            imap_resource.clear_flag(item.id(), flag)
+        item = imap_resource.akonadi_client.item_by_id(item.id())
+        for flag in batch:
+            assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023
+            assert flag.lower() not in [bytes(f).decode().lower() for f in item.flags()]
+
+        imap_resource.set_online(True)
+
+        item = imap_resource.akonadi_client.item_by_id(item.id())
+        for flag in batch:
+            wait_until(lambda: not has_flag(imap_client, item, folder_name, flag))  # noqa: B023
+            assert flag.lower() not in [bytes(f).decode().lower() for f in item.flags()]
+        assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
