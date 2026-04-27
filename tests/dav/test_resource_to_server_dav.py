@@ -102,3 +102,53 @@ def test_akonadi_sync_remove_item(
     )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_offline_akonadi_remove_collection(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Removing a collection from the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
+    """
+    calendar_to_delete = DavCalendarFactory.create()
+    unchanged_calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+    initial_calendars = dav_principal.get_calendars()
+    assert len(initial_calendars) == len(
+        groupware_resource.list_collections(sync_collections_only=True)
+    )
+    collection_to_delete = groupware_resource.collection_from_display_name(calendar_to_delete.name)
+
+    groupware_resource.set_online(False)
+    job = Akonadi.CollectionDeleteJob(collection_to_delete)
+    AkonadiUtils.wait_for_job(job)
+
+    # assert nothing happens
+
+    # the calendar is still on server side but not anymore on akonadi side
+    unsynced_calendars = dav_principal.get_calendars()
+    assert len(unsynced_calendars) - 1 == len(
+        groupware_resource.list_collections(sync_collections_only=True)
+    )
+
+    initial_calendars_display_name = [c.get_display_name() for c in unsynced_calendars]
+    assert calendar_to_delete.name in initial_calendars_display_name
+    assert unchanged_calendar.name in initial_calendars_display_name
+
+    groupware_resource.set_online(True)
+
+    # assert synchronization is done
+    current_calendars = dav_principal.get_calendars()
+    current_calendars_display_name = [c.get_display_name() for c in current_calendars]
+    # check that the calendar has been removed on server side
+    assert len(current_calendars) == len(initial_calendars) - 1
+    # now collections and calendars should be the same
+    assert len(current_calendars) == len(
+        groupware_resource.list_collections(sync_collections_only=True)
+    )
+    assert calendar_to_delete.name not in current_calendars_display_name
+    assert unchanged_calendar.name in current_calendars_display_name
+
+    # assert all events are still there
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
