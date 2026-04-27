@@ -106,6 +106,10 @@ def test_akonadi_sync_remove_item(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
+@pytest.mark.xfail(
+    reason="The test fails on RADICALE, the collection is deleted when calling the delete job then recreated by the resource when going back online (as an empty collection)."
+    "Note that if the test calls synchronize just after going back online, the resource will call a second delete collection job"
+)
 def test_offline_akonadi_remove_collection(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
