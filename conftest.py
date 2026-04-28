@@ -20,6 +20,7 @@ from src.akonadi.dav_resource import DAVResource
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.env import AkonadiEnv
 from src.akonadi.imap_resource import ImapResource
+from src.akonadi.itip_handler import ITIPHandler
 from src.akonadi.server import AkonadiServer
 from src.dav.dav_server import DAVServer, DAVServerType
 from src.dav.nextcloud_server import NextCloudServer
@@ -203,6 +204,12 @@ def dav_principal(dav_client: DAVClient | None) -> Generator[Principal | None]:
         yield None
     principal = dav_client.get_principal()
     yield principal
+
+
+@pytest.fixture()
+def itip_handler() -> Generator[ITIPHandler | None]:
+    handler = ITIPHandler()
+    yield handler
 
 
 @pytest.fixture()
