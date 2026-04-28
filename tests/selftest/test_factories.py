@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from caldav.collection import Principal
+from icalendar.cal import Calendar
 from imap_tools import BaseMailBox
 
 from src.akonadi.dav_resource import DAVResource
@@ -14,6 +15,8 @@ from src.factories.email_factory import (
     ImapFolderFactory,
 )
 from src.factories.event_factory import AkonadiEventFactory, DavCalendarFactory, DavEventFactory
+from src.factories.itip.google_factory import GoogleITIPFactory
+from src.itip.test_utils import assert_dav_event_equal_itip
 
 
 def test_imap_factory(imap_resource: ImapResource, imap_client: BaseMailBox):  # noqa: ARG001
@@ -102,3 +105,13 @@ def test_dav_resource_factory(groupware_resource: DAVResource, dav_principal: Pr
     )  # Default Calendar and resource collection
     collection = groupware_resource.collection_from_display_name("Default Calendar")
     assert len(groupware_resource.list_items(collection.id())) == 10
+
+
+def test_itip_google_factory():
+    itip = GoogleITIPFactory.build()
+    ical = itip.to_ical()
+
+    cal = Calendar.from_ical(ical)
+    [event] = cal.walk("VEVENT")
+
+    assert_dav_event_equal_itip(event, itip)
