@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
+# SPDX-FileCopyrightText: 2026 Alan Thouvenin <alan.thouvenin@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -224,4 +225,34 @@ def test_akonadi_sync_rename_collection(
     assert_akonadi_items_are_equal(initial_items, updated_items)
 
     # Check the items are matching between resource and server
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_akonadi_offline_sync_add_collection(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Adding an item to a collection in the akonadi server, nothing happens
+    When the resource is set online, the change is replayed on the server
+    """
+
+    # Create an initial calendar on both sides
+    calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+
+    groupware_resource.set_online(False)
+
+    # Add an event in Akonadi, check it exists in the resource and not in the server
+    AkonadiEventFactory.create(calendar=calendar.name)
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    assert len(groupware_resource.list_items(collection.id())) == len(calendar.events) + 1
+    assert len(dav_principal.calendar(calendar.name).get_events()) == len(calendar.events)
+
+    # Synchronize, then check the event has been added server-side
+    groupware_resource.set_online(True)
+
+    wait_until(
+        lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(calendar.events) + 1
+    )
+
     assert_all_collections_are_equals(dav_principal, groupware_resource)
