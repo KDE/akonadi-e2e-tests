@@ -11,13 +11,12 @@ import pytest
 from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
+from src.akonadi.test_utils import assert_item_sync, assert_item_unsync
 from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
 from src.imap.email_utils import create_message
 from src.imap.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_mailbox,
-    assert_item_sync,
-    assert_item_unsync,
     compare_flags,
 )
 

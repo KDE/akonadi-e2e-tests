@@ -9,8 +9,9 @@ from caldav.elements import ical
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
+from src.akonadi.test_utils import assert_akonadi_items_are_equal
 from src.akonadi.utils import AkonadiUtils
-from src.dav.test_utils import assert_akonadi_items_are_equal, assert_all_collections_are_equals
+from src.dav.test_utils import assert_all_collections_are_equals
 from src.factories.event_factory import (
     AkonadiCalendarFactory,
     AkonadiEventFactory,

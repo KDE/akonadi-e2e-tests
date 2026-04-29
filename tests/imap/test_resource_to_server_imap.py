@@ -14,6 +14,7 @@ from imap_tools import BaseMailBox
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.imap_resource import ImapResource
+from src.akonadi.test_utils import assert_akonadi_items_are_equal
 from src.akonadi.utils import AkonadiUtils
 from src.factories.email_factory import (
     AkonadiEmailFactory,
@@ -23,7 +24,6 @@ from src.factories.email_factory import (
     fake,
 )
 from src.imap.test_utils import (
-    assert_akonadi_items_are_equal,
     assert_collection_equal_mailbox,
     has_flag,
     message_added,
@@ -112,11 +112,7 @@ def test_rename_collection(
     assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
 
     # Check that the renamed collection has the same items as the original one
-    assert len(initial_items) == len(updated_items)
-    initial_items.sort(key=lambda item: item.id())
-    updated_items.sort(key=lambda item: item.id())
-    for initial_item, updated_item in zip(initial_items, updated_items, strict=False):
-        assert_akonadi_items_are_equal(initial_item, updated_item)
+    assert_akonadi_items_are_equal(initial_items, updated_items)
 
 
 def test_akonadi_offline_delete_collection(
@@ -448,8 +444,4 @@ def test_offline_rename_collection(
     assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
 
     # Check that the renamed collection has the same items as the original one
-    assert len(initial_items) == len(updated_items)
-    initial_items.sort(key=lambda item: item.id())
-    updated_items.sort(key=lambda item: item.id())
-    for initial_item, updated_item in zip(initial_items, updated_items, strict=False):
-        assert_akonadi_items_are_equal(initial_item, updated_item)
+    assert_akonadi_items_are_equal(initial_items, updated_items)
