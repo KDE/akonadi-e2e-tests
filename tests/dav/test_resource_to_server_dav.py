@@ -71,7 +71,7 @@ def test_akonadi_sync_remove_collection(
 @pytest.mark.xfail(
     reason="Akonadi bug? Akonadi doesnt seem to sync calendar attributes https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101"
 )
-def test_adkonadi_sync_change_color_collection(
+def test_akonadi_sync_change_color_collection(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
     """
@@ -256,6 +256,41 @@ def test_akonadi_offline_sync_add_collection(
 
     wait_until(
         lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(calendar.events) + 1
+    )
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug? The resource goes back to the old color once back online, see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101"
+)
+def test_akonadi_offline_change_color_collection(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Changing the color of a collection in the akonadi server, nothing happens
+    When the resource is set online, the change is replayed on the server
+    """
+    calendar: GenericCalendar = DavCalendarFactory.create()
+    new_color = fake.qcolor()
+    groupware_resource.synchronize()
+    assert calendar.name in [c.displayName() for c in groupware_resource.list_collections()]
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    old_color = groupware_resource.get_collection_color(collection.name())
+
+    groupware_resource.set_online(False)
+
+    groupware_resource.set_collection_color(collection.name(), new_color)
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    assert groupware_resource.get_collection_color(collection.name()) == new_color
+    assert dav_principal.calendar(calendar.name).get_property(ical.CalendarColor()) == old_color
+
+    groupware_resource.set_online(True)
+    assert groupware_resource.get_collection_color(collection.name()) == new_color
+    wait_until(
+        lambda: (
+            dav_principal.calendar(calendar.name).get_property(ical.CalendarColor()) == new_color
+        )
     )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
