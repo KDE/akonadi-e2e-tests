@@ -73,7 +73,7 @@ def test_adkonadi_sync_change_color_collection(
     Changing the color of a collection in the akonadi server, the change is replayed on the server
     """
     calendar: GenericCalendar = DavCalendarFactory.create()
-    new_color = fake.hex_argb()
+    new_color = fake.hex_rgba()
     groupware_resource.synchronize()
     assert calendar.name in [c.displayName() for c in groupware_resource.list_collections()]
 
