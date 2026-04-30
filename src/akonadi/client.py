@@ -79,11 +79,13 @@ class AkonadiClient:
 
         AkonadiUtils.wait_for_job(job)
 
-    def item_by_id(self, item_id: int) -> Akonadi.Item:
+    def item_by_id(self, item_id: int, full_payload: bool = True) -> Akonadi.Item:
         item = Akonadi.Item()
         item.setId(item_id)
 
         job = Akonadi.ItemFetchJob(item)
+        if full_payload:
+            job.fetchScope().fetchFullPayload()
         AkonadiUtils.wait_for_job(job)
 
         if len(job.items()) > 1:

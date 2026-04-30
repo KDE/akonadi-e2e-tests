@@ -107,6 +107,9 @@ class Resource(ABC):
             return [c for c in collections if c.parentCollection().id() != 0]
         return collections
 
+    def item_by_id(self, item_id: int) -> Akonadi.Item:
+        return self.akonadi_client.item_by_id(item_id)
+
     def list_items(
         self, collection_name_or_id: str | int, full_payload: bool = True
     ) -> list[Akonadi.Item]:
@@ -147,6 +150,13 @@ class Resource(ABC):
     def clear_flag(self, item_id: int, flag: str) -> None:
         item = self.akonadi_client.item_by_id(item_id)
         item.clearFlag(flag.encode())
+
+        modifyJob = Akonadi.ItemModifyJob(item)
+        AkonadiUtils.wait_for_job(modifyJob)
+
+    def modify_payload(self, item_id: int, payload: bytes) -> None:
+        item = self.akonadi_client.item_by_id(item_id)
+        item.setPayloadFromData(payload)
 
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
