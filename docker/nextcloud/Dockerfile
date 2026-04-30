@@ -128,6 +128,7 @@ RUN php occ config:system:set trusted_domains 0 --value="localhost" \
     && php occ config:system:set overwrite.cli.url --value="http://localhost" \
     && php occ config:system:set htaccess.RewriteBase --value="/" \
     && php occ config:system:set ratelimit.protection.enabled --value=false --type=boolean \
+    && php occ config:system:set auth.bruteforce.protection.enabled --value=false --type=boolean \
     && php occ maintenance:update:htaccess
 # Enable debugging
 RUN php occ config:system:set debug --value=true --type=boolean \
