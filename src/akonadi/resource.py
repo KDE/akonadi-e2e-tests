@@ -190,6 +190,13 @@ class Resource(ABC):
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
 
+    def modify_payload(self, item_id: int, payload: bytes) -> None:
+        item = self.akonadi_client.item_by_id(item_id)
+        item.setPayloadFromData(payload)
+
+        modifyJob = Akonadi.ItemModifyJob(item)
+        AkonadiUtils.wait_for_job(modifyJob)
+
     def set_online(self, online: bool) -> None:
         """
         Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
