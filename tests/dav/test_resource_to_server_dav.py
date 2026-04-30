@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 # SPDX-FileCopyrightText: 2026 Alan Thouvenin <alan.thouvenin@enioka.com>
+# SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -8,6 +9,7 @@ import pytest
 from AkonadiCore import Akonadi  # type: ignore
 from caldav.collection import Principal
 from caldav.elements import ical
+from icalendar import Calendar
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
@@ -22,6 +24,7 @@ from src.factories.event_factory import (
     AkonadiCalendarFactory,
     AkonadiEventFactory,
     DavCalendarFactory,
+    DavEventFactory,
     GenericCalendar,
     fake,
 )
@@ -382,3 +385,70 @@ def test_offline_rename_collection(
 
     # Check the items are matching between resource and server
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+random_dtsart = fake.future_datetime()
+
+changed_field = [
+    ("DESCRIPTION", fake.paragraph(), fake.boolean()),
+    ("SUMMARY", fake.sentence(), fake.boolean()),
+    ("DTSTART", fake.future_datetime().strftime("%Y%m%dT%H%M%S"), fake.boolean()),
+    (
+        "DTEND",
+        fake.date_time_between(start_date=random_dtsart, end_date="+8h").strftime("%Y%m%dT%H%M%S"),
+        True,
+    ),
+    ("DURATION", f"PT{fake.random_int(min=1, max=8)}H", False),
+]
+ids = ["description", "sentence", "dtstart", "dtend", "duration"]
+
+
+@pytest.mark.parametrize("field, new_value, use_dtend", changed_field, ids=ids)
+def test_akonadi_change_item_contents(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    field: str,
+    new_value: str,
+    use_dtend: bool,
+) -> None:
+    """
+    Changing content of an item in the akonadi server (description, alarms, attachments… should all be tested), the change is replayed on the server
+    """
+    calendar = DavCalendarFactory.create(nb_items=0)
+    event = DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend)
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) == 1
+    item = items[0]
+
+    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(items))
+    event = dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+
+    assert item_event[field] == event.get_icalendar_component()[field]
+
+    item_event[field] = new_value
+    new_payload = item_calendar.to_ical()
+    groupware_resource.modify_payload(item.id(), new_payload)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert updated_event[field].to_ical().decode() == new_value
+    wait_until(
+        lambda: (
+            dav_principal.calendar(calendar.name)
+            .event_by_url(item.remoteId())
+            .get_icalendar_component()[field]
+            .to_ical()
+            .decode()
+            == new_value
+        )
+    )
