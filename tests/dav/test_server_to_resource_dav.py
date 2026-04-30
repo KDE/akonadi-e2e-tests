@@ -7,7 +7,7 @@ from urllib.parse import unquote
 
 import pytest
 from caldav.collection import Principal
-from caldav.elements import ical
+from caldav.elements import dav, ical
 
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.test_utils import assert_akonadi_item_are_equal, assert_item_unsync
@@ -231,4 +231,35 @@ def test_offline_add_collection_server_side(
         unquote(c.remoteId()) for c in groupware_resource.list_collections()
     )
     assert calendar_name in (c.displayName() for c in groupware_resource.list_collections())
+    assert_all_collections_are_equals(dav_resource=groupware_resource, dav_principal=dav_principal)
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91"
+)
+def test_offline_rename_collection_server_side(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+) -> None:
+    """
+    Renaming a collection in the server, nothing happens, when the resource is set online, the collection is also
+    renamed in the akonadi server, no other change occurred (other than timestamps book keeping)
+    """
+    calendar_name = DavCalendarFactory.create().name
+    created_calendar = dav_principal.calendar(calendar_name)
+    groupware_resource.synchronize()
+
+    groupware_resource.set_online(False)
+
+    new_collection_name = calendar_name + fake.word()
+    created_calendar.set_properties([dav.DisplayName(new_collection_name)])
+    assert all(
+        c.displayName() != new_collection_name for c in groupware_resource.list_collections()
+    )
+
+    groupware_resource.set_online(True)
+
+    assert any(
+        c.displayName() == new_collection_name for c in groupware_resource.list_collections()
+    )
     assert_all_collections_are_equals(dav_resource=groupware_resource, dav_principal=dav_principal)
