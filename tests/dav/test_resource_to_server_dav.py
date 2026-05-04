@@ -160,7 +160,7 @@ def test_offline_akonadi_remove_collection(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
     initial_calendars = dav_principal.get_calendars()
     assert len(initial_calendars) == len(
-        groupware_resource.list_collections(sync_collections_only=True)
+        groupware_resource.list_collections(exclude_resource_root_collection=True)
     )
     collection_to_delete = groupware_resource.collection_from_display_name(calendar_to_delete.name)
 
@@ -173,7 +173,7 @@ def test_offline_akonadi_remove_collection(
     # the calendar is still on server side but not anymore on akonadi side
     unsynced_calendars = dav_principal.get_calendars()
     assert len(unsynced_calendars) - 1 == len(
-        groupware_resource.list_collections(sync_collections_only=True)
+        groupware_resource.list_collections(exclude_resource_root_collection=True)
     )
 
     initial_calendars_display_name = [c.get_display_name() for c in unsynced_calendars]
@@ -189,7 +189,7 @@ def test_offline_akonadi_remove_collection(
     assert len(current_calendars) == len(initial_calendars) - 1
     # now collections and calendars should be the same
     assert len(current_calendars) == len(
-        groupware_resource.list_collections(sync_collections_only=True)
+        groupware_resource.list_collections(exclude_resource_root_collection=True)
     )
     assert calendar_to_delete.name not in current_calendars_display_name
     assert unchanged_calendar.name in current_calendars_display_name

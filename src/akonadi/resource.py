@@ -92,18 +92,20 @@ class Resource(ABC):
         AkonadiUtils.wait_for_status(self._identifier, 1)
         AkonadiUtils.wait_for_status(self._identifier, 0)
 
-    def list_collections(self, sync_collections_only: bool = False) -> list[Akonadi.Collection]:
+    def list_collections(
+        self, exclude_resource_root_collection: bool = False
+    ) -> list[Akonadi.Collection]:
         """
         List the collections of the resource.
         Note that by default, akonadi creates a root collection for a resource, which contains all synced collections.
-        If sync_collections_only is set to True, only the collections synced with the server are returned.
-        :param sync_collections_only: Get only synced collections with the server
+        If exclude_resource_root_collection is set to True, only the collections synced with the server are returned.
+        :param exclude_resource_root_collection: Exclude the root collection of the resource.
         :return: The resource collections
         """
         collections = self.akonadi_client.list_collections(
             parent_id=self.get_root_collection().id()
         )
-        if sync_collections_only:
+        if exclude_resource_root_collection:
             return [c for c in collections if c.parentCollection().id() != 0]
         return collections
 
