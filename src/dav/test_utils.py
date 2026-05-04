@@ -6,9 +6,11 @@ from urllib.parse import unquote, unquote_plus
 import icalendar
 from AkonadiCore import Akonadi  # type: ignore
 from caldav.calendarobjectresource import Event
-from caldav.collection import Principal
+from caldav.collection import Calendar, Principal
+from caldav.elements import ical
 
 from src.akonadi.dav_resource import DAVResource
+from src.test.color import argb_to_rgba
 
 
 def item_to_event(item: Akonadi.Item) -> icalendar.Event:
@@ -37,10 +39,14 @@ def assert_all_collections_are_equals(
 def assert_collection_equal_calendar(
     name: str, dav_resource: DAVResource, dav_principal: Principal, payload_test: bool = True
 ) -> None:
+    calendar = dav_principal.calendar(cal_url=name)
+    [collection] = [
+        c for c in dav_resource.list_collections() if unquote_plus(c.name()) == unquote_plus(name)
+    ]
+    assert_collection_attributes_are_equal(collection, calendar)
+
     items = dav_resource.list_items(name)
     items.sort(key=lambda i: unquote_plus(i.remoteId()) or "-1")
-
-    calendar = dav_principal.calendar(cal_url=name)
 
     events = calendar.get_events()
     events.sort(key=lambda e: unquote_plus(e.canonical_url) or "-1")
@@ -50,6 +56,16 @@ def assert_collection_equal_calendar(
         assert unquote_plus(event.canonical_url) == unquote_plus(item.remoteId())
         if payload_test:
             assert_payload_are_equal(item, event)
+
+
+def assert_collection_attributes_are_equal(
+    collection: Akonadi.Collection, calendar: Calendar
+) -> None:
+    assert calendar.get_display_name() == collection.displayName()
+    color_attribute = collection.attribute(b"collectioncolor")
+    assert calendar.get_property(ical.CalendarColor()) == (
+        color_attribute and argb_to_rgba(bytes(color_attribute.serialized()).decode())
+    )
 
 
 IGNORED_PROPERTIES = {"CREATED", "LAST-MODIFIED", "DTSTAMP", "TRANSP"}
