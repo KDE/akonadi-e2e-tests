@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-from urllib.parse import unquote_plus
 
 from caldav.collection import Principal
 
@@ -34,12 +33,4 @@ def test_list_calendars(dav_principal: Principal, groupware_resource: DAVResourc
     DavCalendarFactory.create(nb_items=5)
     groupware_resource.synchronize()
 
-    server_calendars = dav_principal.calendars()
-    # Skip root collection
-    akonadi_calendars = [
-        c for c in groupware_resource.list_collections() if c.parentCollection().id() != 0
-    ]
-
-    assert len(server_calendars) == len(akonadi_calendars)
-    for server_calendar, akonadi_calendar in zip(server_calendars, akonadi_calendars, strict=False):
-        assert unquote_plus(str(server_calendar.url)) == akonadi_calendar.name()
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
