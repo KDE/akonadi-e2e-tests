@@ -44,6 +44,8 @@ def test_akonadi_sync_add_collection(imap_resource: ImapResource, imap_client: B
 
     child_folder = AkonadiFolderFactory.create(parent=toplevel_folder)
     wait_until(lambda: imap_client.folder.exists(child_folder.imap_path))
+    imap_client.folder.set(child_folder.imap_path)
+    wait_until(lambda: len(list(imap_client.fetch(mark_seen=False))) == len(child_folder.messages))
 
     assert_collection_equal_mailbox(toplevel_folder.name, imap_resource, imap_client)
     assert_collection_equal_mailbox(child_folder.imap_path, imap_resource, imap_client)
@@ -130,6 +132,8 @@ def test_akonadi_offline_delete_collection(
         )
     )
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # Delete parent collection
