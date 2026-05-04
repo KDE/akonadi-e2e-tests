@@ -26,10 +26,11 @@ def assert_all_collections_are_equals(
     calendars = dav_principal.calendars()
     calendars.sort(key=lambda c: unquote(c.canonical_url))
 
-    collections = [c for c in dav_resource.list_collections() if c.parentCollection().id() != 0]
+    collections = dav_resource.list_collections(exclude_resource_root_collection=True)
     collections.sort(key=lambda c: unquote(c.remoteId()))
 
-    for calendar, collection in zip(calendars, collections, strict=False):
+    assert len(calendars) == len(collections)
+    for calendar, collection in zip(calendars, collections, strict=True):
         assert unquote(calendar.canonical_url) == unquote(collection.remoteId())
         assert_collection_equal_calendar(
             calendar.canonical_url, dav_resource, dav_principal, payload_test
