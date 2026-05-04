@@ -12,6 +12,7 @@ from imap_tools import BaseMailBox
 
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.test_utils import (
+    assert_akonadi_item_are_equal,
     assert_akonadi_items_are_equal,
     assert_item_sync,
     assert_item_unsync,
@@ -626,3 +627,28 @@ def test_conflict_uidvalidity_collection(
 
     assert_collection_equal_mailbox(initial_folder.name, imap_resource, imap_client)
     assert_all_collections_are_equals(imap_client, imap_resource)
+
+
+def test_multiple_sync_without_change(
+    imap_resource: ImapResource, imap_client: BaseMailBox
+) -> None:
+    """
+    When already synced, another sync doesn't lead to any change (other than timestamps book keeping)
+    """
+
+    folder = ImapFolderFactory.create()
+    # First synchronize, just check collection as initial sync is already well tested
+    imap_resource.synchronize()
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+
+    initial_items = imap_resource.list_items(folder.name)
+
+    # Seconde synchronize, check that items are unchanged, aka unsynced
+    imap_resource.synchronize()
+    current_items = imap_resource.list_items(folder.name)
+
+    initial_items.sort(key=lambda i: i.id())
+    current_items.sort(key=lambda i: i.id())
+    for initial_item, current_item in zip(initial_items, current_items, strict=True):
+        assert_item_unsync(initial_item, current_item)
+        assert_akonadi_item_are_equal(initial_item, current_item)
