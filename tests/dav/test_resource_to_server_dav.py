@@ -214,7 +214,7 @@ def test_akonadi_sync_rename_collection(
     initial_collection = groupware_resource.collection_from_display_name(old_name)
     initial_items = groupware_resource.list_items(initial_collection.id())
 
-    groupware_resource.update_displayname_collection(initial_collection.name(), new_name)
+    groupware_resource.update_collection_displayname(initial_collection.name(), new_name)
 
     # Check the rename occurred locally and on remote
     updated_collection_names = [c.displayName() for c in groupware_resource.list_collections()]

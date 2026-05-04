@@ -133,7 +133,7 @@ class Resource(ABC):
         collection = self.resolve_collection(collection_name)
         self.akonadi_client.rename_collection(collection.id(), new_name)
 
-    def update_displayname_collection(self, collection_name: str, new_name: str) -> None:
+    def update_collection_displayname(self, collection_name: str, new_name: str) -> None:
         collection = self.resolve_collection(collection_name)
         collection.attribute(bytes("ENTITYDISPLAY", "ascii")).setDisplayName(new_name)
         job = Akonadi.CollectionModifyJob(collection)
