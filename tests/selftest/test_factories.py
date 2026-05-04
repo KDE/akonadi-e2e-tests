@@ -16,6 +16,7 @@ from src.factories.email_factory import (
 )
 from src.factories.event_factory import AkonadiEventFactory, DavCalendarFactory, DavEventFactory
 from src.factories.itip.google_factory import GoogleITIPFactory
+from src.factories.itip.microsoft_factory import MicrosoftITIPFactory
 from src.itip.test_utils import assert_dav_event_equal_itip
 
 
@@ -109,6 +110,16 @@ def test_dav_resource_factory(groupware_resource: DAVResource, dav_principal: Pr
 
 def test_itip_google_factory():
     itip = GoogleITIPFactory.build()
+    ical = itip.to_ical()
+
+    cal = Calendar.from_ical(ical)
+    [event] = cal.walk("VEVENT")
+
+    assert_dav_event_equal_itip(event, itip)
+
+
+def test_itip_microsoft_factory():
+    itip = MicrosoftITIPFactory.build()
     ical = itip.to_ical()
 
     cal = Calendar.from_ical(ical)

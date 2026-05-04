@@ -46,8 +46,8 @@ class BaseITIP(abc.ABC):
     dtstart: datetime
     dtend: datetime
     attendees: list[ITIPAttendee]
-    created_at: datetime
-    last_modified_at: datetime
+    created_at: datetime | None
+    last_modified_at: datetime | None
 
     @abc.abstractmethod
     def to_ical(self) -> str:

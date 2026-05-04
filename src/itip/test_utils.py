@@ -25,12 +25,18 @@ def assert_dav_event_equal_itip(event: Event, itip: BaseITIP) -> None:
     assert itip.location == event.get("LOCATION").ical_value
     assert norm_dt(itip.dtstart) == norm_dt(event.get("DTSTART").dt)
     assert norm_dt(itip.dtend) == norm_dt(event.get("DTEND").dt)
-    assert norm_dt(itip.created_at) == norm_dt(event.get("CREATED").dt)
-    assert norm_dt(itip.last_modified_at) == norm_dt(event.get("LAST-MODIFIED").dt)
+    if itip.created_at and event.has_key("CREATED"):
+        assert norm_dt(itip.created_at) == norm_dt(event.get("CREATED").dt)
+    if itip.last_modified_at and event.has_key("LAST-MODIFIED"):
+        assert norm_dt(itip.last_modified_at) == norm_dt(event.get("LAST-MODIFIED").dt)
 
-    assert len(itip.attendees) == len(event.get("ATTENDEE"))
+    event_attendees = event.get("ATTENDEE")
+    if not isinstance(event.get("ATTENDEE"), list):
+        event_attendees = [event_attendees]
+
+    assert len(itip.attendees) == len(event_attendees)
     itip_attendees = sorted(itip.attendees, key=lambda a: a.email)
-    event_attendees = sorted(event.get("ATTENDEE"), key=lambda a: a.email)
+    event_attendees = sorted(event_attendees, key=lambda a: a.email)
     for itip_attendee, event_attendee in zip(itip_attendees, event_attendees, strict=True):
         assert itip_attendee.email == event_attendee.email
         assert itip_attendee.name == event_attendee.CN

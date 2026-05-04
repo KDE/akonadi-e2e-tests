@@ -1,8 +1,10 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import string
 from dataclasses import dataclass
+from datetime import datetime
 
 import factory
 from faker import Faker
@@ -16,6 +18,8 @@ fake = Faker()
 @dataclass
 class GoogleITIP(BaseITIP):
     microsoft_cdo_ownerapptid: str
+    created_at: datetime
+    last_modified_at: datetime
 
     def attendee_ical(self, cn: str, email: str, partstat: PARTSTAT) -> str:
         return f"ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT={partstat};RSVP=TRUE;CN={cn};X-NUM-GUESTS=0:mailto:{email}"
