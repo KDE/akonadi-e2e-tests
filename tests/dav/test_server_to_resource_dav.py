@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
+# SPDX-FileCopyrightText: 2026 Alan THOUVENIN <alan.thouvenin@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+from urllib.parse import unquote
+
 import pytest
 from caldav.collection import Principal
 from caldav.elements import ical
@@ -177,3 +180,30 @@ def test_partial_sync_on_item_add(dav_principal: Principal, groupware_resource: 
 
     assert len(groupware_resource.list_items(edited_collection.id())) == init_nb_items + 1
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_offline_remove_collection_server_side(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+) -> None:
+    """
+    Removing a collection from the server, nothing happens, when the resource is set online, the removed collection is
+    also removed from the akonadi server, no other change occurred (other than timestamps book keeping)
+    """
+    initial_count = len(groupware_resource.list_collections())
+    calendar_name = DavCalendarFactory.create().name
+    created_calendar = dav_principal.calendar(calendar_name)
+    groupware_resource.synchronize()
+
+    groupware_resource.set_online(False)
+    created_calendar.delete()
+    # The resource is offline so the removed calendar should still be there Akonadi side
+    assert len(groupware_resource.list_collections()) == initial_count + 1
+
+    groupware_resource.set_online(True)
+
+    assert len(groupware_resource.list_collections()) == initial_count
+    assert unquote(str(created_calendar.url)) not in (
+        unquote(c.remoteId()) for c in groupware_resource.list_collections()
+    )
+    assert calendar_name not in (c.displayName() for c in groupware_resource.list_collections())
