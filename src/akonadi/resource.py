@@ -9,12 +9,15 @@ from logging import getLogger
 from typing import ClassVar, Self
 
 import pytest
+import shiboken6
 from AkonadiCore import Akonadi  # type: ignore
+from PySide6.QtGui import QColor  # type: ignore
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.utils import AkonadiUtils
 from src.test import wait_until
+from src.test.color import argb_to_rgba, rgba_to_argb
 
 log = getLogger(__name__)
 
@@ -133,10 +136,44 @@ class Resource(ABC):
         collection = self.resolve_collection(collection_name)
         self.akonadi_client.rename_collection(collection.id(), new_name)
 
+    @classmethod
+    def get_collection_attribute(
+        cls,
+        collection: Akonadi.Collection,
+        klass: type[Akonadi.Attribute],
+        type_name: str | None = None,
+    ) -> Akonadi.Attribute:
+        if not type_name:
+            type_name = klass().type()
+        if not (attribute := collection.attribute(type_name)):
+            return None
+        ptr = shiboken6.getCppPointer(attribute)[0]
+        shiboken6.invalidate(attribute)
+        return shiboken6.wrapInstance(ptr, klass)
+
     def update_collection_displayname(self, collection_name: str, new_name: str) -> None:
         collection = self.resolve_collection(collection_name)
-        collection.attribute(bytes("ENTITYDISPLAY", "ascii")).setDisplayName(new_name)
+        attr = self.get_collection_attribute(collection, Akonadi.EntityDisplayAttribute)
+        attr.setDisplayName(new_name)
         job = Akonadi.CollectionModifyJob(collection)
+        AkonadiUtils.wait_for_job(job)
+
+    def get_collection_color(self, collection_name: str) -> str | None:
+        collection = self.resolve_collection(collection_name)
+        attr = self.get_collection_attribute(collection, Akonadi.CollectionColorAttribute)
+        return argb_to_rgba(attr.color().name(QColor.NameFormat.HexArgb)) if attr else None
+
+    def set_collection_color(self, collection_name: str, rgba_hex_color: str) -> None:
+        argb_hex_color = rgba_to_argb(rgba_hex_color)
+        collection = self.resolve_collection(collection_name)
+        attr = Akonadi.CollectionColorAttribute()
+        attr.setColor(QColor.fromString(argb_hex_color))
+
+        new = Akonadi.Collection()
+        new.setId(collection.id())
+        new.addAttribute(attr.clone())  # clone to give an unmanaged object
+        job = Akonadi.CollectionModifyJob(new)
+
         AkonadiUtils.wait_for_job(job)
 
     def add_flag(self, item_id: int, flag: str) -> None:

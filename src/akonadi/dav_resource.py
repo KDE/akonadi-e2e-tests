@@ -9,7 +9,6 @@ from urllib.parse import unquote
 
 import pytest
 from AkonadiCore import Akonadi  # type: ignore
-from PySide6.QtGui import QColor  # type: ignore
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
@@ -19,7 +18,6 @@ from src.akonadi.dbus.interfaces.org_kde_akonadi_davgroupware_settings import (
 from src.akonadi.resource import Resource
 from src.akonadi.utils import AkonadiUtils
 from src.kwallet.client import KWalletClient
-from src.test.color import argb_to_rgba, rgba_to_argb
 
 log = getLogger(__name__)
 
@@ -99,21 +97,3 @@ class DAVResource(Resource):
             pytest.fail(f"Collection {name} not found")
 
         return collection
-
-    def get_collection_color(self, collection_name: str) -> str | None:
-        collection = self.resolve_collection(collection_name)
-        attribute = collection.attribute(b"collectioncolor")
-        return argb_to_rgba(bytes(attribute.serialized()).decode()) if attribute else None
-
-    def set_collection_color(self, collection_name: str, rgba_hex_color: str) -> None:
-        argb_hex_color = rgba_to_argb(rgba_hex_color)
-        collection = self.resolve_collection(collection_name)
-        attr = Akonadi.CollectionColorAttribute()
-        attr.setColor(QColor.fromString(argb_hex_color))
-
-        new = Akonadi.Collection()
-        new.setId(collection.id())
-        new.addAttribute(attr.clone())  # clone to give an unmanaged object
-        job = Akonadi.CollectionModifyJob(new)
-
-        AkonadiUtils.wait_for_job(job)
