@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Arnaud Chirat <arnaud.chirat@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+import pytest
 from caldav.collection import Principal
 from caldav.elements import ical
 
@@ -150,4 +151,28 @@ def test_offline_remove_items(dav_principal: Principal, groupware_resource: DAVR
     assert len(synced_default_items) == len(initial_events_from_default_calendar) - len(
         events_to_remove_default_calendar
     )
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug? The partial sync does not seem to replicate the new item in the akonadi server"
+    "Issue: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103"
+)
+def test_partial_sync_on_item_add(dav_principal: Principal, groupware_resource: DAVResource):
+    """
+    Adding an item to a collection on the server, after requesting a partial sync, the added item is replicated in the
+    akonadi server, no other change occurred (other than timestamps book keeping)
+    """
+    created_calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+    edited_collection_name = created_calendar.name
+    edited_collection = groupware_resource.collection_from_display_name(edited_collection_name)
+    init_nb_items = len(groupware_resource.list_items(edited_collection.id()))
+    DavEventFactory.create(calendar=edited_collection_name)
+
+    groupware_resource.sync_collection(edited_collection.remoteId())
+
+    assert len(groupware_resource.list_items(edited_collection.id())) == init_nb_items + 1
     assert_all_collections_are_equals(dav_principal, groupware_resource)
