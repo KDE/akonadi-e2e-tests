@@ -69,7 +69,7 @@ def test_akonadi_sync_remove_collection(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? Akonadi doesnt seem to sync calendar attributes https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91"
+    reason="Akonadi bug? Akonadi doesnt seem to sync calendar attributes https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101"
 )
 def test_adkonadi_sync_change_color_collection(
     dav_principal: Principal, groupware_resource: DAVResource
