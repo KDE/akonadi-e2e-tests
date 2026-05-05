@@ -17,11 +17,10 @@ from PySide6.QtGui import QColor  # type: ignore
 
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.utils import AkonadiUtils
-from src.factories.providers import HexArgbProvider
-from src.test.color import rgba_to_argb
+from src.factories.providers import QColorProvider
 
 fake = Faker()
-fake.add_provider(HexArgbProvider)
+fake.add_provider(QColorProvider)
 
 
 class _Clients(TypedDict):
@@ -60,7 +59,7 @@ class GenericEvent:
 @dataclass
 class GenericCalendar:
     name: str
-    color_rgba: str
+    color: QColor
     events: list[GenericEvent] = field(default_factory=list)
 
 
@@ -131,11 +130,11 @@ class BaseCalendarFactory(factory.Factory):
     nb_items = factory.Faker("random_int", min=1, max=8)
     event_factory: type[BaseEventFactory] | None = None
     name = factory.Faker("word")
-    color_rgba = factory.LazyFunction(fake.hex_rgba)
+    color = factory.LazyFunction(fake.qcolor)
 
     @classmethod
     def _build(cls, model_class, **kwargs):
-        calendar = model_class(name=kwargs["name"], color_rgba=kwargs.get("color_rgba"))
+        calendar = model_class(name=kwargs["name"], color=kwargs.get("color"))
         calendar.events = cls.event_factory.build_batch(
             kwargs.get("nb_items"), calendar=calendar.name
         )
@@ -153,7 +152,7 @@ class DavCalendarFactory(BaseCalendarFactory):
         generic_calendar = cls._build(model_class, **kwargs)
         client = _clients["dav"]
         calendar = client.make_calendar(generic_calendar.name)
-        calendar.set_properties([ical.CalendarColor(generic_calendar.color_rgba)])
+        calendar.set_properties([ical.CalendarColor(generic_calendar.color.name())])
         for event in generic_calendar.events:
             event.save_to_dav_server()
         return generic_calendar
@@ -178,7 +177,7 @@ class AkonadiCalendarFactory(BaseCalendarFactory):
         )
         collection.setParentCollection(root)
         attr = Akonadi.CollectionColorAttribute()
-        attr.setColor(QColor.fromString(rgba_to_argb(calendar.color_rgba)))
+        attr.setColor(calendar.color)
         collection.addAttribute(attr.clone())  # clone to give an unmanaged object
         job = Akonadi.CollectionCreateJob(collection)
         AkonadiUtils.wait_for_job(job)

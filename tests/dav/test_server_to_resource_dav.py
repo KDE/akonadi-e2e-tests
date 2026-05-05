@@ -15,7 +15,7 @@ def test_offline_change_color(dav_principal: Principal, groupware_resource: DAVR
     Changing the color of a collection in the server, nothing happens, when the resource is set online, when the resource is set online, the change is replayed on the resource
     """
     calendar: GenericCalendar = DavCalendarFactory.create()
-    new_color = fake.hex_rgba()
+    new_color = fake.qcolor()
     groupware_resource.synchronize()
     assert_all_collections_are_equals(dav_principal, groupware_resource)
     collection = groupware_resource.collection_from_display_name(calendar.name)
@@ -23,7 +23,7 @@ def test_offline_change_color(dav_principal: Principal, groupware_resource: DAVR
     assert groupware_resource.get_collection_color(collection.name()) != new_color
 
     groupware_resource.set_online(False)
-    dav_principal.calendar(calendar.name).set_properties(ical.CalendarColor(new_color))
+    dav_principal.calendar(calendar.name).set_properties(ical.CalendarColor(new_color.name()))
 
     # assert server is updated but not resource
     assert dav_principal.calendar(calendar.name).get_property(ical.CalendarColor()) == new_color

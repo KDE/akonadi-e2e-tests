@@ -10,7 +10,6 @@ from caldav.collection import Calendar, Principal
 from caldav.elements import ical
 
 from src.akonadi.dav_resource import DAVResource
-from src.test.color import argb_to_rgba
 
 
 def item_to_event(item: Akonadi.Item) -> icalendar.Event:
@@ -63,10 +62,9 @@ def assert_collection_attributes_are_equal(
     collection: Akonadi.Collection, calendar: Calendar
 ) -> None:
     assert calendar.get_display_name() == collection.displayName()
-    color_attribute = collection.attribute(b"collectioncolor")
-    assert calendar.get_property(ical.CalendarColor()) == (
-        color_attribute and argb_to_rgba(bytes(color_attribute.serialized()).decode())
-    )
+    attr = DAVResource.get_collection_attribute(collection, Akonadi.CollectionColorAttribute)
+    resource_color = attr.color() if attr else None
+    assert calendar.get_property(ical.CalendarColor()) == resource_color
 
 
 IGNORED_PROPERTIES = {"CREATED", "LAST-MODIFIED", "DTSTAMP", "TRANSP"}

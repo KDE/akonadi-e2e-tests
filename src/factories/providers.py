@@ -4,14 +4,15 @@
 
 from faker import Faker
 from faker.providers import BaseProvider
+from PySide6.QtGui import QColor  # type: ignore
 
 fake = Faker()
 
 
-class HexArgbProvider(BaseProvider):
-    def hex_rgba(self):
+class QColorProvider(BaseProvider):
+    def qcolor(self, use_alpha: bool = False) -> QColor:
         r = fake.pyint(min_value=0, max_value=255)
         g = fake.pyint(min_value=0, max_value=255)
         b = fake.pyint(min_value=0, max_value=255)
         a = fake.pyint(min_value=0, max_value=255)
-        return f"#{r:02X}{g:02X}{b:02X}{a:02X}".lower()
+        return QColor(r, g, b, a if use_alpha else 255)

@@ -17,7 +17,6 @@ from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.utils import AkonadiUtils
 from src.test import wait_until
-from src.test.color import argb_to_rgba, rgba_to_argb
 
 log = getLogger(__name__)
 
@@ -158,16 +157,15 @@ class Resource(ABC):
         job = Akonadi.CollectionModifyJob(collection)
         AkonadiUtils.wait_for_job(job)
 
-    def get_collection_color(self, collection_name: str) -> str | None:
+    def get_collection_color(self, collection_name: str) -> QColor | None:
         collection = self.resolve_collection(collection_name)
         attr = self.get_collection_attribute(collection, Akonadi.CollectionColorAttribute)
-        return argb_to_rgba(attr.color().name(QColor.NameFormat.HexArgb)) if attr else None
+        return attr.color() if attr else None
 
-    def set_collection_color(self, collection_name: str, rgba_hex_color: str) -> None:
-        argb_hex_color = rgba_to_argb(rgba_hex_color)
+    def set_collection_color(self, collection_name: str, color: QColor) -> None:
         collection = self.resolve_collection(collection_name)
         attr = Akonadi.CollectionColorAttribute()
-        attr.setColor(QColor.fromString(argb_hex_color))
+        attr.setColor(color)
 
         new = Akonadi.Collection()
         new.setId(collection.id())
