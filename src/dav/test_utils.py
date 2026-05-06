@@ -70,10 +70,36 @@ def assert_collection_attributes_are_equal(
 IGNORED_PROPERTIES = {"CREATED", "LAST-MODIFIED", "DTSTAMP", "TRANSP"}
 
 
+# Sort rrule line so that we can properly test equality between rrules
+def sort_rrule(rrule: str) -> str:
+    fields = rrule.split(";")
+    sorted_fields = []
+    for field in fields:
+        key_values = field.split("=")
+        values = key_values[1].split(",")
+        values.sort()
+        sorted_fields.append(f"{key_values[0]}={','.join(values)}")
+    return ";".join(sorted_fields)
+
+
 def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> None:
     def _filter_lines(lines):
-        return [line for line in lines if line.split(":")[0] not in IGNORED_PROPERTIES]
+        splitted = (line.split(":", maxsplit=1) for line in lines)
+        filtered = ((key, value) for key, value in splitted if key not in IGNORED_PROPERTIES)
+        return [
+            f"RRULE:{sort_rrule(value)}" if key == "RRULE" else f"{key}:{value}"
+            for key, value in filtered
+        ]
 
     akonadi_event = _filter_lines(item_to_event(akonadi_item).content_lines())
     server_event = _filter_lines(dav_event.icalendar_instance.events[0].content_lines())
     assert akonadi_event == server_event
+
+
+# Unify vrecur format (sorted lists for every field of the vrecur) so that we can properly compare two vrecur
+def normalize_vrecur(rrule: icalendar.vRecur) -> icalendar.vRecur:
+    for key in rrule:
+        val = rrule[key]
+        rrule[key] = sorted(val) if isinstance(val, list) else [val]
+
+    return rrule

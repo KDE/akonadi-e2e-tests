@@ -17,10 +17,11 @@ from PySide6.QtGui import QColor  # type: ignore
 
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.utils import AkonadiUtils
-from src.factories.providers import QColorProvider
+from src.factories.providers import QColorProvider, RruleProvider
 
 fake = Faker()
 fake.add_provider(QColorProvider)
+fake.add_provider(RruleProvider)
 
 
 class _Clients(TypedDict):
@@ -76,6 +77,8 @@ class BaseEventFactory(factory.Factory):
     dtstart = factory.Faker("future_datetime")
     duration_hours = factory.Faker("random_int", min=1, max=8)
     use_dtend = factory.Faker("boolean")
+    use_rrule = False
+    rrule = factory.LazyFunction(fake.rrule)
 
     @factory.lazy_attribute
     def dtend(obj):
@@ -93,6 +96,8 @@ class BaseEventFactory(factory.Factory):
         event.add("summary", kwargs.get("summary"))
         event.add("description", kwargs.get("description"))
         event.add("dtstart", kwargs.get("dtstart"))
+        if kwargs.get("use_rrule"):
+            event.add("rrule", kwargs.get("rrule"))
         if kwargs.get("use_dtend"):
             event.add("dtend", kwargs.get("dtend"))
         else:
