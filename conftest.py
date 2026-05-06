@@ -231,7 +231,7 @@ def load_imap_factory(request):
         imap_client = request.getfixturevalue("imap_client")
     else:
         imap_client = None
-    if imap_resource and imap_client:
+    if imap_resource or imap_client:
         set_email_clients(imap=imap_client, akonadi=imap_resource)
 
 

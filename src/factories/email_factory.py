@@ -28,9 +28,11 @@ class _Clients(TypedDict):
 _clients: _Clients = {}  #  type: ignore[typeddict-item]
 
 
-def set_clients(imap: BaseMailBox, akonadi: ImapResource):
-    _clients["imap"] = imap
-    _clients["akonadi"] = akonadi
+def set_clients(imap: BaseMailBox | None, akonadi: ImapResource | None):
+    if imap:
+        _clients["imap"] = imap
+    if akonadi:
+        _clients["akonadi"] = akonadi
 
 
 @dataclass
@@ -70,7 +72,7 @@ class Folder:
     @property
     def imap_path(self, delim: str | None = None) -> str:
         if delim is None:
-            delim = _clients["imap"].delimiter  # type: ignore[attr-defined]
+            delim = _clients["imap"].delimiter if "imap" in _clients else "/"  # type: ignore[attr-defined]
         if self.parent:
             return f"{self.parent.imap_path}{delim}{self.name}"
         return self.name
