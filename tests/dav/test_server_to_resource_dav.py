@@ -6,8 +6,32 @@ from caldav.collection import Principal
 from caldav.elements import ical
 
 from src.akonadi.dav_resource import DAVResource
+from src.akonadi.test_utils import assert_akonadi_item_are_equal, assert_item_unsync
 from src.dav.test_utils import assert_all_collections_are_equals
 from src.factories.event_factory import DavCalendarFactory, DavEventFactory, GenericCalendar, fake
+
+
+def test_multiple_sync_without_change(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    When already synced, another sync doesn't lead to any change (other than timestamps book keeping)
+    """
+    calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    initial_items = groupware_resource.list_items(collection.id())
+
+    groupware_resource.synchronize()
+    current_items = groupware_resource.list_items(collection.id())
+
+    initial_items.sort(key=lambda i: i.id())
+    current_items.sort(key=lambda i: i.id())
+    for initial_item, current_item in zip(initial_items, current_items, strict=True):
+        assert_item_unsync(initial_item, current_item)
+        assert_akonadi_item_are_equal(initial_item, current_item)
 
 
 def test_offline_change_color(dav_principal: Principal, groupware_resource: DAVResource) -> None:
