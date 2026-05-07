@@ -1,0 +1,135 @@
+# SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+import pytest
+from caldav.collection import Principal
+from icalendar.enums import PARTSTAT
+
+from src.akonadi.dav_resource import DAVResource
+from src.akonadi.itip_handler import ITIPHandler
+from src.dav.dav_server import DAVServer
+from src.dav.radicale_server import RadicaleServer
+from src.dav.test_utils import assert_all_collections_are_equals
+from src.factories.itip_factory import (
+    AkonadiITIPEventFactory,
+    GoogleITIPEventFactory,
+    ITIPEvent,
+    ITIPEventFactory,
+    MicrosoftITIPEventFactory,
+)
+from src.itip.const import ITIPAction
+from src.itip.test_util import (
+    assert_akonadi_item_equals_itip_event,
+    event_exists,
+    event_sequence_eq,
+)
+from src.test import wait_until
+from tests.itip.scenarios import ITIPScenario
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        pytest.param(GoogleITIPEventFactory),
+        pytest.param(MicrosoftITIPEventFactory),
+        pytest.param(AkonadiITIPEventFactory),
+    ],
+)
+def test_accept_invitation_is_sync(
+    factory: ITIPEventFactory,
+    itip_handler: ITIPHandler,
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    dav_server: DAVServer,
+    request: pytest.FixtureRequest,
+):
+    """
+    An invitation for a new single event is received, an item must be created in a collection (and this is replicated on the server)
+    """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer)
+            and factory.provider == MicrosoftITIPEventFactory.provider,
+            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
+            strict=True,
+        )
+    )
+
+    dav_calendar = dav_principal.calendar("Default Calendar")
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
+
+    itip: ITIPEvent = factory.build()
+    ical = ITIPScenario.create_invitation(itip)
+    attendee = itip.get_first_non_organizer_attendee()
+    itip_handler.process_message(attendee.email, ical, ITIPAction.ACCEPTED)
+
+    # An event has been added in resource and synchronized on server
+    groupware_resource.synchronize()
+
+    attendee.partstat = PARTSTAT.ACCEPTED
+    [item] = groupware_resource.list_items(collection.id())
+    assert_akonadi_item_equals_itip_event(item, itip)
+
+    wait_until(lambda: event_exists(dav_calendar, itip.uid))
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug? The SEQUENCE is incremented after processing the update. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/119"
+)
+@pytest.mark.parametrize(
+    "factory",
+    [
+        pytest.param(GoogleITIPEventFactory),
+        pytest.param(MicrosoftITIPEventFactory),
+        pytest.param(AkonadiITIPEventFactory),
+    ],
+)
+def test_update_invitation_is_sync(
+    factory: ITIPEventFactory,
+    itip_handler: ITIPHandler,
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    dav_server: DAVServer,
+    request: pytest.FixtureRequest,
+):
+    """
+    An invitation update for an existing single event is received (several properties to try)
+    The corresponding item must be updated in its collection (and this is replicated on the server)
+    """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer)
+            and factory.provider == MicrosoftITIPEventFactory.provider,
+            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
+            strict=True,
+        )
+    )
+
+    dav_calendar = dav_principal.calendar("Default Calendar")
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
+
+    itip: ITIPEvent = factory.build()
+    ical = ITIPScenario.create_invitation(itip)
+    attendee = itip.get_first_non_organizer_attendee()
+    itip_handler.process_message(attendee.email, ical, ITIPAction.ACCEPTED)
+    groupware_resource.synchronize()
+    wait_until(lambda: event_exists(dav_calendar, itip.uid))
+
+    # Create and process an update
+    new_itip = factory.create_from(
+        itip, reset_fields=["dtstart", "dtend", "summary", "description", "location"]
+    )
+    new_ical = ITIPScenario.create_invitation_update(new_itip)
+    new_attendee = new_itip.get_attendee_by_email(attendee.email)
+    itip_handler.process_message(new_attendee.email, new_ical, ITIPAction.ACCEPTED)
+
+    # Event updated in resource and synchronized on server
+    groupware_resource.synchronize()
+
+    new_attendee.partstat = PARTSTAT.ACCEPTED
+    [new_item] = groupware_resource.list_items(collection.id())
+    assert_akonadi_item_equals_itip_event(new_item, new_itip)
+
+    wait_until(lambda: event_sequence_eq(dav_calendar, itip.uid, new_itip.sequence))
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
