@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Benjamin Port <benjamin.port@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
+import pytest
 from caldav.collection import Principal
 from imap_tools import BaseMailBox
 
@@ -14,6 +14,13 @@ from src.factories.email_factory import (
     ImapFolderFactory,
 )
 from src.factories.event_factory import AkonadiEventFactory, DavCalendarFactory, DavEventFactory
+from src.factories.itip_factory import (
+    AkonadiITIPEventFactory,
+    GoogleITIPEventFactory,
+    ITIPEvent,
+    ITIPEventFactory,
+    MicrosoftITIPEventFactory,
+)
 
 
 def test_imap_factory(imap_resource: ImapResource, imap_client: BaseMailBox):  # noqa: ARG001
@@ -102,3 +109,21 @@ def test_dav_resource_factory(groupware_resource: DAVResource, dav_principal: Pr
     )  # Default Calendar and resource collection
     collection = groupware_resource.collection_from_display_name("Default Calendar")
     assert len(groupware_resource.list_items(collection.id())) == 10
+
+
+@pytest.mark.parametrize(
+    "factory", [GoogleITIPEventFactory, MicrosoftITIPEventFactory, AkonadiITIPEventFactory]
+)
+def test_itip_factory(factory: ITIPEventFactory):
+    itip: ITIPEvent = factory.build()
+    assert itip.uid
+
+    reset_keys = ["location", "description", "summary"]
+    new_itip = factory.create_from(itip, reset_fields=reset_keys)
+
+    itip_dict, new_itip_dict = itip.__dict__, new_itip.__dict__
+    for key in itip_dict.keys() & new_itip_dict.keys():
+        if key in reset_keys:
+            assert itip_dict[key] != new_itip_dict[key]
+        else:
+            assert itip_dict[key] == new_itip_dict[key]
