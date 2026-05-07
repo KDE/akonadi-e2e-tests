@@ -91,7 +91,7 @@ class AkonadiClient:
 
         if len(job.items()) > 1:
             raise ClientError(f"Found {len(job.items())} items whith id {item_id}")
-        return None if len(job.items()) == 0 else job.items()[0]
+        return job.items()[0]  # Job will raised an error if we don't have one item
 
     def list_items(self, collection_id: int, full_payload: bool = True) -> list[Akonadi.Item]:
         collection = Akonadi.Collection()
