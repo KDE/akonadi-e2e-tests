@@ -47,6 +47,8 @@ def test_mailbox_deleted_on_server_is_unsynced(
     assert_collection_equal_mailbox(mailbox_to_delete, imap_resource, imap_client)
     assert_collection_equal_mailbox(collection_to_delete, imap_resource, imap_client)
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_client.folder.set(
@@ -83,6 +85,8 @@ def test_remove_collection_on_server(imap_resource: ImapResource, imap_client: B
     assert_collection_equal_mailbox(folder_to_delete.name, imap_resource, imap_client)
     assert len(list(imap_client.fetch(mark_seen=False))) == len(folder_to_delete.messages)
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # Remove collection from resource, add an item on the server
@@ -119,6 +123,8 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
 
     assert_collection_equal_mailbox(folder, imap_resource, imap_client)
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     collection = imap_resource.resolve_collection(folder)
@@ -148,6 +154,8 @@ def test_conflict_append_message(
 
     assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # Append the item to the server
@@ -191,6 +199,8 @@ def test_akonadi_conflict_rename_collection(
     assert not imap_client.folder.exists(akonadi_new_name)
     assert not imap_client.folder.exists(server_new_name)
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
     imap_resource.rename_collection(old_name, akonadi_new_name)
     imap_client.folder.rename(old_name, server_new_name)
@@ -247,6 +257,8 @@ def test_add_item_in_akonadi_on_collection_removed_on_server(
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     AkonadiEmailFactory.create(folder=folder.name)
@@ -281,6 +293,8 @@ def test_remove_item_in_akonadi_on_collection_removed_on_server(
     imap_client.folder.set(folder.name)
 
     pre_delete_items_on_resource = imap_resource.list_items(folder.name)
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     akonadi_client.delete_item(pre_delete_items_on_resource[0].id())
@@ -324,6 +338,8 @@ def test_update_item_in_akonadi_on_collection_removed_on_server(
     assert len(pre_update_items_on_server) == len(pre_update_items_on_resource) == 1
     assert len(pre_update_items_on_server[0].flags) == 0
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_resource.add_flag(pre_update_items_on_resource[0].id(), flag_to_add)
