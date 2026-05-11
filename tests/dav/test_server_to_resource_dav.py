@@ -235,7 +235,8 @@ def test_offline_add_collection_server_side(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91"
+    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
+    strict=True,
 )
 def test_offline_rename_collection_server_side(
     dav_principal: Principal,
