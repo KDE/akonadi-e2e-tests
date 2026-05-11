@@ -10,9 +10,14 @@ from caldav.collection import Principal
 from caldav.elements import dav, ical
 
 from src.akonadi.dav_resource import DAVResource
-from src.akonadi.test_utils import assert_akonadi_item_are_equal, assert_item_unsync
+from src.akonadi.test_utils import (
+    assert_akonadi_item_are_equal,
+    assert_akonadi_items_are_equal,
+    assert_item_unsync,
+)
 from src.dav.test_utils import assert_all_collections_are_equals
 from src.factories.event_factory import DavCalendarFactory, DavEventFactory, GenericCalendar, fake
+from src.test import wait_until
 
 
 def test_multiple_sync_without_change(
@@ -264,3 +269,70 @@ def test_offline_rename_collection_server_side(
         c.displayName() == new_collection_name for c in groupware_resource.list_collections()
     )
     assert_all_collections_are_equals(dav_resource=groupware_resource, dav_principal=dav_principal)
+
+
+@pytest.mark.xfail(
+    reason="The partial sync does not seem to replicate the delete item in the akonadi server "
+    "Issue: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
+    strict=True,
+)
+def test_partial_sync_on_item_deleted(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Removing an item from a collection on the server, after requesting a partial sync,
+    the removed item is also removed in the akonadi server;
+    no other change occurred (other than timestamps book keeping)
+    """
+    calendar_to_sync = DavCalendarFactory.create(nb_items=5)
+    DavEventFactory.create_batch(10, calendar="Default Calendar")
+    groupware_resource.synchronize()
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+    collection_to_sync = groupware_resource.collection_from_display_name(calendar_to_sync.name)
+    unsynced_collection = groupware_resource.collection_from_display_name("Default Calendar")
+    initial_events_from_calendar_to_sync = dav_principal.calendar(
+        calendar_to_sync.name
+    ).get_events()
+    initial_events_from_unsynced_calendar = dav_principal.calendar("Default Calendar").get_events()
+
+    initial_items_from_collection_to_sync = groupware_resource.list_items(collection_to_sync.id())
+    initial_items_from_unsynced_collection = groupware_resource.list_items(unsynced_collection.id())
+
+    events_to_remove_from_unsynced_calendar = initial_events_from_unsynced_calendar[:3]
+    events_to_remove_from_calendar_to_sync = initial_events_from_calendar_to_sync[:2]
+
+    for event in events_to_remove_from_unsynced_calendar:
+        event.delete()
+    for event in events_to_remove_from_calendar_to_sync:
+        event.delete()
+
+    # requesting partial sync
+    groupware_resource.sync_collection(collection_to_sync.remoteId())
+
+    # wait items to be sync, synchronize is not enough
+    wait_until(
+        lambda: (
+            len(groupware_resource.list_items(collection_to_sync.id()))
+            == len(initial_events_from_calendar_to_sync)
+            - len(events_to_remove_from_calendar_to_sync)
+        )
+    )
+
+    updated_items_from_synced_collection = groupware_resource.list_items(collection_to_sync.id())
+    updated_items_from_unsynced_collection = groupware_resource.list_items(unsynced_collection.id())
+
+    # assert not deleted items are still there for sync collection
+    for item in updated_items_from_synced_collection:
+        [initial_item] = [
+            initial_item
+            for initial_item in initial_items_from_collection_to_sync
+            if initial_item == item
+        ]
+        assert_item_unsync(initial_item, item)
+        assert_akonadi_item_are_equal(initial_item, item)
+
+    # unsynced collection has the same items as initial
+    assert_akonadi_items_are_equal(
+        initial_items_from_unsynced_collection, updated_items_from_unsynced_collection
+    )
