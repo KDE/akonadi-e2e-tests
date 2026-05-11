@@ -155,8 +155,9 @@ def test_offline_remove_items(dav_principal: Principal, groupware_resource: DAVR
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? The partial sync does not seem to replicate the new item in the akonadi server"
-    "Issue: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103"
+    reason="Akonadi bug? The partial sync does not seem to replicate the new item in the akonadi server\n"
+    "Issue: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
+    strict=True,
 )
 def test_partial_sync_on_item_add(dav_principal: Principal, groupware_resource: DAVResource):
     """
