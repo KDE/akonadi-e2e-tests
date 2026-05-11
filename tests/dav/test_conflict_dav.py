@@ -3,12 +3,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from datetime import timedelta
 from logging import getLogger
 
 import pytest
 from caldav.collection import Principal
 from caldav.elements import dav
 from caldav.lib.error import NotFoundError
+from icalendar import Calendar
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
@@ -130,6 +132,75 @@ def test_conflict_remove_collection(
     # assert the collection is deleted both in akonadi and in the server
     assert calendar.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
     assert collection.id() not in [c.id() for c in groupware_resource.list_collections()]
+
+
+random_dtsart = fake.future_datetime()
+
+changed_field_data = [
+    pytest.param("DESCRIPTION", fake.paragraph(), fake.boolean(), id="description"),
+    pytest.param("SUMMARY", fake.sentence(), fake.boolean(), id="summary"),
+    pytest.param(
+        "DTSTART", fake.future_datetime().strftime("%Y%m%dT%H%M%S"), fake.boolean(), id="dtstart"
+    ),
+    pytest.param(
+        "DTEND",
+        fake.date_time_between(
+            start_date=random_dtsart, end_date=random_dtsart + timedelta(hours=8)
+        ).strftime("%Y%m%dT%H%M%S"),
+        True,
+        id="dtend",
+    ),
+    pytest.param("DURATION", f"PT{fake.random_int(min=1, max=8)}H", False, id="duration"),
+]
+
+
+@pytest.mark.parametrize("field, new_value, use_dtend", changed_field_data)
+def test_update_item_locally_in_collection_removed_on_server(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    akonadi_client: AkonadiClient,
+    field: str,
+    new_value: str,
+    use_dtend: bool,
+) -> None:
+    """
+    Changing the content of an item in the akonadi server, removing the collection on the server, nothing happens,
+    when the resource is set online, the collection is removed from the akonadi server
+    """
+    calendar = DavCalendarFactory.create()
+    DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend, dtstart=random_dtsart)
+
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) > 0
+    item = items[0]
+
+    groupware_resource.set_online(False)
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+    item_event[field] = new_value
+    new_payload = item_calendar.to_ical()
+    groupware_resource.modify_payload(item.id(), new_payload)
+
+    dav_calendar = dav_principal.calendar(calendar.name)
+
+    dav_calendar.delete()
+    wait_until(
+        lambda: calendar.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
+    )
+
+    # Since we're still offline, ensure no change was made locally
+    assert collection.id() in [c.id() for c in groupware_resource.list_collections()]
+
+    groupware_resource.set_online(True)
+
+    # assert the collection is deleted both in akonadi and in the server
+    assert calendar.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
+    assert collection.remoteId() not in [c.remoteId() for c in akonadi_client.list_collections()]
 
 
 @pytest.mark.xfail(
