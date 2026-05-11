@@ -12,8 +12,14 @@ from caldav.lib.error import NotFoundError
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
+from src.akonadi.utils import WaitJobError
 from src.dav.test_utils import assert_all_collections_are_equals
-from src.factories.event_factory import DavCalendarFactory, DavEventFactory, fake
+from src.factories.event_factory import (
+    AkonadiEventFactory,
+    DavCalendarFactory,
+    DavEventFactory,
+    fake,
+)
 from src.test import wait_until
 
 log = getLogger(__name__)
@@ -125,3 +131,53 @@ def test_conflict_remove_collection(
     # assert the collection is deleted both in akonadi and in the server
     assert calendar.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
     assert collection.id() not in [c.id() for c in groupware_resource.list_collections()]
+
+
+@pytest.mark.xfail(
+    reason="Items from deleted collections are still present in the resource. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/104",
+    strict=True,
+)
+def test_conflict_add_item_akonadi_remove_collection_server(
+    dav_principal: Principal, groupware_resource: DAVResource, akonadi_client: AkonadiClient
+) -> None:
+    """
+    Adding an item to a collection in the akonadi server, removing the collection on the server, nothing happens;
+    when the resource is set online, the collection is removed from the akonadi server, the item is removed as well
+    """
+    initial_factory = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+    collection = groupware_resource.collection_from_display_name(initial_factory.name)
+    calendar_to_delete = dav_principal.calendar(initial_factory.name)
+
+    groupware_resource.set_online(False)
+
+    # Add an event in Akonadi, check it exists in the resource and not in the server
+    AkonadiEventFactory.create(calendar=initial_factory.name)
+    items_from_collection_to_delete = groupware_resource.list_items(collection.id())
+
+    assert len(groupware_resource.list_items(collection.id())) == len(initial_factory.events) + 1
+    assert len(dav_principal.calendar(initial_factory.name).get_events()) == len(
+        initial_factory.events
+    )
+
+    # Delete collection server side, check collection is deleted in the server and not in the resource
+    calendar_to_delete.delete()
+
+    assert initial_factory.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
+    assert initial_factory.name in [c.displayName() for c in groupware_resource.list_collections()]
+
+    groupware_resource.set_online(True)
+
+    # Check collection is deleted on both sides
+    assert initial_factory.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
+    assert initial_factory.name not in [
+        c.displayName() for c in groupware_resource.list_collections()
+    ]
+
+    # Check all items are deleted on akonadi side
+    for item in items_from_collection_to_delete:
+        with pytest.raises(WaitJobError):
+            akonadi_client.item_by_id(item.id(), False)
+
+    # Check other collections are still there
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
