@@ -64,7 +64,8 @@ class AkonadiUtils:
 
     # Waits for the resource to go back into given status
     @staticmethod
-    def wait_for_status(identifier, status, timeout_ms: int = 30000):
+    def wait_for_status(resource, status, timeout_ms: int = 30000):
+        identifier = resource.identifier
         loop = QEventLoop()
 
         timer = QTimer()
@@ -89,8 +90,9 @@ class AkonadiUtils:
         timer.timeout.connect(on_timeout)
         manager.instanceStatusChanged.connect(on_status_changed)
 
-        timer.start(timeout_ms)
-        loop.exec()
+        if resource.instance.status() != status:
+            timer.start(timeout_ms)
+            loop.exec()
 
         if timed_out:
             raise WaitJobError(f"Timed out while waiting for status {status}")

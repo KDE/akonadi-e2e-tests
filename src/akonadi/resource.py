@@ -66,7 +66,7 @@ class Resource(ABC):
         resourceSynchroJob.start()
         AkonadiUtils.wait_for_job(resourceSynchroJob)
 
-        AkonadiUtils.wait_for_status(self._identifier, 0)
+        AkonadiUtils.wait_for_status(self, 0)
 
         log.debug("%s resource synchronized", self.RESOURCE_TYPE)
 
@@ -91,8 +91,8 @@ class Resource(ABC):
 
         # to be sure that the collection has been synchronized correctly, we must wait for the instance to be running, then idle again
         # because there isn't a job we can wait, the instance may be idle at first without actually being synced (sync not triggered yet / status not changed yet)
-        AkonadiUtils.wait_for_status(self._identifier, 1)
-        AkonadiUtils.wait_for_status(self._identifier, 0)
+        AkonadiUtils.wait_for_status(self, 1)
+        AkonadiUtils.wait_for_status(self, 0)
 
     def list_collections(
         self, exclude_resource_root_collection: bool = False

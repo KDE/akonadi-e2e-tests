@@ -54,7 +54,7 @@ class DAVResource(Resource):
 
         self.instance.reconfigure()
 
-        AkonadiUtils.wait_for_status(self._identifier, 0)
+        AkonadiUtils.wait_for_status(self, 0)
 
     @override
     async def remove(self) -> None:
