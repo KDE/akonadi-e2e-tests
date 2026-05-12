@@ -50,8 +50,11 @@ class AkonadiUtils:
         timer.timeout.connect(on_timeout)
         job.result.connect(on_job_finished)
 
-        timer.start(timeout_ms)
-        loop.exec()
+        # If the event loop ran just before this call the job might
+        # already be finished
+        if not job.isFinished():
+            timer.start(timeout_ms)
+            loop.exec()
 
         if timed_out:
             raise WaitJobError("Timed out while waiting for a job completion")
