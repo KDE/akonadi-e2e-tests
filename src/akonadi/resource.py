@@ -195,7 +195,7 @@ class Resource(ABC):
         Pass the ressource to online/offline status, effectively connecting/disconnecting it to any imap/dav server it was configured for
         """
         self.instance.setIsOnline(online)
-        AkonadiUtils.wait_for_online(self._identifier, online)
+        AkonadiUtils.wait_for_online(self, online)
         if online:
             self.wait_resource_is_idle()
 

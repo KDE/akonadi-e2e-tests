@@ -97,7 +97,8 @@ class AkonadiUtils:
 
     # Waits until an instanceOnline signal with the given agent identifier and online state is caught
     @staticmethod
-    def wait_for_online(identifier, online, timeout_ms: int = 30000):
+    def wait_for_online(resource, online, timeout_ms: int = 30000):
+        identifier = resource.identifier
         loop = QEventLoop()
 
         timer = QTimer()
@@ -122,8 +123,9 @@ class AkonadiUtils:
         timer.timeout.connect(on_timeout)
         manager.instanceOnline.connect(on_online_changed)
 
-        timer.start(timeout_ms)
-        loop.exec()
+        if resource.instance.isOnline() != online:
+            timer.start(timeout_ms)
+            loop.exec()
 
         if timed_out:
             raise WaitJobError(
