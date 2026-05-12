@@ -572,7 +572,7 @@ def test_server_offline_rename_collection(
     old_name = ImapFolderFactory.create().name
     imap_resource.synchronize()
 
-    new_name = fake.word()
+    new_name = old_name + fake.word()
     initial_collections = imap_resource.list_collections()
 
     assert old_name in (collection.name() for collection in initial_collections)
