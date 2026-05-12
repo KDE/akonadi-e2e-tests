@@ -192,3 +192,56 @@ def test_update_invitation_to_recurring_is_sync(
 
     wait_until(lambda: event_sequence_op(ge, dav_calendar, itip.uid, new_itip.sequence))
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        pytest.param(GoogleITIPEventFactory),
+        pytest.param(MicrosoftITIPEventFactory),
+        pytest.param(AkonadiITIPEventFactory),
+    ],
+)
+def test_update_without_invitation_is_sync(
+    factory: ITIPEventFactory,
+    itip_handler: ITIPHandler,
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    dav_server: DAVServer,
+    request: pytest.FixtureRequest,
+):
+    """
+    An invitation update for an existing single event is received (several properties to try) but we didn't create the item yet
+    (assuming we didn't receive the initial invitation or it's because we weren't in the initial invitation and part of the update is adding us as participant)
+    The corresponding item must be updated in its collection (and this is replicated on the server)
+    """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer)
+            and factory.provider == MicrosoftITIPEventFactory.provider,
+            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
+            strict=True,
+        )
+    )
+
+    dav_calendar = dav_principal.calendar("Default Calendar")
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
+
+    # Create and process an update only
+    itip: ITIPEvent = factory.build(use_rrule=True)
+    new_itip = factory.create_from(
+        itip, reset_fields=["dtstart", "dtend", "summary", "description", "location"]
+    )
+    new_ical = ITIPScenario.create_invitation_update(new_itip)
+    new_attendee = new_itip.get_first_non_organizer_attendee()
+    itip_handler.process_message(new_attendee.email, new_ical, ITIPAction.ACCEPTED)
+
+    # Event updated in resource and synchronized on server
+    groupware_resource.synchronize()
+
+    new_attendee.partstat = PARTSTAT.ACCEPTED
+    [new_item] = groupware_resource.list_items(collection.id())
+    assert_akonadi_item_equals_itip_event(new_item, new_itip)
+
+    wait_until(lambda: event_sequence_op(eq, dav_calendar, itip.uid, new_itip.sequence))
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
