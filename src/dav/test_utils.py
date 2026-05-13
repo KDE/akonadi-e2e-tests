@@ -103,3 +103,11 @@ def normalize_vrecur(rrule: icalendar.vRecur) -> icalendar.vRecur:
         rrule[key] = sorted(val) if isinstance(val, list) else [val]
 
     return rrule
+
+
+def field_is_equal(field: str, expected: str, event: Event) -> bool:
+    icalendar_component = event.get_icalendar_component()
+    if field in icalendar_component:
+        field = icalendar_component[field].to_ical().decode()
+        return field == expected
+    return False

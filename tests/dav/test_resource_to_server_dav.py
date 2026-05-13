@@ -19,6 +19,7 @@ from src.akonadi.utils import AkonadiUtils
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_calendar,
+    field_is_equal,
     normalize_vrecur,
 )
 from src.factories.event_factory import (
@@ -441,13 +442,69 @@ def test_akonadi_change_item_contents(
 
     assert updated_event[field].to_ical().decode() == new_value
     wait_until(
-        lambda: (
-            dav_principal.calendar(calendar.name)
-            .event_by_url(item.remoteId())
-            .get_icalendar_component()[field]
-            .to_ical()
-            .decode()
-            == new_value
+        lambda: field_is_equal(
+            field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+        )
+    )
+
+
+@pytest.mark.parametrize("field, new_value, use_dtend", changed_field_data)
+def test_akonadi_offline_change_item_contents(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    field: str,
+    new_value: str,
+    use_dtend: bool,
+) -> None:
+    """
+    Changing the content of an item on the server (description, alarms, attachments… should all be tested), nothing happens
+    When the resource is set online, the content is also changed on the corresponding item in the akonadi server, no other change occurred (other than timestamps book keeping)
+    """
+    calendar = DavCalendarFactory.create(nb_items=0)
+    event = DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend)
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) == 1
+    item = items[0]
+
+    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(items))
+    event = dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+
+    assert item_event[field] == event.get_icalendar_component()[field]
+
+    groupware_resource.set_online(False)
+
+    item_event[field] = new_value
+    new_payload = item_calendar.to_ical()
+    groupware_resource.modify_payload(item.id(), new_payload)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert updated_event[field].to_ical().decode() == new_value
+    assert not field_is_equal(
+        field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+
+    groupware_resource.set_online(True)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert updated_event[field].to_ical().decode() == new_value
+    wait_until(
+        lambda: field_is_equal(
+            field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
         )
     )
 
