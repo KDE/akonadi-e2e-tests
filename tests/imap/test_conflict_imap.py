@@ -375,6 +375,8 @@ def test_offline_delete_item_server_side_delete_collection_akonadi_side(
     items = imap_resource.list_items(collection_to_delete.id())
     items_to_delete = items[:3]
 
+    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
     imap_client.folder.set(folder.name)
     imap_client.delete([item.remoteId() for item in items_to_delete])
