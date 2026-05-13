@@ -111,3 +111,11 @@ def field_is_equal(field: str, expected: str, event: Event) -> bool:
         field = icalendar_component[field].to_ical().decode()
         return field == expected
     return False
+
+
+def rrule_are_equal(expected: icalendar.vRecur, event: Event) -> bool:
+    icalendar_component = event.get_icalendar_component()
+    if "RRULE" in icalendar_component:
+        rrule = normalize_vrecur(icalendar_component["RRULE"])
+        return rrule == normalize_vrecur(expected)
+    return False
