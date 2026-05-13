@@ -101,7 +101,7 @@ class Folder:
         AkonadiUtils.wait_for_job(job)
         collection = job.collection()
         for email in self.messages:
-            email.save_to_akonadi(collection)
+            email.save_to_akonadi(None)
 
 
 class BaseEmailFactory(factory.Factory):
