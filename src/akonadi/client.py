@@ -111,10 +111,15 @@ class AkonadiClient:
         agent = Akonadi.AgentManager.self().instance(identifier)
         return agent if agent.isValid() else None
 
-    def add_item(self, collection_id: int, data: bytes, mime_type: str) -> Akonadi.Item:
+    def add_item(
+        self, collection_id: int, data: bytes, mime_type: str, flags: list[str] | None = None
+    ) -> Akonadi.Item:
         item = Akonadi.Item()
         item.setMimeType(mime_type)
         item.setPayloadFromData(data)
+        if flags:
+            for flag in flags:
+                item.setFlag(flag.encode())
 
         collection = Akonadi.Collection()
         collection.setId(collection_id)

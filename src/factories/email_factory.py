@@ -56,11 +56,9 @@ class Email:
 
     def save_to_akonadi(self, collection: Akonadi.Collection | None):
         collection = collection or _clients["akonadi"].resolve_collection(self._folder_path())
-        item = _clients["akonadi"].akonadi_client.add_item(
-            collection.id(), self.as_bytes(), "message/rfc822"
+        _clients["akonadi"].akonadi_client.add_item(
+            collection.id(), self.as_bytes(), "message/rfc822", flags=self.flags
         )
-        for flag in self.flags:
-            _clients["akonadi"].add_flag(item.id(), flag)
 
 
 @dataclass
