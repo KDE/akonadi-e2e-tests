@@ -110,9 +110,6 @@ def test_remove_collection_on_server(imap_resource: ImapResource, imap_client: B
     assert not imap_client.folder.exists(folder_to_delete.name)
 
 
-@pytest.mark.xfail(
-    reason="The tests are flaky/not stable, we xfail conflict tests while stabilizing others"
-)
 def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Flag change on an item from an offline resource and flag mail from a server
