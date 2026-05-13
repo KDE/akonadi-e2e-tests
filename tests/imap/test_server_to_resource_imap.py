@@ -18,7 +18,9 @@ from src.akonadi.test_utils import (
     assert_item_unsync,
 )
 from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
+from src.imap import CyrusServer
 from src.imap.email_utils import create_message
+from src.imap.imap_server import ImapServer
 from src.imap.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_mailbox,
@@ -183,7 +185,8 @@ def test_mailbox_renamed_on_server_is_synced(
 
 
 @pytest.mark.xfail(
-    reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change."
+    reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change.",
+    strict=True,
 )
 def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
@@ -447,7 +450,7 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
-@pytest.mark.xfail(reason="Akonadi bug? ModificationTime is not updated")
+@pytest.mark.xfail(reason="Akonadi bug? ModificationTime is not updated", strict=True)
 def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Changing flags of an item on the server implicitly triggers a partial sync
@@ -521,14 +524,23 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
             assert_item_unsync(initial_item, item)
 
 
-@pytest.mark.xfail(
-    reason="Fail on CYRUS only, unchanged items are actually sync, revision is updated"
-)
-def test_partial_sync_on_delete_msg(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+def test_partial_sync_on_delete_msg(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    imap_server: ImapServer,
+    request: pytest.FixtureRequest,
+) -> None:
     """
     Removing an item from a collection on the server implicitly triggers a partial sync, the removed item is also removed in the akonadi server, no other change occurred.
     To do this check, we actually look that all other items are unsynced
     """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(imap_server, CyrusServer),
+            reason="Fail on CYRUS only, unchanged items are actually sync, revision is updated",
+            strict=True,
+        )
+    )
     custom_folder = ImapFolderFactory.create(nb_items=5)
     inbox_folder = "INBOX"
     ImapEmailFactory.create_batch(10, folder=inbox_folder)

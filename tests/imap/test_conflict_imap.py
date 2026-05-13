@@ -31,9 +31,6 @@ from src.test import wait_until
 log = getLogger(__name__)
 
 
-@pytest.mark.xfail(
-    reason="The tests are flaky/not stable, we xfail conflict tests while stabilizing others"
-)
 def test_mailbox_deleted_on_server_is_unsynced(
     imap_resource: ImapResource, imap_client: BaseMailBox
 ) -> None:
@@ -248,7 +245,8 @@ def test_akonadi_conflict_rename_collection(
 
 
 @pytest.mark.xfail(
-    reason="see `test_generic_imap.py::test_delete_collection_with_one_item_should_delete_item"
+    reason="see `test_akonadi_behavior.py::test_delete_collection_with_one_item_should_delete_item",
+    strict=True,
 )
 def test_add_item_in_akonadi_on_collection_removed_on_server(
     imap_resource: ImapResource,
@@ -321,7 +319,8 @@ def test_remove_item_in_akonadi_on_collection_removed_on_server(
 
 
 @pytest.mark.xfail(
-    reason="see `test_generic_imap.py::test_delete_collection_with_one_item_should_delete_item"
+    reason="see `test_akonadi_behavior.py::test_delete_collection_with_one_item_should_delete_item",
+    strict=True,
 )
 def test_update_item_in_akonadi_on_collection_removed_on_server(
     imap_resource: ImapResource,

@@ -13,7 +13,8 @@ from src.factories.email_factory import AkonadiFolderFactory
 
 @pytest.mark.xfail(
     reason="Deleting the collection does not cascade all the way to items within that collection, "
-    "see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/104"
+    "see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/104",
+    strict=True,
 )
 def test_delete_collection_with_one_item_should_delete_item(
     imap_resource: ImapResource,

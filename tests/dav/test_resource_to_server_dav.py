@@ -13,6 +13,7 @@ from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.test_utils import assert_akonadi_items_are_equal
 from src.akonadi.utils import AkonadiUtils
+from src.dav.radicale_server import RadicaleServer
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_calendar,
@@ -28,7 +29,8 @@ from src.test import wait_until
 
 
 @pytest.mark.xfail(
-    reason="The test is failing because collectionAdded is not implemented in dav resource"
+    reason="The test is failing because collectionAdded is not implemented in dav resource",
+    strict=True,
 )
 def test_akonadi_sync_add_collection(
     dav_principal: Principal, groupware_resource: DAVResource
@@ -69,7 +71,8 @@ def test_akonadi_sync_remove_collection(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? Akonadi doesnt seem to sync calendar attributes https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101"
+    reason="Akonadi bug? Akonadi doesnt seem to sync calendar attributes https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101",
+    strict=True,
 )
 def test_akonadi_sync_change_color_collection(
     dav_principal: Principal, groupware_resource: DAVResource
@@ -143,16 +146,22 @@ def test_akonadi_sync_remove_item(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.xfail(
-    reason="The test fails on RADICALE, the collection is deleted when calling the delete job then recreated by the resource when going back online (as an empty collection)."
-    "Note that if the test calls synchronize just after going back online, the resource will call a second delete collection job"
-)
 def test_offline_akonadi_remove_collection(
-    dav_principal: Principal, groupware_resource: DAVResource
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    dav_server: RadicaleServer,
+    request: pytest.FixtureRequest,
 ) -> None:
     """
     Removing a collection from the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
     """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer),
+            reason="The test fails on RADICALE, the collection is deleted when calling the delete job then recreated by the resource when going back online (as an empty collection). Note that if the test calls synchronize just after going back online, the resource will call a second delete collection job",
+            strict=True,
+        )
+    )
     calendar_to_delete = DavCalendarFactory.create()
     unchanged_calendar = DavCalendarFactory.create()
     groupware_resource.synchronize()
@@ -198,7 +207,8 @@ def test_offline_akonadi_remove_collection(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91"
+    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
+    strict=True,
 )
 def test_akonadi_sync_rename_collection(
     dav_principal: Principal, groupware_resource: DAVResource
@@ -260,7 +270,8 @@ def test_akonadi_offline_sync_add_collection(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? The resource goes back to the old color once back online, see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101"
+    reason="Akonadi bug? The resource goes back to the old color once back online, see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101",
+    strict=True,
 )
 def test_akonadi_offline_change_color_collection(
     dav_principal: Principal, groupware_resource: DAVResource
@@ -328,7 +339,8 @@ def test_akonadi_offline_remove_item(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91"
+    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
+    strict=True,
 )
 def test_offline_rename_collection(
     dav_principal: Principal, groupware_resource: DAVResource

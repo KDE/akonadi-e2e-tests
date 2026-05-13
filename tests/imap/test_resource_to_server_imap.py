@@ -23,6 +23,8 @@ from src.factories.email_factory import (
     ImapFolderFactory,
     fake,
 )
+from src.imap import CyrusServer
+from src.imap.imap_server import ImapServer
 from src.imap.test_utils import (
     assert_collection_equal_mailbox,
     has_flag,
@@ -334,17 +336,23 @@ def test_move_message_on_resource_is_synced(
     assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug ? An append command is sent to the server, and cyrus rejects it because of wrong flags",
-)
 def test_copy_message_on_server_is_synced(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
+    imap_server: ImapServer,
+    request: pytest.FixtureRequest,
 ) -> None:
     """
     Copying an item from one collection to another in the akonadi server, the change is replayed on the server
     """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(imap_server, CyrusServer),
+            reason="Akonadi bug ? An append command is sent to the server, and cyrus rejects it because of wrong flags",
+            strict=True,
+        )
+    )
     folder1 = ImapFolderFactory.create()
     folder2 = ImapFolderFactory.create()
     imap_resource.synchronize()
@@ -372,6 +380,7 @@ def test_copy_message_on_server_is_synced(
 
 @pytest.mark.xfail(
     reason="Akonadi bug ? Flag disappear from akonadi server, maybe sync issues with imap server ?",
+    strict=True,
 )
 def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
