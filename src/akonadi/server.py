@@ -30,7 +30,7 @@ class AkonadiServer:
         log.info("Starting Akonadi Server")
         self._prepare_environment()
 
-        Akonadi.Control.start()
+        assert Akonadi.Control.start()
 
         for _ in range(50):
             if Akonadi.ServerManager.isRunning():

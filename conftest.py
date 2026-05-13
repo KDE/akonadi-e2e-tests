@@ -109,6 +109,7 @@ def qcore_app(_akonadi_env: AkonadiEnv):
 @pytest.fixture(scope="session", params=list(DAVServerType))
 async def dav_server_session(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer]:
     server_type = request.param
+    server: DAVServer
     match server_type:
         case DAVServerType.NEXTCLOUD:
             server = NextCloudServer()
@@ -129,6 +130,7 @@ def server_type(request):
 
 @pytest.fixture(scope="session")
 def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
+    server: ImapServer
     match server_type:
         case ImapServerType.CYRUS:
             server = CyrusServer()
@@ -203,15 +205,16 @@ def dav_client(dav_server: DAVServer) -> Generator[DAVClient | None]:
         url=dav_server.base_url, username=dav_server.username, password=dav_server.password
     )
     yield client
-    client.close()
+    client.close()  # type: ignore[union-attr]
 
 
 @pytest.fixture()
 def dav_principal(dav_client: DAVClient | None) -> Generator[Principal | None]:
     if dav_client is None:
         yield None
-    principal = dav_client.get_principal()
-    yield principal
+    else:
+        principal = dav_client.get_principal()
+        yield principal
 
 
 @pytest.fixture()

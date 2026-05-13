@@ -36,7 +36,7 @@ class AkonadiDBus:
 
     async def wait_for_service(self, service_name: str, timeout_secs: float | None = 10) -> None:
         await asyncio.wait_for(
-            self._wait_for_name_owner(service_name),
+            self.name_owner(service_name),
             timeout=timeout_secs,
         )
 
@@ -94,7 +94,7 @@ class AkonadiDBus:
             "/org/freedesktop/DBus",
         )
 
-        async def name_owner_changed() -> None:
+        async def name_owner_changed():
             async for name, _, new_owner in dbus.name_owner_changed.catch():
                 if name == service_name:
                     log.debug("Name owner changed: %s -> %s", name, new_owner)
@@ -105,7 +105,7 @@ class AkonadiDBus:
         except DbusNameHasNoOwnerError:
             timeout = None if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10
             log.debug("Service %s has no owner, waiting for it...", service_name)
-            await asyncio.wait_for(name_owner_changed(), timeout=timeout)
+            return await asyncio.wait_for(name_owner_changed(), timeout=timeout)
         else:
             log.debug("Service %s has owner %s, continuing", service_name, resp)
             return resp
