@@ -23,6 +23,7 @@ from src.factories.email_factory import (
 from src.imap.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_mailbox,
+    has_flag,
     message_added,
 )
 from src.test import wait_until
@@ -138,6 +139,12 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
 
     imap_resource.set_online(True)
     imap_resource.sync_collection(folder)
+    wait_until(
+        lambda: (
+            has_flag(imap_client, item, folder, "$TestFlag")
+            and has_flag(imap_client, item, folder, "$TestFlag2")
+        )
+    )
     assert_collection_equal_mailbox(folder, imap_resource, imap_client)
 
 
@@ -230,10 +237,13 @@ def test_akonadi_conflict_rename_collection(
     assert len(imap_resource.list_items(server_new_name)) == 0
 
     imap_resource.sync_collection(server_new_name)
-
+    wait_until(lambda: imap_client.folder.exists(server_new_name))
     imap_client.folder.set(server_new_name)
-    assert len(imap_resource.list_items(server_new_name)) == len(
-        list(imap_client.fetch(mark_seen=False))
+    wait_until(
+        lambda: (
+            len(imap_resource.list_items(server_new_name))
+            == len(list(imap_client.fetch(mark_seen=False)))
+        )
     )
 
     assert_collection_equal_mailbox(server_new_name, imap_resource, imap_client)

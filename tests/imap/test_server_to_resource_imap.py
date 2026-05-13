@@ -25,8 +25,15 @@ from src.imap.test_utils import (
     assert_no_items_are_equal,
     compare_flags,
 )
+from src.test import wait_until
 
 log = getLogger(__name__)
+
+
+def compare_item_flags(resource, item_id, expected_flags):
+    item = resource.akonadi_client.item_by_id(item_id)
+    flags = [bytes(f).decode() for f in item.flags()]
+    return compare_flags(flags, expected_flags)
 
 
 def test_initial_sync(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
@@ -209,7 +216,7 @@ def test_sync_removed_message(imap_resource: ImapResource, imap_client: BaseMail
     imap_client.folder.set(folder.name)
     imap_client.delete(["1"])
     imap_resource.sync_collection(folder.name)
-    assert len(imap_resource.list_items(folder.name)) == len(folder.messages) - 1
+    wait_until(lambda: len(imap_resource.list_items(folder.name)) == len(folder.messages) - 1)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -227,7 +234,7 @@ def test_sync_added_message(imap_resource: ImapResource, imap_client: BaseMailBo
     imap_resource.sync_collection(
         folder.name
     )  # Doing a double sync as check collection in sync, do a sync too
-    assert len(imap_resource.list_items(folder.name)) == len(folder.messages) + 1
+    wait_until(lambda: len(imap_resource.list_items(folder.name)) == len(folder.messages) + 1)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -246,6 +253,12 @@ def test_sync_added_and_removed_message(
     ImapEmailFactory.create(folder=folder.name)
     imap_client.delete(["1"])
     imap_resource.sync_collection(folder.name)
+    wait_until(
+        lambda: (
+            len(imap_resource.list_items(folder.name))
+            == len(list(imap_client.fetch(mark_seen=False)))
+        )
+    )
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -258,10 +271,12 @@ def test_sync_flag_only_change(imap_resource: ImapResource, imap_client: BaseMai
     ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+    [item] = [i for i in imap_resource.list_items(folder.name) if i.remoteId() == "1"]
 
     imap_client.folder.set(folder.name)
     imap_client.flag(["1"], ["$TestFlag"], True)
     imap_resource.sync_collection(folder.name)
+    wait_until(lambda: compare_item_flags(imap_resource, item.id(), ["$TestFlag"]))
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -276,11 +291,19 @@ def test_sync_flag_change_and_removed_message(
     ImapEmailFactory.create_batch(2, folder=folder.name, flags=[])
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+    [item] = [i for i in imap_resource.list_items(folder.name) if i.remoteId() == "2"]
 
     imap_client.folder.set(folder.name)
     imap_client.flag(["2"], "$TestFlag", True)
     imap_client.delete(["1"])
     imap_resource.sync_collection(folder.name)
+    wait_until(
+        lambda: (
+            len(imap_resource.list_items(folder.name))
+            == len(list(imap_client.fetch(mark_seen=False)))
+        )
+    )
+    wait_until(lambda: compare_item_flags(imap_resource, item.id(), ["$TestFlag"]))
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -300,6 +323,12 @@ def test_sync_flag_change_and_added_message(
     imap_client.flag(["2"], "$TestFlag", True)
     ImapEmailFactory.create(folder=folder.name)
     imap_resource.sync_collection(folder.name)
+    wait_until(
+        lambda: (
+            len(imap_resource.list_items(folder.name))
+            == len(list(imap_client.fetch(mark_seen=False)))
+        )
+    )
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -321,6 +350,12 @@ def test_sync_flag_change_and_added_and_removed_message(
     imap_client.delete(["1"])
 
     imap_resource.sync_collection(folder.name)
+    wait_until(
+        lambda: (
+            len(imap_resource.list_items(folder.name))
+            == len(list(imap_client.fetch(mark_seen=False)))
+        )
+    )
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -347,21 +382,15 @@ def test_offline_change_email_flags_on_server_is_synced(
     imap_client.flag([item.remoteId()], "\\Draft", False)
 
     # Check nothing happened
-    [item] = [i for i in imap_resource.list_items(folder.name) if i.id() == item.id()]
-    flags = [bytes(f).decode() for f in item.flags()]
-    assert compare_flags(flags, ["\\Draft"])
+    assert compare_item_flags(imap_resource, item.id(), ["\\Draft"])
 
     # Set collection online and ensure flags have not yet changed
     imap_resource.set_online(True)
-    [item] = [i for i in imap_resource.list_items(folder.name) if i.id() == item.id()]
-    flags = [bytes(f).decode() for f in item.flags()]
-    assert compare_flags(flags, ["\\Draft"])
+    assert compare_item_flags(imap_resource, item.id(), ["\\Draft"])
 
-    # Sync and check flags have changes
+    # Sync and check flags change during sync
     imap_resource.sync_collection(folder.name)
-    [item] = [i for i in imap_resource.list_items(folder.name) if i.id() == item.id()]
-    flags = [bytes(f).decode() for f in item.flags()]
-    assert compare_flags(flags, ["\\Flagged"])
+    wait_until(lambda: compare_item_flags(imap_resource, item.id(), ["\\Flagged"]))
 
     assert_all_collections_are_equals(imap_client, imap_resource)
 
@@ -389,7 +418,7 @@ def test_offline_removed_message_server_side(
 
     imap_resource.set_online(True)
     imap_resource.sync_collection(folder.name)
-    assert len(imap_resource.list_items(folder.name)) == len(folder.messages) - 1
+    wait_until(lambda: len(imap_resource.list_items(folder.name)) == len(folder.messages) - 1)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -413,7 +442,7 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
 
     imap_resource.set_online(True)
     imap_resource.sync_collection(folder.name)
-    assert len(imap_resource.list_items(folder.name)) == len(folder.messages) + 1
+    wait_until(lambda: len(imap_resource.list_items(folder.name)) == len(folder.messages) + 1)
 
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
@@ -436,6 +465,7 @@ def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: B
     imap_client.folder.set(folder.name)
     imap_client.flag([item_to_update.remoteId()], ["$TestFlag"], True)
     imap_resource.sync_collection(folder.name)
+    wait_until(lambda: compare_item_flags(imap_resource, item_to_update.id(), ["$TestFlag"]))
     current_items = imap_resource.list_items(folder.name)
 
     initial_items.sort(key=lambda i: i.id())
@@ -468,6 +498,8 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
     for _ in range(5):
         ImapEmailFactory.create(folder=folder.name)
         imap_resource.sync_collection(folder.name)
+
+    wait_until(lambda: len(imap_resource.list_items(folder.name)) == 10)
 
     updated_items = imap_resource.list_items(folder.name)
     items_added = [item for item in updated_items if item not in initial_items]
@@ -602,6 +634,12 @@ def test_server_offline_rename_collection(
     assert new_name in (collection.name() for collection in updated_offline_collections)
 
     imap_resource.sync_collection(new_name)
+    imap_client.folder.set(new_name)
+    wait_until(
+        lambda: (
+            len(imap_resource.list_items(new_name)) == len(list(imap_client.fetch(mark_seen=False)))
+        )
+    )
 
     assert_collection_equal_mailbox(new_name, imap_resource, imap_client)
 
