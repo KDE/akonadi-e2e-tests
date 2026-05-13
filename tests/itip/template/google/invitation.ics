@@ -24,6 +24,13 @@ END:VTIMEZONE
 BEGIN:VEVENT
 DTSTART;TZID={{ iTIP.dtstart.tzinfo }}:{{ iTIP.dtstart.strftime("%Y%m%dT%H%M%S") }}
 DTEND;TZID={{ iTIP.dtend.tzinfo }}:{{ iTIP.dtend.strftime("%Y%m%dT%H%M%S") }}
+{% if iTIP.rrule == "DAILY" or iTIP.rrule == "YEARLY" %}
+RRULE:FREQ={{ iTIP.rrule }}
+{% elif iTIP.rrule == "WEEKLY" %}
+RRULE:FREQ={{ iTIP.rrule }};BYDAY={{ iTIP.get_rrule_byday() }}
+{% elif iTIP.rrule == "MONTHLY" %}
+RRULE:FREQ={{ iTIP.rrule }};BYMONTHDAY={{ iTIP.dtstart.day }}
+{% endif %}
 DTSTAMP:20260505T093026Z
 ORGANIZER;CN={{ iTIP.organizer_name }}:mailto:{{ iTIP.organizer_email }}
 UID:{{ iTIP.uid }}

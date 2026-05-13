@@ -26,6 +26,7 @@ def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent)
     assert itip.summary == event.get("SUMMARY").ical_value
     assert itip.description == event.get("DESCRIPTION").ical_value
     assert itip.location == event.get("LOCATION").ical_value
+    assert [itip.rrule] == event.get("RRULE", {}).get("FREQ", [None])
 
     event_attendees = (
         event.get("ATTENDEE")

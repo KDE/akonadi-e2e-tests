@@ -8,6 +8,7 @@ import string
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Literal, get_args
 from zoneinfo import ZoneInfo
 
 import factory
@@ -37,6 +38,9 @@ class ITIPAttendeeFactory(factory.Factory):
         return model_class(name=kwargs["name"], email=kwargs["email"], partstat=kwargs["partstat"])
 
 
+ITIPEventRRule = Literal["DAILY", "WEEKLY", "MONTHLY", "YEARLY"]
+
+
 @dataclass
 class ITIPEvent(abc.ABC):
     provider: str
@@ -48,6 +52,7 @@ class ITIPEvent(abc.ABC):
     location: str
     dtstart: datetime
     dtend: datetime
+    rrule: ITIPEventRRule | None
     sequence: int | None
     attendees: list[ITIPAttendee]
 
@@ -73,6 +78,21 @@ class ITIPEvent(abc.ABC):
     def increment_sequence(self, value=1) -> None:
         self.sequence = (self.sequence or 0) + value
 
+    def get_rrule_byday(self) -> str | None:
+        WEEK_DAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+        match self.rrule:
+            case None | "DAILY" | "YEARLY":
+                return None
+            case "WEEKLY":
+                week_day = WEEK_DAYS[self.dtstart.weekday()]
+                return f"{week_day}"
+            case "MONTHLY":
+                week_day = WEEK_DAYS[self.dtstart.weekday()]
+                week_ith = (self.dtstart.day - 1) // 7 + 1
+                return f"{week_ith}{week_day}"
+            case _:
+                raise ValueError(f"Unsupported rrule {self.rrule}")
+
 
 class ITIPEventFactory(factory.Factory):
     class Meta:
@@ -89,9 +109,11 @@ class ITIPEventFactory(factory.Factory):
     dtstart = factory.LazyFunction(lambda: fake.future_datetime(tzinfo=ZoneInfo("Europe/Paris")))
     dtend = factory.LazyAttribute(lambda o: o.dtstart + timedelta(hours=o.duration_hours))
     sequence: int | None = 0
+    rrule = factory.Faker("random_element", elements=get_args(ITIPEventRRule))
     attendees: list[ITIPAttendee] = []
 
     duration_hours = factory.Faker("random_int", min=1, max=8)
+    use_rrule = False
     nb_attendees = 1
 
     @classmethod
@@ -116,17 +138,19 @@ class ITIPEventFactory(factory.Factory):
             dtstart=kwargs.get("dtstart"),
             dtend=kwargs.get("dtend"),
             sequence=kwargs.get("sequence"),
+            rrule=kwargs.get("rrule") if kwargs.get("use_rrule") else None,
             attendees=cls.get_attendees(**kwargs),
         )
 
     @classmethod
-    def create_from(cls, obj: ITIPEvent, reset_fields: list[str]) -> ITIPEvent:
+    def create_from(cls, obj: ITIPEvent, reset_fields: list[str], **kwargs) -> ITIPEvent:
         obj = obj.clone()
         values = obj.__dict__
         for key in reset_fields:
             if key not in values:
                 raise ValueError(f"Key {key} not found in object")
             del values[key]
+        values.update(kwargs)
         return cls.build(**values)
 
 

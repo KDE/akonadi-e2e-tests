@@ -23,7 +23,6 @@ class ITIPScenario:
             template_path.read_text(),
             undefined=StrictUndefined,
             trim_blocks=True,
-            lstrip_blocks=True,
         )
         return template.render(iTIP=iTIP)
 

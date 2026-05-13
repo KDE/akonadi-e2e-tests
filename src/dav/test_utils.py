@@ -84,7 +84,7 @@ def sort_rrule(rrule: str) -> str:
 
 def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> None:
     def _filter_lines(lines):
-        splitted = (line.split(":", maxsplit=1) for line in lines)
+        splitted = (line.split(":", maxsplit=1) for line in lines if line)
         filtered = ((key, value) for key, value in splitted if key not in IGNORED_PROPERTIES)
         return [
             f"RRULE:{sort_rrule(value)}" if key == "RRULE" else f"{key}:{value}"
