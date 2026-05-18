@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+from collections.abc import Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -59,8 +60,8 @@ def event_exists(calendar: Calendar, uid: str) -> bool:
     return event_by_uid(calendar, uid) is not None
 
 
-def event_sequence_eq(calendar: Calendar, uid: str, sequence: int | None) -> bool:
+def event_sequence_op(op: Callable, calendar: Calendar, uid: str, sequence: int | None) -> bool:
     sequence = sequence or 0
     if event := event_by_uid(calendar, uid):
-        return event.get_icalendar_component().get("SEQUENCE", 0) == sequence
+        return op(event.get_icalendar_component().get("SEQUENCE", 0), sequence)
     return False
