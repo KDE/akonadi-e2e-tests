@@ -7,6 +7,7 @@ from logging import getLogger
 from imap_tools import BaseMailBox
 
 from src.imap.imap_server import ImapServer
+from src.test.docker_utils import get_image_name
 
 log = getLogger(__name__)
 
@@ -14,7 +15,7 @@ log = getLogger(__name__)
 class CyrusServer(ImapServer):
     USERNAME = "admin"
     PASSWORD = "admin"
-    DOCKER_IMAGE = "akonadi-e2e-cyrus:latest"
+    DOCKER_IMAGE = get_image_name("cyrus")
     CONTAINER_NAME = "cyrus-akonadi-e2e-tests"
     DELIMITER = "/"
 

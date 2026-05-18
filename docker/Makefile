@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: Dominique MICHEL <dominique.michel@enioka.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-DOCKER_NAME_PREFIX = akonadi-e2e
+CONTAINER_RUNTIME ?= docker
+IMAGE_NAME_PREFIX ?= akonadi-e2e-
+IMAGE_TAG ?= latest
 TARGETS := cyrus dovecot nextcloud radicale
 
 .PHONY: all $(TARGETS)
@@ -9,4 +11,4 @@ TARGETS := cyrus dovecot nextcloud radicale
 all: $(TARGETS)
 
 $(TARGETS):
-	cd "$@" && docker build -t "${DOCKER_NAME_PREFIX}-$@" .
+	cd "$@" && ${CONTAINER_RUNTIME} build --pull --no-cache --tag "${IMAGE_NAME_PREFIX}$@:${IMAGE_TAG}" .

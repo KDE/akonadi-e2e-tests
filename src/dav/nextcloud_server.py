@@ -7,6 +7,7 @@ from logging import getLogger
 from typing import override
 
 from src.dav.dav_server import DAVServer
+from src.test.docker_utils import get_image_name
 
 log = getLogger(__name__)
 
@@ -14,7 +15,7 @@ log = getLogger(__name__)
 class NextCloudServer(DAVServer):
     USERNAME = "test"
     PASSWORD = "testtest"
-    DOCKER_IMAGE = "akonadi-e2e-nextcloud:latest"
+    DOCKER_IMAGE = get_image_name("nextcloud")
     CONTAINER_NAME = "nextcloud-akonadi-e2e-tests"
     PORT = 80
 

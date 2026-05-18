@@ -6,6 +6,7 @@ from logging import getLogger
 from typing import override
 
 from src.dav.dav_server import DAVServer
+from src.test.docker_utils import get_image_name
 
 log = getLogger(__name__)
 
@@ -13,7 +14,7 @@ log = getLogger(__name__)
 class RadicaleServer(DAVServer):
     USERNAME = "test"
     PASSWORD = "testtest"
-    DOCKER_IMAGE = "akonadi-e2e-radicale:latest"
+    DOCKER_IMAGE = get_image_name("radicale")
     CONTAINER_NAME = "radicale-akonadi-e2e-tests"
     PORT = 5232
 
