@@ -174,18 +174,19 @@ class Resource(ABC):
 
         AkonadiUtils.wait_for_job(job)
 
-    def add_flag(self, item_id: int, flag: str) -> None:
+    def add_flags(self, item_id: int, flags: set[str]) -> None:
         item = self.akonadi_client.item_by_id(item_id, False)
-        item.setFlag(flag.encode())
+        item.setFlags({flag.encode() for flag in flags})
 
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)
 
-    def clear_flag(self, item_id: int, flag: str) -> None:
+    def clear_flags(self, item_id: int, flags: set[str]) -> None:
         item = self.akonadi_client.item_by_id(item_id, False)
-        item.clearFlag(flag.encode())
-        item.clearFlag(flag.lower().encode())
-        item.clearFlag(flag.upper().encode())
+        for flag in flags:
+            item.clearFlag(flag.encode())
+            item.clearFlag(flag.lower().encode())
+            item.clearFlag(flag.upper().encode())
 
         modifyJob = Akonadi.ItemModifyJob(item)
         AkonadiUtils.wait_for_job(modifyJob)

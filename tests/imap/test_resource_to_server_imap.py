@@ -35,6 +35,15 @@ from src.test import wait_until
 
 log = getLogger(__name__)
 
+flags_data = [
+    pytest.param({"\\Answered"}, id="answered"),
+    pytest.param({"\\Seen"}, id="seen"),
+    pytest.param({"\\Draft"}, id="draft"),
+    pytest.param({"\\Flagged"}, id="flagged"),
+    pytest.param({"\\Answered", "\\Seen"}, id="answered_seen"),
+    pytest.param({"\\Answered", "\\Flagged", "\\Draft", "\\Seen"}, id="all"),
+]
+
 
 def test_akonadi_sync_add_collection(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
@@ -378,11 +387,10 @@ def test_copy_message_on_server_is_synced(
     assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug ? Flag disappear from akonadi server, maybe sync issues with imap server ?",
-    strict=True,
-)
-def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
+@pytest.mark.parametrize("flags", flags_data)
+def test_akonadi_sync_add_flag(
+    imap_resource: ImapResource, imap_client: BaseMailBox, flags: set[str]
+) -> None:
     """
     Changing flags of an item in the akonadi server, the change is replayed on the server
     """
@@ -395,21 +403,34 @@ def test_akonadi_sync_add_flag(imap_resource: ImapResource, imap_client: BaseMai
     items = imap_resource.list_items(folder.name)
     item = items[0]
 
-    flags = ["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
-    for flag in flags:
-        imap_resource.add_flag(item.id(), flag)
+    imap_resource.add_flags(item.id(), flags)
 
-        imap_resource.sync_collection(folder.name)
-        wait_until(lambda: has_flag(imap_client, item, folder.name, flag))  # noqa: B023
-        assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+    imap_resource.sync_collection(folder.name)
+    wait_until(lambda: has_flag(imap_client, item, folder.name, list(flags)[0]))  # noqa: B023
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    for flag in flags:
-        imap_resource.clear_flag(item.id(), flag)
 
-        imap_resource.sync_collection(folder.name)
-        wait_until(lambda: not has_flag(imap_client, item, folder.name, flag))  # noqa: B023
+@pytest.mark.parametrize("flags", flags_data)
+def test_akonadi_sync_remove_flag(
+    imap_resource: ImapResource,
+    imap_client: BaseMailBox,
+    flags: set[str],
+) -> None:
+    folder = ImapFolderFactory.create(nb_items=0)
+    ImapEmailFactory.create_batch(
+        2, folder=folder.name, flags=["\\Answered", "\\Flagged", "\\Draft", "\\Seen"]
+    )
+    imap_resource.synchronize()
 
-        assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
+    imap_client.folder.set(folder.name)
+    items = imap_resource.list_items(folder.name)
+    item = items[0]
+
+    imap_resource.clear_flags(item.id(), flags)
+
+    imap_resource.synchronize()
+    wait_until(lambda: not has_flag(imap_client, item, folder.name, list(flags)[0]))  # noqa: B023
+    assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
 def test_offline_rename_collection(
@@ -464,20 +485,9 @@ def test_offline_rename_collection(
     assert_akonadi_items_are_equal(initial_items, updated_items)
 
 
-flagBatchs = [
-    ["\\Answered"],
-    ["\\Seen"],
-    ["\\Draft"],
-    ["\\Flagged"],
-    ["\\Answered", "\\Seen"],
-    ["\\Answered", "\\Flagged", "\\Draft", "\\Seen"],
-]
-ids = ["answered", "seen", "draft", "flagged", "answered_and_seen", "all"]
-
-
-@pytest.mark.parametrize("flags", flagBatchs, ids=ids)
+@pytest.mark.parametrize("flags", flags_data)
 def test_akonadi_offline_add_flag(
-    imap_resource: ImapResource, imap_client: BaseMailBox, flags: list[str]
+    imap_resource: ImapResource, imap_client: BaseMailBox, flags: set[str]
 ) -> None:
     """
     Changing flags of an item in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
@@ -500,8 +510,7 @@ def test_akonadi_offline_add_flag(
     imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
-    for flag in flags:
-        imap_resource.add_flag(item.id(), flag)
+    imap_resource.add_flags(item.id(), flags)
     item = imap_resource.akonadi_client.item_by_id(item.id(), False)
     for flag in flags:
         assert not has_flag(imap_client, item, folder_name, flag)  # noqa: B023
@@ -516,9 +525,9 @@ def test_akonadi_offline_add_flag(
     assert_collection_equal_mailbox(folder_name, imap_resource, imap_client)
 
 
-@pytest.mark.parametrize("flags", flagBatchs, ids=ids)
+@pytest.mark.parametrize("flags", flags_data)
 def test_akonadi_offline_remove_flag(
-    imap_resource: ImapResource, imap_client: BaseMailBox, flags: list[str]
+    imap_resource: ImapResource, imap_client: BaseMailBox, flags: set[str]
 ) -> None:
     """
     Changing flags of an item in the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
@@ -539,8 +548,7 @@ def test_akonadi_offline_remove_flag(
     imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
-    for flag in flags:
-        imap_resource.clear_flag(item.id(), flag)
+    imap_resource.clear_flags(item.id(), flags)
     item = imap_resource.akonadi_client.item_by_id(item.id(), False)
     for flag in flags:
         assert has_flag(imap_client, item, folder_name, flag)  # noqa: B023

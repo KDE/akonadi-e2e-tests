@@ -129,7 +129,8 @@ def test_offline_flag_only_change(imap_resource: ImapResource, imap_client: Base
 
     imap_client.folder.set(folder)
     imap_client.flag([imap_uid], "$TestFlag", True)
-    imap_resource.add_flag(item.id(), "$TestFlag2")
+
+    imap_resource.add_flags(item.id(), {"$TestFlag2"})
 
     imap_resource.set_online(True)
     imap_resource.sync_collection(folder)
@@ -332,7 +333,7 @@ def test_update_item_in_akonadi_on_collection_removed_on_server(
     the same collection on the IMAP server
     Then both the item and the collection should be removed from akonadi once the resource comes back online
     """
-    flag_to_add = "\\Draft"
+    flag_to_add = set("\\Draft")
     folder = ImapFolderFactory.create(nb_items=0)
     ImapEmailFactory.create(folder=folder.name, flags=[])
     imap_resource.synchronize()
@@ -348,7 +349,7 @@ def test_update_item_in_akonadi_on_collection_removed_on_server(
     imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
-    imap_resource.add_flag(pre_update_items_on_resource[0].id(), flag_to_add)
+    imap_resource.add_flags(pre_update_items_on_resource[0].id(), flag_to_add)
 
     imap_client.folder.delete(folder.name)
 
