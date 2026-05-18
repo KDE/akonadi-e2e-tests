@@ -33,7 +33,8 @@ from src.test import wait_until
 
 
 @pytest.mark.xfail(
-    reason="The test is failing because collectionAdded is not implemented in dav resource",
+    reason="The test is failing because collectionAdded is not implemented in dav resource"
+    "https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/88",
     strict=True,
 )
 def test_akonadi_sync_add_collection(

@@ -185,7 +185,7 @@ def test_mailbox_renamed_on_server_is_synced(
 
 
 @pytest.mark.xfail(
-    reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change.",
+    reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/121",
     strict=True,
 )
 def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
@@ -450,7 +450,10 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
-@pytest.mark.xfail(reason="Akonadi bug? ModificationTime is not updated", strict=True)
+@pytest.mark.xfail(
+    reason="Akonadi bug? ModificationTime is not updated, https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/120",
+    strict=True,
+)
 def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Changing flags of an item on the server implicitly triggers a partial sync
@@ -537,7 +540,7 @@ def test_partial_sync_on_delete_msg(
     request.node.add_marker(
         pytest.mark.xfail(
             condition=isinstance(imap_server, CyrusServer),
-            reason="Fail on CYRUS only, unchanged items are actually sync, revision is updated",
+            reason="Fail on CYRUS only, unchanged items are actually sync, revision is updated see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/93",
             strict=True,
         )
     )

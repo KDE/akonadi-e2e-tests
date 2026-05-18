@@ -358,7 +358,7 @@ def test_copy_message_on_server_is_synced(
     request.node.add_marker(
         pytest.mark.xfail(
             condition=isinstance(imap_server, CyrusServer),
-            reason="Akonadi bug ? An append command is sent to the server, and cyrus rejects it because of wrong flags",
+            reason="After copying Cyrus don't expect \\RECENT flag to be there, according to RFC client is not allowed to alter it and new item contain it, https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/123",
             strict=True,
         )
     )
