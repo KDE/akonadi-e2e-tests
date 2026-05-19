@@ -39,6 +39,9 @@ ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT={{ attendee.partstat }}
  ;CN={{ attendee.name }};X-NUM-GUESTS=0:mailto:{{ attendee.email }}
 {% endfor %}
 X-MICROSOFT-CDO-OWNERAPPTID:-1924971892
+{% if iTIP.recurrence_id is not none%}
+RECURRENCE-ID;TZID={{ iTIP.recurrence_id.tzinfo }}:{{ iTIP.recurrence_id.strftime("%Y%m%dT%H%M%S") }}
+{% endif %}
 CREATED:20260505T093014Z
 DESCRIPTION:{{ iTIP.description }}
 LAST-MODIFIED:20260505T093014Z

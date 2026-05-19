@@ -73,6 +73,9 @@ LAST-MODIFIED:20260506T093201Z
 DESCRIPTION:{{ iTIP.description }}
 SUMMARY:{{ iTIP.summary }}
 LOCATION:{{ iTIP.location }}
+{% if iTIP.recurrence_id is not none%}
+RECURRENCE-ID;TZID={{ iTIP.recurrence_id.tzinfo }}:{{ iTIP.recurrence_id.strftime("%Y%m%dT%H%M%S") }}
+{% endif %}
 {% if iTIP.rrule == 'DAILY' %}
 RRULE:FREQ={{ iTIP.rrule }}
 {% elif iTIP.rrule == 'WEEKLY' %}

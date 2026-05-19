@@ -14,7 +14,9 @@ from src.factories.itip_factory import ITIPEvent
 
 
 def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent) -> None:
-    def norm_dt(dt: datetime) -> datetime:
+    def norm_dt(dt: datetime | None) -> datetime | None:
+        if dt is None:
+            return None
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=ZoneInfo("UTC"))
         return dt.replace(microsecond=0)
@@ -28,7 +30,9 @@ def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent)
     assert itip.description == event.get("DESCRIPTION").ical_value
     assert itip.location == event.get("LOCATION").ical_value
     assert [itip.rrule] == event.get("RRULE", {}).get("FREQ", [None])
-
+    assert norm_dt(itip.recurrence_id) == norm_dt(
+        recid.dt if (recid := event.get("RECURRENCE-ID")) else None
+    )
     event_attendees = (
         event.get("ATTENDEE")
         if isinstance(event.get("ATTENDEE"), list)

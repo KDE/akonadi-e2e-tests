@@ -12,6 +12,7 @@ from typing import Literal, get_args
 from zoneinfo import ZoneInfo
 
 import factory
+from dateutil.relativedelta import relativedelta
 from faker import Faker
 from icalendar.enums import PARTSTAT
 
@@ -53,11 +54,34 @@ class ITIPEvent(abc.ABC):
     dtstart: datetime
     dtend: datetime
     rrule: ITIPEventRRule | None
+    recurrence_id: datetime | None
     sequence: int | None
     attendees: list[ITIPAttendee]
 
     def clone(self) -> ITIPEvent:
         return deepcopy(self)
+
+    def get_occurrence_id(self, occurrence_index: int) -> datetime:
+        match self.rrule:
+            case "DAILY":
+                return self.dtstart + timedelta(days=occurrence_index)
+            case "WEEKLY":
+                return self.dtstart + timedelta(weeks=occurrence_index)
+            case "MONTHLY":
+                return self.dtstart + relativedelta(months=occurrence_index)
+            case "YEARLY":
+                return self.dtstart + relativedelta(years=occurrence_index)
+            case _:
+                raise ValueError(f"Unsupported rrule {self.rrule}")
+
+    def create_exception(self, occurrence_index: int) -> ITIPEvent:
+        new_itip = self.clone()
+        new_itip.increment_sequence()
+        new_itip.rrule = None
+        new_itip.recurrence_id = self.get_occurrence_id(occurrence_index)
+        new_itip.dtend = new_itip.recurrence_id + (self.dtend - self.dtstart)
+        new_itip.dtstart = new_itip.recurrence_id
+        return new_itip
 
     def get_attendee_by_email(self, email: str) -> ITIPAttendee:
         for attendee in self.attendees:
@@ -110,6 +134,7 @@ class ITIPEventFactory(factory.Factory):
     dtend = factory.LazyAttribute(lambda o: o.dtstart + timedelta(hours=o.duration_hours))
     sequence: int | None = 0
     rrule = factory.Faker("random_element", elements=get_args(ITIPEventRRule))
+    recurrence_id: datetime | None = None
     attendees: list[ITIPAttendee] = []
 
     duration_hours = factory.Faker("random_int", min=1, max=8)
@@ -139,6 +164,7 @@ class ITIPEventFactory(factory.Factory):
             dtend=kwargs.get("dtend"),
             sequence=kwargs.get("sequence"),
             rrule=kwargs.get("rrule") if kwargs.get("use_rrule") else None,
+            recurrence_id=kwargs.get("recurrence_id"),
             attendees=cls.get_attendees(**kwargs),
         )
 

@@ -34,6 +34,9 @@ RRULE:FREQ={{ iTIP.rrule }};INTERVAL=1;BYMONTHDAY={{ iTIP.dtstart.day }};BYMONTH
 {% endif %}
 DESCRIPTION;LANGUAGE=en-US:{{ iTIP.description }}
 UID:{{ iTIP.uid }}
+{% if iTIP.recurrence_id is not none%}
+RECURRENCE-ID;TZID={{ iTIP.recurrence_id.tzinfo }}:{{ iTIP.recurrence_id.strftime("%Y%m%dT%H%M%S") }}
+{% endif %}
 SUMMARY;LANGUAGE=en-US:{{ iTIP.summary }}
 DTSTART;TZID={{ iTIP.dtstart.tzinfo }}:{{ iTIP.dtstart.strftime("%Y%m%dT%H%M%S") }}
 DTEND;TZID={{ iTIP.dtend.tzinfo }}:{{ iTIP.dtend.strftime("%Y%m%dT%H%M%S") }}
