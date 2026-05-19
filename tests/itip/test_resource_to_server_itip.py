@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+from datetime import timedelta
 from operator import eq, ge
 
 import pytest
@@ -244,4 +245,69 @@ def test_update_without_invitation_is_sync(
     assert_akonadi_item_equals_itip_event(new_item, new_itip)
 
     wait_until(lambda: event_sequence_op(eq, dav_calendar, itip.uid, new_itip.sequence))
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug? Reccuring event occurence is not sync. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/122",
+    strict=True,
+)
+@pytest.mark.parametrize(
+    "factory",
+    [
+        pytest.param(GoogleITIPEventFactory),
+        pytest.param(MicrosoftITIPEventFactory),
+        pytest.param(AkonadiITIPEventFactory),
+    ],
+)
+def test_update_recurring_occurrence_is_sync(
+    factory: ITIPEventFactory,
+    itip_handler: ITIPHandler,
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    dav_server: DAVServer,
+    request: pytest.FixtureRequest,
+):
+    """
+    An invitation update for a recurring event is received, it changes the time of one of the instances of the event
+    The corresponding item must be updated in its collection (and this is replicated on the server)
+    """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer)
+            and factory.provider == MicrosoftITIPEventFactory.provider,
+            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
+            strict=True,
+        )
+    )
+
+    dav_calendar = dav_principal.calendar("Default Calendar")
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
+
+    itip: ITIPEvent = factory.build(use_rrule=True)
+    ical = ITIPScenario.create_invitation(itip)
+    attendee = itip.get_first_non_organizer_attendee()
+    itip_handler.process_message(attendee.email, ical, ITIPAction.ACCEPTED)
+    groupware_resource.synchronize()
+    [item] = groupware_resource.list_items(collection.id())
+    wait_until(lambda: event_exists(dav_calendar, itip.uid))
+
+    # Create and process an occurrence update
+    new_itip = itip.create_exception(1)
+    new_itip.add_timedelta(timedelta(hours=2))
+    new_ical = ITIPScenario.create_invitation(new_itip)
+    new_attendee = new_itip.get_attendee_by_email(attendee.email)
+    itip_handler.process_message(new_attendee.email, new_ical, ITIPAction.ACCEPTED)
+
+    # Event updated in resource and synchronized on server
+    groupware_resource.synchronize()
+
+    new_attendee.partstat = PARTSTAT.ACCEPTED
+    [new_item] = [i for i in groupware_resource.list_items(collection.id()) if i.id() != item.id()]
+    assert_akonadi_item_equals_itip_event(new_item, new_itip)
+
+    wait_until(
+        lambda: len(dav_calendar.get_event_by_uid(itip.uid).icalendar_instance.walk("VEVENT")) == 2
+    )
+    # TODO: our current tooling (eg. assert) does not support caldav-lib's event with multiple vevent
     assert_all_collections_are_equals(dav_principal, groupware_resource)
