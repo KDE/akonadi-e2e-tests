@@ -15,7 +15,6 @@ from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.test_utils import assert_akonadi_items_are_equal
 from src.akonadi.utils import AkonadiUtils
-from src.dav.radicale_server import RadicaleServer
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_calendar,
@@ -152,21 +151,11 @@ def test_akonadi_sync_remove_item(
 
 
 def test_offline_akonadi_remove_collection(
-    dav_principal: Principal,
-    groupware_resource: DAVResource,
-    dav_server: RadicaleServer,
-    request: pytest.FixtureRequest,
+    dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
     """
     Removing a collection from the akonadi server, nothing happens, when the resource is set online, the change is replayed on the server
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer),
-            reason="The test fails on RADICALE, the collection is deleted when calling the delete job then recreated by the resource when going back online (as an empty collection). Note that if the test calls synchronize just after going back online, the resource will call a second delete collection job",
-            strict=True,
-        )
-    )
     calendar_to_delete = DavCalendarFactory.create()
     unchanged_calendar = DavCalendarFactory.create()
     groupware_resource.synchronize()
@@ -178,8 +167,10 @@ def test_offline_akonadi_remove_collection(
     collection_to_delete = groupware_resource.collection_from_display_name(calendar_to_delete.name)
 
     groupware_resource.set_online(False)
+
     job = Akonadi.CollectionDeleteJob(collection_to_delete)
-    AkonadiUtils.wait_for_job(job)
+    with AkonadiUtils.wait_for_queued_change_replay(groupware_resource.instance):
+        AkonadiUtils.wait_for_job(job)
 
     # assert nothing happens
 
