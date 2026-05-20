@@ -27,7 +27,7 @@ def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent)
     assert norm_dt(itip.dtstart) == norm_dt(event.get("DTSTART").dt)
     assert norm_dt(itip.dtend) == norm_dt(event.get("DTEND").dt)
     assert itip.summary == event.get("SUMMARY").ical_value
-    assert itip.description == event.get("DESCRIPTION").ical_value
+    assert itip.description == (desc.ical_value if (desc := event.get("DESCRIPTION")) else None)
     assert itip.location == event.get("LOCATION").ical_value
     assert [itip.rrule] == event.get("RRULE", {}).get("FREQ", [None])
     assert norm_dt(itip.recurrence_id) == norm_dt(

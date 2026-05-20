@@ -49,7 +49,7 @@ class ITIPEvent(abc.ABC):
     organizer_name: str
     organizer_email: str
     summary: str
-    description: str
+    description: str | None
     location: str
     dtstart: datetime
     dtend: datetime
