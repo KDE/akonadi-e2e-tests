@@ -33,6 +33,12 @@ def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent)
     assert norm_dt(itip.recurrence_id) == norm_dt(
         recid.dt if (recid := event.get("RECURRENCE-ID")) else None
     )
+
+    itip_exdates = sorted(itip.exdate)
+    event_exdates = sorted((exd.dts if (exd := event.get("EXDATE")) else []), key=lambda d: d.dt)
+    for itip_exdate, event_exdate in zip(itip_exdates, event_exdates, strict=True):
+        assert norm_dt(itip_exdate) == norm_dt(event_exdate.dt)
+
     event_attendees = (
         event.get("ATTENDEE")
         if isinstance(event.get("ATTENDEE"), list)

@@ -57,6 +57,7 @@ class ITIPEvent(abc.ABC):
     recurrence_id: datetime | None
     sequence: int | None
     attendees: list[ITIPAttendee]
+    exdate: list[datetime]
 
     def clone(self) -> ITIPEvent:
         return deepcopy(self)
@@ -135,7 +136,8 @@ class ITIPEventFactory(factory.Factory):
     sequence: int | None = 0
     rrule = factory.Faker("random_element", elements=get_args(ITIPEventRRule))
     recurrence_id: datetime | None = None
-    attendees: list[ITIPAttendee] = []
+    attendees = factory.LazyFunction(list)
+    exdate = factory.LazyFunction(list)
 
     duration_hours = factory.Faker("random_int", min=1, max=8)
     use_rrule = False
@@ -166,6 +168,7 @@ class ITIPEventFactory(factory.Factory):
             rrule=kwargs.get("rrule") if kwargs.get("use_rrule") else None,
             recurrence_id=kwargs.get("recurrence_id"),
             attendees=cls.get_attendees(**kwargs),
+            exdate=kwargs.get("exdate"),
         )
 
     @classmethod
