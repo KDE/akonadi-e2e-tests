@@ -18,9 +18,7 @@ from src.akonadi.test_utils import (
     assert_item_unsync,
 )
 from src.factories.email_factory import ImapEmailFactory, ImapFolderFactory, fake
-from src.imap import CyrusServer
 from src.imap.email_utils import create_message
-from src.imap.imap_server import ImapServer
 from src.imap.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_mailbox,
@@ -529,23 +527,11 @@ def test_partial_sync_on_append_msg(imap_resource: ImapResource, imap_client: Ba
             assert_item_unsync(initial_item, item)
 
 
-def test_partial_sync_on_delete_msg(
-    imap_resource: ImapResource,
-    imap_client: BaseMailBox,
-    imap_server: ImapServer,
-    request: pytest.FixtureRequest,
-) -> None:
+def test_partial_sync_on_delete_msg(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Removing an item from a collection on the server implicitly triggers a partial sync, the removed item is also removed in the akonadi server, no other change occurred.
     To do this check, we actually look that all other items are unsynced
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(imap_server, CyrusServer),
-            reason="Fail on CYRUS only, unchanged items are actually sync, revision is updated see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/93",
-            strict=True,
-        )
-    )
     custom_folder = ImapFolderFactory.create(nb_items=5)
     inbox_folder = "INBOX"
     ImapEmailFactory.create_batch(10, folder=inbox_folder)

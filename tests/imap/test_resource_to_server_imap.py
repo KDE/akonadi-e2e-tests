@@ -23,8 +23,6 @@ from src.factories.email_factory import (
     ImapFolderFactory,
     fake,
 )
-from src.imap import CyrusServer
-from src.imap.imap_server import ImapServer
 from src.imap.test_utils import (
     assert_collection_equal_mailbox,
     has_flag,
@@ -349,19 +347,10 @@ def test_copy_message_on_server_is_synced(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
     akonadi_client: AkonadiClient,
-    imap_server: ImapServer,
-    request: pytest.FixtureRequest,
 ) -> None:
     """
     Copying an item from one collection to another in the akonadi server, the change is replayed on the server
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(imap_server, CyrusServer),
-            reason="After copying Cyrus don't expect \\RECENT flag to be there, according to RFC client is not allowed to alter it and new item contain it, https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/123",
-            strict=True,
-        )
-    )
     folder1 = ImapFolderFactory.create()
     folder2 = ImapFolderFactory.create()
     imap_resource.synchronize()
