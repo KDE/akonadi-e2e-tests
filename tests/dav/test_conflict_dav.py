@@ -12,8 +12,7 @@ from caldav.lib.error import NotFoundError
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
-from src.akonadi.utils import WaitJobError
-from src.dav.radicale_server import RadicaleServer
+from src.akonadi.utils import AkonadiUtils, WaitJobError
 from src.dav.test_utils import assert_all_collections_are_equals
 from src.factories.event_factory import (
     AkonadiEventFactory,
@@ -27,22 +26,12 @@ log = getLogger(__name__)
 
 
 def test_offline_remove_collection_and_add_event(
-    dav_principal: Principal,
-    groupware_resource: DAVResource,
-    dav_server: RadicaleServer,
-    request: pytest.FixtureRequest,
+    dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
     """
     Removing a collection from the akonadi server, adding an item to the collection on the server, nothing happens
     When the resource is set online, the change is replayed on the server and the collection is removed (including the newly added item)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer),
-            reason="RADICALE: Collection is recreated with an item. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/102",
-            strict=True,
-        )
-    )
     calendar = DavCalendarFactory.create()
     groupware_resource.synchronize()
     assert_all_collections_are_equals(dav_principal, groupware_resource)
@@ -51,7 +40,8 @@ def test_offline_remove_collection_and_add_event(
 
     groupware_resource.set_online(False)
 
-    groupware_resource.delete_collection(collection.name())
+    with AkonadiUtils.wait_for_queued_change_replay(groupware_resource.instance):
+        groupware_resource.delete_collection(collection.name())
     DavEventFactory.create(calendar=calendar.name)
 
     # Nothing happens
