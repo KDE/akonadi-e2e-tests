@@ -4,6 +4,7 @@
 # SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+from datetime import timedelta
 
 import pytest
 from AkonadiCore import Akonadi  # type: ignore
@@ -388,7 +389,9 @@ changed_field = [
     ("DTSTART", fake.future_datetime().strftime("%Y%m%dT%H%M%S"), fake.boolean()),
     (
         "DTEND",
-        fake.date_time_between(start_date=random_dtsart, end_date="+8h").strftime("%Y%m%dT%H%M%S"),
+        fake.date_time_between(
+            start_date=random_dtsart, end_date=random_dtsart + timedelta(hours=8)
+        ).strftime("%Y%m%dT%H%M%S"),
         True,
     ),
     ("DURATION", f"PT{fake.random_int(min=1, max=8)}H", False),
@@ -408,7 +411,7 @@ def test_akonadi_change_item_contents(
     Changing content of an item in the akonadi server (description, alarms, attachments… should all be tested), the change is replayed on the server
     """
     calendar = DavCalendarFactory.create(nb_items=0)
-    event = DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend)
+    DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend, dtstart=random_dtsart)
     groupware_resource.synchronize()
 
     collection = groupware_resource.collection_from_display_name(calendar.name)
