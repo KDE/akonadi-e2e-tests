@@ -383,23 +383,25 @@ def test_offline_rename_collection(
 
 random_dtsart = fake.future_datetime()
 
-changed_field = [
-    ("DESCRIPTION", fake.paragraph(), fake.boolean()),
-    ("SUMMARY", fake.sentence(), fake.boolean()),
-    ("DTSTART", fake.future_datetime().strftime("%Y%m%dT%H%M%S"), fake.boolean()),
-    (
+changed_field_data = [
+    pytest.param("DESCRIPTION", fake.paragraph(), fake.boolean(), id="description"),
+    pytest.param("SUMMARY", fake.sentence(), fake.boolean(), id="summary"),
+    pytest.param(
+        "DTSTART", fake.future_datetime().strftime("%Y%m%dT%H%M%S"), fake.boolean(), id="dtstart"
+    ),
+    pytest.param(
         "DTEND",
         fake.date_time_between(
             start_date=random_dtsart, end_date=random_dtsart + timedelta(hours=8)
         ).strftime("%Y%m%dT%H%M%S"),
         True,
+        id="dtend",
     ),
-    ("DURATION", f"PT{fake.random_int(min=1, max=8)}H", False),
+    pytest.param("DURATION", f"PT{fake.random_int(min=1, max=8)}H", False, id="duration"),
 ]
-ids = ["description", "sentence", "dtstart", "dtend", "duration"]
 
 
-@pytest.mark.parametrize("field, new_value, use_dtend", changed_field, ids=ids)
+@pytest.mark.parametrize("field, new_value, use_dtend", changed_field_data)
 def test_akonadi_change_item_contents(
     dav_principal: Principal,
     groupware_resource: DAVResource,
