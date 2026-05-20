@@ -212,3 +212,38 @@ def test_add_item_remotely_to_collection_removed_locally(
         c.remoteId() for c in groupware_resource.list_collections()
     ]
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_delete_item_remotely_on_collection_removed_locally(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    akonadi_client: AkonadiClient,
+) -> None:
+    """
+    Removing an item from a collection on the server, removing the collection in akonadi server, nothing happens, when
+    the resource is set online, the collection is removed on the server
+    """
+    calendar = DavCalendarFactory.create()
+    groupware_resource.synchronize()
+
+    groupware_resource.set_online(False)
+
+    event_to_delete = dav_principal.calendar(calendar.name).events()[0]
+    event_to_delete.delete()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    assert collection is not None
+    with AkonadiUtils.wait_for_queued_change_replay(groupware_resource.instance):
+        akonadi_client.delete_collection(collection.id())
+
+    # No change was replicated on the server
+    assert dav_principal.calendar(calendar.name) is not None
+
+    groupware_resource.set_online(True)
+
+    # assert the collection is deleted both in akonadi and in the server
+    assert calendar.name not in [c.get_display_name() for c in dav_principal.get_calendars()]
+    assert collection.remoteId() not in [
+        c.remoteId() for c in groupware_resource.list_collections()
+    ]
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
