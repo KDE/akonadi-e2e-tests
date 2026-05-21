@@ -156,6 +156,14 @@ class ITIPEventFactory(factory.Factory):
         return ITIPAttendeeFactory.build_batch(kwargs.get("nb_attendees", 0))
 
     @classmethod
+    def get_rrule(cls, **kwargs) -> list[ITIPAttendee] | None:
+        if (rrule := kwargs.get("rrule")) is not None:
+            return rrule
+        if kwargs.get("use_rrule"):
+            return fake.random_element(get_args(ITIPEventRRule))
+        return None
+
+    @classmethod
     def _build(cls, model_class, **kwargs) -> ITIPEvent:
         assert kwargs.get("provider"), (
             "ITIP requires provider to be overridden by factory child classes"
@@ -171,7 +179,7 @@ class ITIPEventFactory(factory.Factory):
             dtstart=kwargs.get("dtstart"),
             dtend=kwargs.get("dtend"),
             sequence=kwargs.get("sequence"),
-            rrule=kwargs.get("rrule") if kwargs.get("use_rrule") else None,
+            rrule=cls.get_rrule(**kwargs),
             rrule_until=kwargs.get("rrule_until"),
             recurrence_id=kwargs.get("recurrence_id"),
             attendees=cls.get_attendees(**kwargs),
