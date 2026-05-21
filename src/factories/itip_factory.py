@@ -54,10 +54,14 @@ class ITIPEvent(abc.ABC):
     dtstart: datetime
     dtend: datetime
     rrule: ITIPEventRRule | None
+    rrule_until: datetime | None
     recurrence_id: datetime | None
     sequence: int | None
     attendees: list[ITIPAttendee]
     exdate: list[datetime]
+
+    def set_rrule_until_utc(self, rrule: datetime | None) -> None:
+        self.rrule_until = rrule.astimezone(UTC) if rrule else None
 
     def clone(self) -> ITIPEvent:
         return deepcopy(self)
@@ -79,6 +83,7 @@ class ITIPEvent(abc.ABC):
         new_itip = self.clone()
         new_itip.increment_sequence()
         new_itip.rrule = None
+        new_itip.rrule_until = None
         new_itip.recurrence_id = self.get_occurrence_id(occurrence_index)
         new_itip.dtend = new_itip.recurrence_id + (self.dtend - self.dtstart)
         new_itip.dtstart = new_itip.recurrence_id
@@ -135,6 +140,7 @@ class ITIPEventFactory(factory.Factory):
     dtend = factory.LazyAttribute(lambda o: o.dtstart + timedelta(hours=o.duration_hours))
     sequence: int | None = 0
     rrule = factory.Faker("random_element", elements=get_args(ITIPEventRRule))
+    rrule_until: datetime | None = None
     recurrence_id: datetime | None = None
     attendees = factory.LazyFunction(list)
     exdate = factory.LazyFunction(list)
@@ -166,6 +172,7 @@ class ITIPEventFactory(factory.Factory):
             dtend=kwargs.get("dtend"),
             sequence=kwargs.get("sequence"),
             rrule=kwargs.get("rrule") if kwargs.get("use_rrule") else None,
+            rrule_until=kwargs.get("rrule_until"),
             recurrence_id=kwargs.get("recurrence_id"),
             attendees=cls.get_attendees(**kwargs),
             exdate=kwargs.get("exdate"),

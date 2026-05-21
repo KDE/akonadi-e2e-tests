@@ -23,14 +23,15 @@ ORGANIZER;CN={{ iTIP.organizer_name }}:mailto:{{ iTIP.organizer_email }}
 ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT={{ attendee.partstat }};RSVP=TRUE;CN={{ attendee.name }}:
  mailto:{{ attendee.email }}
 {% endfor %}
+{% set rrule_until = ';UNTIL=' + iTIP.rrule_until.strftime("%Y%m%dT%H%M%SZ") if iTIP.rrule_until else '' %}
 {% if iTIP.rrule == "DAILY" %}
-RRULE:FREQ={{ iTIP.rrule }};INTERVAL=1
+RRULE:FREQ={{ iTIP.rrule }}{{ rrule_until}};INTERVAL=1
 {% elif iTIP.rrule == "WEEKLY" %}
-RRULE:FREQ={{ iTIP.rrule }};INTERVAL=1;BYDAY={{ iTIP.get_rrule_byday() }};WKST=SU
+RRULE:FREQ={{ iTIP.rrule }}{{ rrule_until}};INTERVAL=1;BYDAY={{ iTIP.get_rrule_byday() }};WKST=SU
 {% elif iTIP.rrule == "MONTHLY" %}
-RRULE:FREQ={{ iTIP.rrule }};INTERVAL=1;BYMONTHDAY={{ iTIP.dtstart.day }}
+RRULE:FREQ={{ iTIP.rrule }}{{ rrule_until}};INTERVAL=1;BYMONTHDAY={{ iTIP.dtstart.day }}
 {% elif iTIP.rrule == "YEARLY" %}
-RRULE:FREQ={{ iTIP.rrule }};INTERVAL=1;BYMONTHDAY={{ iTIP.dtstart.day }};BYMONTH={{ iTIP.dtstart.month }}
+RRULE:FREQ={{ iTIP.rrule }}{{ rrule_until}};INTERVAL=1;BYMONTHDAY={{ iTIP.dtstart.day }};BYMONTH={{ iTIP.dtstart.month }}
 {% endif %}
 DESCRIPTION;LANGUAGE=en-US:{{ iTIP.description }}
 UID:{{ iTIP.uid }}

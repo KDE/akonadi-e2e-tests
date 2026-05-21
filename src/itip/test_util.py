@@ -14,6 +14,9 @@ from src.factories.itip_factory import ITIPEvent
 
 
 def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent) -> None:
+    def listify(val) -> list:
+        return val if isinstance(val, list) else [val]
+
     def norm_dt(dt: datetime | None) -> datetime | None:
         if dt is None:
             return None
@@ -30,6 +33,9 @@ def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent)
     assert itip.description == (desc.ical_value if (desc := event.get("DESCRIPTION")) else None)
     assert itip.location == event.get("LOCATION").ical_value
     assert [itip.rrule] == event.get("RRULE", {}).get("FREQ", [None])
+    assert norm_dt(itip.rrule_until) == norm_dt(
+        listify(event.get("RRULE", {}).get("UNTIL", None))[0]
+    )
     assert norm_dt(itip.recurrence_id) == norm_dt(
         recid.dt if (recid := event.get("RECURRENCE-ID")) else None
     )
@@ -39,11 +45,7 @@ def assert_ical_event_equals_itip_event(event: icalendar.Event, itip: ITIPEvent)
     for itip_exdate, event_exdate in zip(itip_exdates, event_exdates, strict=True):
         assert norm_dt(itip_exdate) == norm_dt(event_exdate.dt)
 
-    event_attendees = (
-        event.get("ATTENDEE")
-        if isinstance(event.get("ATTENDEE"), list)
-        else [event.get("ATTENDEE")]
-    )
+    event_attendees = listify(event.get("ATTENDEE"))
     assert len(itip.attendees) == len(event_attendees)
     itip_attendees = sorted(itip.attendees, key=lambda a: a.email)
     event_attendees = sorted(event_attendees, key=lambda a: a.email)
