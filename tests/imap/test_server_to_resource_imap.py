@@ -444,6 +444,8 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     assert len(imap_resource.list_items(folder.name)) == len(folder.messages)
 
     imap_resource.set_online(True)
+    # Only syncCollectionTree happened
+    assert len(imap_resource.list_items(folder.name)) == len(folder.messages)
     imap_resource.sync_collection(folder.name)
     wait_until(lambda: len(imap_resource.list_items(folder.name)) == len(folder.messages) + 1)
 
@@ -642,7 +644,7 @@ def test_server_offline_rename_collection(
     assert new_name not in (collection.name() for collection in offline_collections)
 
     imap_resource.set_online(True)
-
+    assert len(imap_resource.list_items(new_name)) == 0
     updated_offline_collections = imap_resource.list_collections()
 
     assert old_name not in (collection.name() for collection in updated_offline_collections)
