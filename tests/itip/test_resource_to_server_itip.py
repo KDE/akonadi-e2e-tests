@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Dominique MICHEL <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+import itertools
 from datetime import timedelta
 from operator import eq, ge
 
@@ -32,15 +33,14 @@ from src.itip.test_util import (
 from src.test import wait_until
 from tests.itip.scenarios import ITIPScenario
 
+default_factories = [
+    GoogleITIPEventFactory,
+    MicrosoftITIPEventFactory,
+    AkonadiITIPEventFactory,
+]
 
-@pytest.mark.parametrize(
-    "factory",
-    [
-        pytest.param(GoogleITIPEventFactory),
-        pytest.param(MicrosoftITIPEventFactory),
-        pytest.param(AkonadiITIPEventFactory),
-    ],
-)
+
+@pytest.mark.parametrize("factory", default_factories)
 def test_accept_invitation_is_sync(
     factory: ITIPEventFactory,
     itip_handler: ITIPHandler,
@@ -84,14 +84,7 @@ def test_accept_invitation_is_sync(
     reason="Akonadi bug? The SEQUENCE is incremented after processing the update. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/119",
     strict=True,
 )
-@pytest.mark.parametrize(
-    "factory",
-    [
-        pytest.param(GoogleITIPEventFactory),
-        pytest.param(MicrosoftITIPEventFactory),
-        pytest.param(AkonadiITIPEventFactory),
-    ],
-)
+@pytest.mark.parametrize("factory", default_factories)
 def test_update_invitation_is_sync(
     factory: ITIPEventFactory,
     itip_handler: ITIPHandler,
@@ -142,14 +135,7 @@ def test_update_invitation_is_sync(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.parametrize(
-    "factory",
-    [
-        pytest.param(GoogleITIPEventFactory),
-        pytest.param(MicrosoftITIPEventFactory),
-        pytest.param(AkonadiITIPEventFactory),
-    ],
-)
+@pytest.mark.parametrize("factory", default_factories)
 def test_update_invitation_to_recurring_is_sync(
     factory: ITIPEventFactory,
     itip_handler: ITIPHandler,
@@ -198,14 +184,7 @@ def test_update_invitation_to_recurring_is_sync(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.parametrize(
-    "factory",
-    [
-        pytest.param(GoogleITIPEventFactory),
-        pytest.param(MicrosoftITIPEventFactory),
-        pytest.param(AkonadiITIPEventFactory),
-    ],
-)
+@pytest.mark.parametrize("factory", default_factories)
 def test_update_without_invitation_is_sync(
     factory: ITIPEventFactory,
     itip_handler: ITIPHandler,
@@ -255,14 +234,7 @@ def test_update_without_invitation_is_sync(
     reason="DAV Groupware bug, after sync event exception disappear https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
     strict=True,
 )
-@pytest.mark.parametrize(
-    "factory",
-    [
-        pytest.param(GoogleITIPEventFactory),
-        pytest.param(MicrosoftITIPEventFactory),
-        pytest.param(AkonadiITIPEventFactory),
-    ],
-)
+@pytest.mark.parametrize("factory", default_factories)
 def test_update_recurring_occurrence_is_sync(
     factory: ITIPEventFactory,
     itip_handler: ITIPHandler,
@@ -328,14 +300,7 @@ def test_update_recurring_occurrence_is_sync(
     )
 
 
-@pytest.mark.parametrize(
-    "factory",
-    [
-        pytest.param(GoogleITIPEventFactory),
-        pytest.param(MicrosoftITIPEventFactory),
-        pytest.param(AkonadiITIPEventFactory),
-    ],
-)
+@pytest.mark.parametrize("factory", default_factories)
 def test_delete_recurring_occurrence_is_sync(
     factory: ITIPEventFactory,
     itip_handler: ITIPHandler,
@@ -405,3 +370,56 @@ def test_delete_recurring_occurrence_is_sync(
         dav_calendar.get_event_by_uid(itip.uid).icalendar_instance,
         groupware_resource.list_items(collection.id()),
     )
+
+
+@pytest.mark.parametrize("factory,rrule_offset", itertools.product(default_factories, [2, -2]))
+def test_update_recurring_end_is_sync(
+    factory: ITIPEventFactory,
+    rrule_offset: int,
+    itip_handler: ITIPHandler,
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    dav_server: DAVServer,
+    request: pytest.FixtureRequest,
+):
+    """
+    An invitation update for a recurring event is received, it changes the end of the recurrence (check both postponed and set to an earlier date)
+    The corresponding item must be updated in its collection (and this is replicated on the server)
+    """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer)
+            and factory.provider == MicrosoftITIPEventFactory.provider,
+            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
+            strict=True,
+        )
+    )
+
+    dav_calendar = dav_principal.calendar("Default Calendar")
+    collection = groupware_resource.collection_from_display_name("Default Calendar")
+    rrule_count = 10
+
+    itip: ITIPEvent = factory.build(use_rrule=True)
+    itip.set_rrule_until_utc(itip.get_occurrence_id(rrule_count))
+    ical = ITIPScenario.create_invitation(itip)
+    attendee = itip.get_first_non_organizer_attendee()
+    itip_handler.process_message(attendee.email, ical, ITIPAction.ACCEPTED)
+
+    groupware_resource.synchronize()
+    [item] = groupware_resource.list_items(collection.id())
+    attendee.partstat = PARTSTAT.ACCEPTED
+    assert_akonadi_item_equals_itip_event(item, itip)
+    wait_until(lambda: event_exists(dav_calendar, itip.uid))
+
+    # Create and process a shorter end date update
+    new_itip = factory.create_from(itip, reset_fields=["rrule_until"])
+    new_itip.set_rrule_until_utc(itip.get_occurrence_id(rrule_count + rrule_offset))
+    new_ical = ITIPScenario.create_invitation_update(new_itip)
+    itip_handler.process_message(attendee.email, new_ical, ITIPAction.ACCEPTED)
+
+    groupware_resource.synchronize()
+    [item] = groupware_resource.list_items(collection.id())
+    assert_akonadi_item_equals_itip_event(item, new_itip)
+    wait_until(lambda: event_sequence_op(ge, dav_calendar, itip.uid, new_itip.sequence))
+
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
