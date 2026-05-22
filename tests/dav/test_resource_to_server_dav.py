@@ -531,7 +531,7 @@ rrules = [
     (
         True,
         fake.rrule(["FREQ", "INTERVAL", "COUNT"]),
-        fake.rrule(["FREQ", "INTERVAL", "COUNT", "BYWEEKNO", "BYSETPOS"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT", "BYDAY", "BYSETPOS"]),
     ),
 ]
 ids = [
