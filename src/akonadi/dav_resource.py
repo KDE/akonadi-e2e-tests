@@ -35,7 +35,6 @@ class DAVResource(Resource):
         settings = OrgKdeAkonadiDavGroupwareSettingsInterface.new_proxy(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
-            self._dbus.client,
         )
 
         # The DAV resource doesn't expose means to set password externally, so we instead

@@ -47,7 +47,6 @@ class ImapResource(Resource):
         settings = OrgKdeAkonadiImapSettingsInterface.new_proxy(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
-            self._dbus.client,
         )
 
         await settings.set_imap_server(host)
@@ -60,7 +59,6 @@ class ImapResource(Resource):
         wallet = WalletIface.new_proxy(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
-            self._dbus.client,
         )
         await wallet.set_password(password)
 

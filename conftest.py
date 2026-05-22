@@ -14,6 +14,7 @@ from caldav.collection import Principal
 from caldav.davclient import DAVClient, get_davclient
 from imap_tools import BaseMailBox
 from PySide6.QtCore import QCoreApplication  # type: ignore
+from sdbus import sd_bus_open, set_default_bus
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
@@ -42,6 +43,14 @@ def fix_locale():
     locale.setlocale(locale.LC_ALL, "C")
 
 
+@pytest.fixture(autouse=True, scope="session")
+def setup_sdbus():
+    """Configure default bus with a timeout of 30 seconds."""
+    bus = sd_bus_open()
+    bus.method_call_timeout_usec = 30 * 1000 * 1000 * 1000  # 30 seconds
+    set_default_bus(bus)
+
+
 @pytest.fixture(scope="session")
 def instance_id() -> Generator[str, Any]:
     """Pytest fixture that creates a temporary directory for an Akonadi instance.
@@ -61,7 +70,6 @@ async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus]:
     """
     dbus = AkonadiDBus(instance_id)
     yield dbus
-    dbus.close()
 
 
 @pytest.fixture(scope="session")

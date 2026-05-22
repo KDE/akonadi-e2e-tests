@@ -6,7 +6,6 @@ import asyncio
 import os
 from logging import getLogger
 
-from sdbus import SdBus, sd_bus_open
 from sdbus.exceptions import DbusNameHasNoOwnerError
 from sdbus_async.dbus_daemon import FreedesktopDbus
 
@@ -34,21 +33,12 @@ class AkonadiDBus:
 
     def __init__(self, instance_id: str) -> None:
         self._instance_id = instance_id
-        self._client = sd_bus_open()
-        self._client.method_call_timeout_usec = 30 * 1000 * 1000 * 1000  # 30'000 seconds
-
-    def close(self) -> None:
-        self._client.close()
 
     async def wait_for_service(self, service_name: str, timeout_secs: float | None = 10) -> None:
         await asyncio.wait_for(
             self._wait_for_name_owner(service_name),
             timeout=timeout_secs,
         )
-
-    @property
-    def client(self) -> SdBus:
-        return self._client
 
     @property
     def akonadi_server_service_name(self) -> str:
@@ -69,7 +59,6 @@ class AkonadiDBus:
         return OrgFreedesktopAkonadiControlManagerInterface.new_proxy(
             self.akonadi_control_service_name,
             "/ControlManager",
-            self._client,
         )
 
     @property
@@ -77,7 +66,6 @@ class AkonadiDBus:
         return OrgFreedesktopAkonadiServerInterface.new_proxy(
             self.akonadi_server_service_name,
             "/Server",
-            self._client,
         )
 
     @property
@@ -85,21 +73,18 @@ class AkonadiDBus:
         return OrgFreedesktopAkonadiAgentManagerInterface.new_proxy(
             self.akonadi_control_service_name,
             "/AgentManager",
-            self._client,
         )
 
     def agent_interface(self, instance_name: str) -> OrgFreedesktopAkonadiAgentControlInterface:
         return OrgFreedesktopAkonadiAgentControlInterface.new_proxy(
             self.agent_service_name(instance_name),
             "/",
-            self._client,
         )
 
     def resource_interface(self, instance_name: str) -> OrgFreedesktopAkonadiResourceInterface:
         return OrgFreedesktopAkonadiResourceInterface.new_proxy(
             self.resource_service_name(instance_name),
             "/",
-            self._client,
         )
 
     async def _wait_for_name_owner(self, service_name: str) -> None:
@@ -107,7 +92,6 @@ class AkonadiDBus:
         dbus = FreedesktopDbus.new_proxy(
             "org.freedesktop.DBus",
             "/org/freedesktop/DBus",
-            self._client,
         )
 
         async def name_owner_changed() -> None:
