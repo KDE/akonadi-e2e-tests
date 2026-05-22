@@ -5,8 +5,6 @@
 from logging import getLogger
 from types import TracebackType
 
-from sdbus import sd_bus_open
-
 from src.kwallet.interfaces.org_kde_kwallet import OrgKdeKWalletInterface
 
 log = getLogger(__name__)
@@ -19,11 +17,9 @@ class KWalletClient:
 
     def __init__(self, service_name: str = "Passwords") -> None:
         self.SERVICE_NAME = service_name
-        self._bus = sd_bus_open()
         self._wallet = OrgKdeKWalletInterface.new_proxy(
             self.KWALLET_SERVICE_NAME,
             self.KWALLET_SERVICE_OBJECT_PATH,
-            self._bus,
         )
         self._handle: int | None = None
 
