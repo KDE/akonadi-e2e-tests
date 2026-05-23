@@ -34,7 +34,7 @@ from src.imap.imap_server import ImapServer, ImapServerType
 from src.imap.mailbox_with_original_payload import MailBoxUnencryptedWithOriginalPayload
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def fix_locale():
     """
     Sets the locale to 'C' to ensure consistent behavior across different systems
