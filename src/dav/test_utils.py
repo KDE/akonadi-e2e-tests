@@ -8,6 +8,7 @@ from AkonadiCore import Akonadi  # type: ignore
 from caldav.calendarobjectresource import Event
 from caldav.collection import Calendar, Principal
 from caldav.elements import ical
+from icalendar import Calendar as ICalCalendar
 
 from src.akonadi.dav_resource import DAVResource
 
@@ -36,6 +37,17 @@ def assert_all_collections_are_equals(
         )
 
 
+def assert_event_with_recurrence_exception_are_equal(
+    calendar: ICalCalendar, items: list[Akonadi.Item]
+) -> None:
+    events = calendar.walk("VEVENT")
+    events.sort(key=lambda e: e.get("RECURRENCE-ID", e["DTSTART"]).dt)
+    items_events = [item_to_event(item) for item in items]
+    items_events.sort(key=lambda e: e.get("RECURRENCE-ID", e["DTSTART"]).dt)
+    for event, item in zip(events, items_events, strict=True):
+        assert_payload_are_equal(item, event)
+
+
 def assert_collection_equal_calendar(
     name: str, dav_resource: DAVResource, dav_principal: Principal, payload_test: bool = True
 ) -> None:
@@ -52,10 +64,10 @@ def assert_collection_equal_calendar(
     events.sort(key=lambda e: unquote_plus(e.canonical_url) or "-1")
     assert len(events) == len(items)
 
-    for event, item in zip(events, items, strict=False):
+    for event, item in zip(events, items, strict=True):
         assert unquote_plus(event.canonical_url) == unquote_plus(item.remoteId())
         if payload_test:
-            assert_payload_are_equal(item, event)
+            assert_payload_are_equal(item_to_event(item), event.icalendar_instance.events[0])
 
 
 def assert_collection_attributes_are_equal(
@@ -82,7 +94,9 @@ def sort_rrule(rrule: str) -> str:
     return ";".join(sorted_fields)
 
 
-def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> None:
+def assert_payload_are_equal(
+    akonadi_event: icalendar.Component, ical_event: icalendar.Component
+) -> None:
     def _filter_lines(lines):
         splitted = (line.split(":", maxsplit=1) for line in lines if line)
         filtered = ((key, value) for key, value in splitted if key not in IGNORED_PROPERTIES)
@@ -91,8 +105,8 @@ def assert_payload_are_equal(akonadi_item: Akonadi.Item, dav_event: Event) -> No
             for key, value in filtered
         ]
 
-    akonadi_event = _filter_lines(item_to_event(akonadi_item).content_lines())
-    server_event = _filter_lines(dav_event.icalendar_instance.events[0].content_lines())
+    akonadi_event = _filter_lines(akonadi_event.content_lines())
+    server_event = _filter_lines(ical_event.content_lines())
     assert akonadi_event == server_event
 
 

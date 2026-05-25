@@ -12,7 +12,10 @@ from src.akonadi.dav_resource import DAVResource
 from src.akonadi.itip_handler import ITIPHandler
 from src.dav.dav_server import DAVServer
 from src.dav.radicale_server import RadicaleServer
-from src.dav.test_utils import assert_all_collections_are_equals
+from src.dav.test_utils import (
+    assert_all_collections_are_equals,
+    assert_event_with_recurrence_exception_are_equal,
+)
 from src.factories.itip_factory import (
     AkonadiITIPEventFactory,
     GoogleITIPEventFactory,
@@ -249,7 +252,7 @@ def test_update_without_invitation_is_sync(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi bug? Reccuring event occurence is not sync. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/122",
+    reason="DAV Groupware bug, after sync event exception disappear https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
     strict=True,
 )
 @pytest.mark.parametrize(
@@ -300,17 +303,29 @@ def test_update_recurring_occurrence_is_sync(
     itip_handler.process_message(new_attendee.email, new_ical, ITIPAction.ACCEPTED)
 
     # Event updated in resource and synchronized on server
-    groupware_resource.synchronize()
 
     new_attendee.partstat = PARTSTAT.ACCEPTED
     [new_item] = [i for i in groupware_resource.list_items(collection.id()) if i.id() != item.id()]
     assert_akonadi_item_equals_itip_event(new_item, new_itip)
+    groupware_resource.wait_resource_is_idle()
 
     wait_until(
         lambda: len(dav_calendar.get_event_by_uid(itip.uid).icalendar_instance.walk("VEVENT")) == 2
     )
-    # TODO: our current tooling (eg. assert) does not support caldav-lib's event with multiple vevent
-    assert_all_collections_are_equals(dav_principal, groupware_resource)
+    assert len(groupware_resource.list_items(collection.id())) == 2
+    assert_event_with_recurrence_exception_are_equal(
+        dav_calendar.get_event_by_uid(itip.uid).icalendar_instance,
+        groupware_resource.list_items(collection.id()),
+    )
+
+    # Ensure after a sync event is still there
+    groupware_resource.wait_resource_is_idle()
+    groupware_resource.synchronize()
+    assert len(groupware_resource.list_items(collection.id())) == 2
+    assert_event_with_recurrence_exception_are_equal(
+        dav_calendar.get_event_by_uid(itip.uid).icalendar_instance,
+        groupware_resource.list_items(collection.id()),
+    )
 
 
 @pytest.mark.parametrize(
@@ -338,14 +353,6 @@ def test_delete_recurring_occurrence_is_sync(
             condition=isinstance(dav_server, RadicaleServer)
             and factory.provider == MicrosoftITIPEventFactory.provider,
             reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=factory.provider
-            in [MicrosoftITIPEventFactory.provider, GoogleITIPEventFactory.provider],
-            reason="Akonadi: Cancellation as new VEVENT is not supported. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/124",
             strict=True,
         )
     )
@@ -390,5 +397,11 @@ def test_delete_recurring_occurrence_is_sync(
             )
         )
 
-    # TODO: our current tooling (eg. assert) does not support caldav library event with multiple vevent
-    assert_all_collections_are_equals(dav_principal, groupware_resource)
+    if update_ical:
+        assert len(groupware_resource.list_items(collection.id())) == 1
+    if new_ical:
+        assert len(groupware_resource.list_items(collection.id())) == 2
+    assert_event_with_recurrence_exception_are_equal(
+        dav_calendar.get_event_by_uid(itip.uid).icalendar_instance,
+        groupware_resource.list_items(collection.id()),
+    )
