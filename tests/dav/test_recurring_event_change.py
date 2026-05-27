@@ -4,7 +4,6 @@
 import copy
 from datetime import timedelta
 
-import pytest
 from caldav.collection import Principal
 from icalendar import Calendar, vDDDTypes
 
@@ -62,10 +61,6 @@ class RecurringEventHelper:
         self.principal.calendar(self.calendar_name).save_event(self.to_ical())
 
 
-@pytest.mark.xfail(
-    reason="dav resource bug, event exception are deleted when resource have another change https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
-    strict=True,
-)
 def test_adding_exception_to_event_and_add_unrelated_event_to_calendar(
     dav_principal: Principal, groupware_resource: DAVResource
 ):
@@ -95,10 +90,6 @@ def test_adding_exception_to_event_and_add_unrelated_event_to_calendar(
     )
 
 
-@pytest.mark.xfail(
-    reason="dav resource bug, event first exception is deleted when syncing another exception to the same event https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
-    strict=True,
-)
 def test_adding_exception_to_event_with_exception(
     dav_principal: Principal, groupware_resource: DAVResource
 ):
@@ -147,10 +138,6 @@ def test_modifying_exception_to_event_with_exception(
     assert_event_with_recurrence_exception_are_equal(event_helper.calendar, akonadi_items)
 
 
-@pytest.mark.xfail(
-    reason="dav resource bug, exception are not deleted https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
-    strict=True,
-)
 def test_deleting_exception_to_event_with_exception(
     dav_principal: Principal, groupware_resource: DAVResource
 ):
@@ -174,10 +161,6 @@ def test_deleting_exception_to_event_with_exception(
     assert_event_with_recurrence_exception_are_equal(event_helper.calendar, akonadi_items)
 
 
-@pytest.mark.xfail(
-    reason="dav resource bug, event first exception is deleted when syncing another exception to the same event https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
-    strict=True,
-)
 def test_deleting_event_with_exception(
     dav_principal: Principal, groupware_resource: DAVResource, akonadi_client: AkonadiClient
 ):
@@ -205,10 +188,6 @@ def test_deleting_event_with_exception(
     assert len(dav_principal.calendar(calendar.name).get_events()) == 0
 
 
-@pytest.mark.xfail(
-    reason="dav resource bug, event first exception is deleted when restarting client and syncing https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
-    strict=True,
-)
 async def test_etag_cache_built_on_resource_init(
     dav_principal: Principal,
     groupware_resource: DAVResource,
