@@ -181,9 +181,13 @@ class AkonadiCalendarFactory(BaseCalendarFactory):
             ["inode/directory", "application/x-vnd.akonadi.calendar.event"]
         )
         collection.setParentCollection(root)
-        attr = Akonadi.CollectionColorAttribute()
-        attr.setColor(calendar.color)
-        collection.addAttribute(attr.clone())  # clone to give an unmanaged object
+        color_attr = Akonadi.CollectionColorAttribute()
+        color_attr.setColor(calendar.color)
+        collection.addAttribute(color_attr.clone())  # clone to give an unmanaged object
+        display_name_attr = Akonadi.EntityDisplayAttribute()
+        display_name_attr.setDisplayName(calendar.name)
+        collection.addAttribute(display_name_attr.clone())  # clone to give an unmanaged object
+
         job = Akonadi.CollectionCreateJob(collection)
         AkonadiUtils.wait_for_job(job)
         collection = job.collection()
