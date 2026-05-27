@@ -87,7 +87,7 @@ class AkonadiDBus:
             "/",
         )
 
-    async def _wait_for_name_owner(self, service_name: str) -> None:
+    async def name_owner(self, service_name: str) -> str:
         log.debug("Waiting for name owner of %s", service_name)
         dbus = FreedesktopDbus.new_proxy(
             "org.freedesktop.DBus",
@@ -98,7 +98,7 @@ class AkonadiDBus:
             async for name, _, new_owner in dbus.name_owner_changed.catch():
                 if name == service_name:
                     log.debug("Name owner changed: %s -> %s", name, new_owner)
-                    return
+                    return new_owner
 
         try:
             resp = await dbus.get_name_owner(service_name)
@@ -108,3 +108,13 @@ class AkonadiDBus:
             await asyncio.wait_for(name_owner_changed(), timeout=timeout)
         else:
             log.debug("Service %s has owner %s, continuing", service_name, resp)
+            return resp
+
+    async def wait_name_owner_changed(self, name_owner: str, service_name: str, timeout=5):
+        async def name_owner_changed() -> None:
+            while True:
+                new_owner = await self.name_owner(service_name)
+                if new_owner != name_owner:
+                    return
+
+        await asyncio.wait_for(name_owner_changed(), timeout=timeout)

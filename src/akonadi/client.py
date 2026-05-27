@@ -111,6 +111,9 @@ class AkonadiClient:
         agent = Akonadi.AgentManager.self().instance(identifier)
         return agent if agent.isValid() else None
 
+    def restart_agent(self, identifier: str) -> None:
+        Akonadi.AgentManager.self().restartAgentInstance(identifier)
+
     def add_item(
         self, collection_id: int, data: bytes, mime_type: str, flags: list[str] | None = None
     ) -> Akonadi.Item:

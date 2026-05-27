@@ -53,6 +53,14 @@ class Resource(ABC):
     def instance(self) -> Akonadi.AgentInstance:
         return Akonadi.AgentManager.self().instance(self._identifier)
 
+    async def restart(self):
+        name_owner = await self._dbus.name_owner(self._dbus.resource_service_name(self._identifier))
+        await self._dbus.agent_manager_interface.restart_agent_instance(self._identifier)
+        await self._dbus.wait_name_owner_changed(
+            name_owner, self._dbus.resource_service_name(self._identifier)
+        )
+        self.wait_resource_is_idle()
+
     async def remove(self) -> None:
         log.debug("Removing %s resource via Agent Manager", self.identifier)
 
