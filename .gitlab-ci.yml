@@ -5,10 +5,102 @@ include:
   - project: sysadmin/ci-utilities
     file:
       - /gitlab-templates/reuse-lint.yml
+      - /gitlab-templates/blocks/ci-linux-base.yml
 
-ruff:
+.docker_build:
+    needs: []
+    image: storage.kde.org/vm-images/image-builder
+    tags:
+      - VM
+      - amd64
+    variables:
+      IMAGE_TAG: latest
+    script:
+      - podman login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      - podman build --pull --no-cache --tag ${CI_REGISTRY}/${CI_PROJECT_PATH}/akonadi-e2e-${IMAGE_NAME}:${IMAGE_TAG} docker/${IMAGE_NAME}/
+      - podman push ${CI_REGISTRY}/${CI_PROJECT_PATH}/akonadi-e2e-${IMAGE_NAME}:${IMAGE_TAG}
+
+lint:
+  extends:
+    - .ci_linux_base
+    - .suse_tumbleweed_qt6stable
   stage: validate
-  image: registry.gitlab.com/pipeline-components/ruff:latest
+  rules:
+    - when: always
+  variables:
+    PYTHONPATH: /builds/pim/akonadi-e2e-tests/_install/lib64/python3.13/site-packages
+    LD_LIBRARY_PATH: /builds/pim/akonadi-e2e-tests/_install/lib64
   script:
-    - ruff format --check .
-    - ruff check .
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - python3 -u ci-utilities/run-ci-build.py --project $CI_PROJECT_NAME --branch $CI_COMMIT_REF_NAME --platform Linux/Qt6/Shared --only-setup-environment
+    - make init
+    - export LD_PRELOAD=/lib64/libasan.so.8 ASAN_OPTIONS='detect_leaks=0:halt_on_error=0:abort_on_error=0:log_path=/tmp/asan.log'
+    - make lint
+
+nextcloud_image:
+  extends: .docker_build
+  stage: build
+  rules:
+    - changes:
+      - docker/nextcloud/*
+  variables:
+    IMAGE_NAME: nextcloud
+
+radicale_image:
+  extends: .docker_build
+  stage: build
+  rules:
+    - changes:
+      - docker/radicale/*
+  variables:
+    IMAGE_NAME: radicale
+
+cyrus_image:
+  extends: .docker_build
+  stage: build
+  rules:
+    - changes:
+      - docker/cyrus/*
+  variables:
+    IMAGE_NAME: cyrus
+
+dovecot_image:
+  extends: .docker_build
+  stage: build
+  rules:
+    - changes:
+      - docker/dovecot/*
+  variables:
+    IMAGE_NAME: dovecot
+
+e2e_tests:
+  extends:
+    - .ci_linux_base
+    - .suse_tumbleweed_qt6stable
+  stage: test
+  variables:
+    PYTHONPATH: /builds/pim/akonadi-e2e-tests/_install/lib64/python3.13/site-packages
+    LD_LIBRARY_PATH: /builds/pim/akonadi-e2e-tests/_install/lib64
+    TESTCONTAINERS_RYUK_DISABLED: true
+    QT_QPA_PLATFORM: offscreen
+
+  script:
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - python3 -u ci-utilities/run-ci-build.py --project $CI_PROJECT_NAME --branch $CI_COMMIT_REF_NAME --platform Linux/Qt6/Shared --only-setup-environment
+    - make init
+    - export LD_PRELOAD=/lib64/libasan.so.8 ASAN_OPTIONS='detect_leaks=0:halt_on_error=0:abort_on_error=0:log_path=/tmp/asan.log'
+    - systemctl --user enable --now podman.socket
+    - export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
+    - export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/user/$(id -u)/podman/podman.sock"
+    - export PATH=/builds/pim/akonadi-e2e-tests/_install/bin:$PATH
+    - export XDG_DATA_DIRS=/builds/pim/akonadi-e2e-tests/_install/share:$XDG_DATA_DIRS
+    - export QT_PLUGIN_PATH=/builds/pim/akonadi-e2e-tests/_install/lib64/plugins:/builds/pim/akonadi-e2e-tests/_install/lib/plugins:$QT_PLUGIN_PATH
+    # The path to the binaries in the .service files are wrong because of a relocation issue during run-ci.py
+    # So we have to replace it with the right path for services to start properly.
+    - sed -i -e 's|/builds/[^ ]*/_install|/builds/pim/akonadi-e2e-tests/_install|g' /builds/pim/akonadi-e2e-tests/_install/share/dbus-1/services/*.service
+    - mkdir $XDG_DATA_HOME/kwalletd
+    - cp ci/kdewallet.{kwl,salt} "$XDG_DATA_HOME/kwalletd/"
+    - eval "$(dbus-launch --sh-syntax)"
+    # We have to launch the kwallet daemon manually, otherwise it won't register the wallet we injected in time for the tests
+    - kwalletd6 >/tmp/kwallet.log 2>&1 &
+    - make test

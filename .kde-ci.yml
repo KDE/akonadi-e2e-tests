@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: None
+# SPDX-License-Identifier: CC0-1.0
+
+Dependencies:
+ - 'on': ['Linux']
+   'require':
+    'frameworks/extra-cmake-modules': '@latest-kf6'
+    'frameworks/kcontacts': '@latest-kf6'
+    'frameworks/kcalendarcore': '@latest-kf6'
+    'frameworks/knotifyconfig': '@latest-kf6'
+    'pim/akonadi': '@same'
+    'pim/akonadi-calendar': '@same'
+    'pim/akonadi-contacts': '@same'
+    'pim/akonadi-mime': '@same'
+    'pim/kcalutils': '@same'
+    'pim/kidentitymanagement': '@same'
+    'pim/kimap': '@same'
+    'pim/kmailtransport': '@same'
+    'pim/kmbox': '@same'
+    'frameworks/kmime': '@latest-kf6'
+    'pim/libkgapi': '@same'
+    'pim/kldap': '@same'
+    'pim/kdepim-runtime': '@same'
+    'frameworks/kconfig': '@latest-kf6'
+    'frameworks/kconfigwidgets': '@latest-kf6'
+    'frameworks/kio': '@latest-kf6'
+    'frameworks/kitemmodels': '@latest-kf6'
+    'frameworks/kcodecs': '@latest-kf6'
+    'frameworks/kwindowsystem': '@latest-kf6'
+    'frameworks/knotifications': '@latest-kf6'
+    'frameworks/kcmutils': '@latest-kf6'
+    'frameworks/kdav': '@latest-kf6'
+    'third-party/qtkeychain': '@latest-kf6'
+    'libraries/ktextaddons': '@latest-kf6'
+    'frameworks/kwallet': '@latest-kf6'
+    'network/kio-extras': '@latest-kf6'

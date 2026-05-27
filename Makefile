@@ -10,10 +10,10 @@ init:
 	uv sync
 
 test:
-	uv run pytest
+	uv run pytest tests/
 
 docker:
 	make -C docker
 
 lint:
-	uv run pytest -k "ruff or mypy" --ruff --ruff-format --mypy
+	uv run pytest -k "ruff or mypy" --ruff --ruff-format --mypy src/ tests/ conftest.py
