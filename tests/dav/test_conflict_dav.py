@@ -15,7 +15,7 @@ from icalendar import Calendar
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.utils import AkonadiUtils, WaitJobError
-from src.dav.test_utils import assert_all_collections_are_equals
+from src.dav.test_utils import assert_all_collections_are_equals, field_is_equal
 from src.factories.event_factory import (
     AkonadiEventFactory,
     DavCalendarFactory,
@@ -318,3 +318,103 @@ def test_delete_item_remotely_on_collection_removed_locally(
         c.remoteId() for c in groupware_resource.list_collections()
     ]
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+random_dtsart = fake.future_datetime()
+
+changed_field_data = [
+    pytest.param(
+        "DESCRIPTION", fake.paragraph(), fake.paragraph(), fake.boolean(), id="description"
+    ),
+    pytest.param("SUMMARY", fake.sentence(), fake.sentence(), fake.boolean(), id="summary"),
+    pytest.param(
+        "DTSTART",
+        fake.future_datetime().strftime("%Y%m%dT%H%M%S"),
+        fake.future_datetime().strftime("%Y%m%dT%H%M%S"),
+        fake.boolean(),
+        id="dtstart",
+    ),
+    pytest.param(
+        "DTEND",
+        fake.date_time_between(
+            start_date=random_dtsart, end_date=random_dtsart + timedelta(hours=8)
+        ).strftime("%Y%m%dT%H%M%S"),
+        fake.date_time_between(
+            start_date=random_dtsart, end_date=random_dtsart + timedelta(hours=8)
+        ).strftime("%Y%m%dT%H%M%S"),
+        True,
+        id="dtend",
+    ),
+    pytest.param(
+        "DURATION",
+        f"PT{fake.random_int(min=1, max=4)}H",
+        f"PT{fake.random_int(min=5, max=8)}H",
+        False,
+        id="duration",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "field, new_value_akonadi, new_value_server, use_dtend", changed_field_data
+)
+def test_akonadi_conflict_change_item_contents(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    field: str,
+    new_value_akonadi: str,
+    new_value_server: str,
+    use_dtend: bool,
+) -> None:
+    """
+    Changing the content of an item on the server, changing the content of the same item in akonadi server, nothing happens
+    When the resource is set online, the server's version of the item is kept
+    """
+    calendar = DavCalendarFactory.create(nb_items=0)
+    event = DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend)
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) == 1
+    item = items[0]
+
+    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(items))
+    event = dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+
+    assert item_event[field] == event.icalendar_component[field]
+
+    groupware_resource.set_online(False)
+
+    event.icalendar_component[field] = new_value_server
+    event.save()
+
+    item_event[field] = new_value_akonadi
+    new_payload = item_calendar.to_ical()
+    groupware_resource.modify_payload(item.id(), new_payload)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert updated_event[field].to_ical().decode() == new_value_akonadi
+    assert field_is_equal(
+        field, new_value_server, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+
+    groupware_resource.set_online(True)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert updated_event[field].to_ical().decode() == new_value_server
+    assert field_is_equal(
+        field, new_value_server, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
