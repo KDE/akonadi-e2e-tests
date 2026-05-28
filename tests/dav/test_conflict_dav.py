@@ -10,12 +10,17 @@ import pytest
 from caldav.collection import Principal
 from caldav.elements import dav
 from caldav.lib.error import NotFoundError
-from icalendar import Calendar
+from icalendar import Calendar, vRecur
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.utils import AkonadiUtils, WaitJobError
-from src.dav.test_utils import assert_all_collections_are_equals, field_is_equal
+from src.dav.test_utils import (
+    assert_all_collections_are_equals,
+    field_is_equal,
+    normalize_vrecur,
+    rrule_are_equal,
+)
 from src.factories.event_factory import (
     AkonadiEventFactory,
     DavCalendarFactory,
@@ -417,4 +422,119 @@ def test_akonadi_conflict_change_item_contents(
     assert updated_event[field].to_ical().decode() == new_value_server
     assert field_is_equal(
         field, new_value_server, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+
+
+rrules = [
+    (False, dict(), fake.rrule(), fake.rrule()),
+    (True, {"FREQ": "MONTHLY"}, {"FREQ": "WEEKLY"}, {"FREQ": "YEARLY"}),
+    (
+        True,
+        fake.rrule(["FREQ", "INTERVAL"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT"]),
+    ),
+    (
+        True,
+        fake.rrule(["FREQ", "INTERVAL", "UNTIL"]),
+        fake.rrule(["FREQ", "INTERVAL"]),
+        fake.rrule(["FREQ", "INTERVAL"]),
+    ),
+    (
+        True,
+        fake.rrule(["FREQ", "INTERVAL", "COUNT"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT", "BYDAY"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT", "BYDAY"]),
+    ),
+    (
+        True,
+        fake.rrule(["FREQ", "INTERVAL", "COUNT"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT", "BYDAY", "BYSETPOS"]),
+        fake.rrule(["FREQ", "INTERVAL", "COUNT", "BYDAY", "BYSETPOS"]),
+    ),
+]
+ids = [
+    "no_base_rrule",
+    "only_freq",
+    "add_optional_field",
+    "remove_optional_field",
+    "add_byday_filter",
+    "by_and_setpos",
+]
+
+
+@pytest.mark.parametrize(
+    "existing_rrule, base_rrule, new_rrule_akonadi, new_rrule_server", rrules, ids=ids
+)
+def test_akonadi_conflict_change_item_rrule(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    existing_rrule: bool,
+    base_rrule: dict,
+    new_rrule_akonadi: dict,
+    new_rrule_server: dict,
+) -> None:
+    """
+    Changing the content of an item on the server, changing the content of the same item in akonadi server, nothing happens
+    When the resource is set online, the server's version of the item is kept
+    This test is separated from other change_item_contents tests because it needs special formatting / equality operators
+    """
+    calendar = DavCalendarFactory.create(nb_items=0)
+    event = DavEventFactory.create(
+        calendar=calendar.name, use_rrule=existing_rrule, rrule=base_rrule
+    )
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) == 1
+    item = items[0]
+
+    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == len(items))
+    event = dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+
+    if not existing_rrule:
+        assert "RRULE" not in item_event
+        assert "RRULE" not in event.icalendar_component
+
+    else:
+        assert normalize_vrecur(item_event["RRULE"]) == normalize_vrecur(
+            event.icalendar_component["RRULE"]
+        )
+
+    groupware_resource.set_online(False)
+
+    new_value_server = vRecur(new_rrule_server)
+    event.icalendar_component["RRULE"] = new_value_server
+    event.save()
+
+    new_value_akonadi = vRecur(new_rrule_akonadi)
+    item_event["RRULE"] = new_value_akonadi
+    new_payload = item_calendar.to_ical()
+    groupware_resource.modify_payload(item.id(), new_payload)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert normalize_vrecur(updated_event["RRULE"]) == normalize_vrecur(new_value_akonadi)
+    assert rrule_are_equal(
+        new_value_server, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+
+    groupware_resource.set_online(True)
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert normalize_vrecur(updated_event["RRULE"]) == normalize_vrecur(new_value_server)
+    assert rrule_are_equal(
+        new_value_server, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
     )
