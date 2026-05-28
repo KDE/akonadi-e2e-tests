@@ -656,6 +656,75 @@ def test_akonadi_change_item_rrule(
     )
 
 
+@pytest.mark.xfail(
+    reason="Akonadi bug ? The content is not changed in the akonadi server after partial sync: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
+    strict=True,
+)
+@pytest.mark.parametrize("existing_rrule, base_rrule, new_rrule", rrules, ids=ids)
+def test_akonadi_partial_change_item_rrule(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    existing_rrule: bool,
+    base_rrule: dict,
+    new_rrule: dict,
+) -> None:
+    """
+    Changing content of an item on the server (description, alarms, attachments… should all be tested)
+    After requesting a partial sync, the content is also changed on the corresponding item in the akonadi server
+    No other change occurred (other than timestamps book keeping)
+    Changing the rrule of an item in the akonadi server, the change is replayed on the server
+    This test is separated from other change_item_contents tests because it needs special formatting / equality operators
+    """
+    calendar = DavCalendarFactory.create(nb_items=0)
+    event = DavEventFactory.create(
+        calendar=calendar.name, use_rrule=existing_rrule, rrule=base_rrule
+    )
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) == 1
+    item = items[0]
+
+    event = dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+
+    if not existing_rrule:
+        assert "RRULE" not in item_event
+        assert "RRULE" not in event.icalendar_component
+
+    else:
+        assert normalize_vrecur(item_event["RRULE"]) == normalize_vrecur(
+            event.icalendar_component["RRULE"]
+        )
+
+    new_value = vRecur(new_rrule)
+    event.icalendar_component["RRULE"] = new_value
+    event.save()
+
+    assert rrule_are_equal(
+        new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+
+    groupware_resource.sync_collection(collection.remoteId())
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert normalize_vrecur(updated_event["RRULE"]) == normalize_vrecur(new_value)
+    wait_until(
+        lambda: rrule_are_equal(
+            new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+        )
+    )
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
 @pytest.mark.parametrize("existing_rrule, base_rrule, new_rrule", rrules, ids=ids)
 def test_akonadi_offline_change_item_rrule(
     dav_principal: Principal,
