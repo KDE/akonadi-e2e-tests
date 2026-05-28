@@ -399,7 +399,8 @@ changed_field_data = [
         True,
         id="dtend",
     ),
-    pytest.param("DURATION", f"PT{fake.random_int(min=1, max=8)}H", False, id="duration"),
+    # Duration between 9 and 16 hours to avoid any equality with the duration of the generated event (between 1 and 8 hours)
+    pytest.param("DURATION", f"PT{fake.random_int(min=9, max=16)}H", False, id="duration"),
 ]
 
 
@@ -447,6 +448,60 @@ def test_akonadi_change_item_contents(
             field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
         )
     )
+
+
+@pytest.mark.xfail(
+    reason="Akonadi bug ? The content is not changed in the akonadi server after partial sync: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
+    strict=True,
+)
+@pytest.mark.parametrize("field, new_value, use_dtend", changed_field_data)
+def test_akonadi_partial_change_item_contents(
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    field: str,
+    new_value: str,
+    use_dtend: bool,
+) -> None:
+    """
+    Changing content of an item on the server (description, alarms, attachments… should all be tested)
+    After requesting a partial sync, the content is also changed on the corresponding item in the akonadi server
+    No other change occurred (other than timestamps book keeping)
+    """
+    calendar = DavCalendarFactory.create(nb_items=0)
+    DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend, dtstart=random_dtsart)
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    items = groupware_resource.list_items(collection.name())
+    assert len(items) == 1
+    item = items[0]
+
+    event = dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+
+    payload = bytes(item.payloadData()).decode()
+    item_calendar = Calendar.from_ical(payload)
+    [item_event] = item_calendar.walk("VEVENT")
+    assert item_event[field] == event.icalendar_component[field]
+
+    event.icalendar_component[field] = new_value
+    event.save()
+
+    assert field_is_equal(
+        field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+
+    groupware_resource.sync_collection(collection.remoteId())
+
+    updated_item = groupware_resource.akonadi_client.item_by_id(item.id())
+    updated_payload = bytes(updated_item.payloadData()).decode()
+    updated_calendar = Calendar.from_ical(updated_payload)
+    [updated_event] = updated_calendar.walk("VEVENT")
+
+    assert updated_event[field].to_ical().decode() == new_value
+    assert field_is_equal(
+        field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
+    )
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
 @pytest.mark.parametrize("field, new_value, use_dtend", changed_field_data)
