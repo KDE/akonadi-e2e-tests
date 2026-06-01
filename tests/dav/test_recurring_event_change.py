@@ -11,6 +11,7 @@ from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.dav.test_utils import assert_event_with_recurrence_exception_are_equal
 from src.factories.event_factory import DavCalendarFactory, DavEventFactory
+from src.test import wait_until
 
 
 class RecurringEventHelper:
@@ -43,7 +44,6 @@ class RecurringEventHelper:
         ]
         self.calendar.subcomponents.remove(exception)
         self.event["EXDATE"] = recurrence_id
-        self.event["SEQUENCE"] = self.event.get("SEQUENCE", 0) + 1
 
     def modify_exception(self, recurrence_id: vDDDTypes, delta_hours: int):
         [exception] = [
@@ -151,7 +151,6 @@ def test_deleting_exception_to_event_with_exception(
     akonadi_items = groupware_resource.list_items(collection.id())
     assert len(akonadi_items) == 2
     assert_event_with_recurrence_exception_are_equal(event_helper.calendar, akonadi_items)
-    print(type(exception["RECURRENCE-ID"]))
     event_helper.delete_exception(recurrence_id=exception["RECURRENCE-ID"])
     event_helper.save()
     groupware_resource.synchronize()
@@ -161,10 +160,10 @@ def test_deleting_exception_to_event_with_exception(
     assert_event_with_recurrence_exception_are_equal(event_helper.calendar, akonadi_items)
 
 
-def test_deleting_event_with_exception(
+def test_deleting_event_with_exception_resource_side(
     dav_principal: Principal, groupware_resource: DAVResource, akonadi_client: AkonadiClient
 ):
-    """Test deletion of an event with an exception. Expecting the exception to be deleted too."""
+    """Test deletion of an event with an exception resource side. Expecting the exception to be deleted too."""
     calendar = DavCalendarFactory.create(nb_items=0)
     event_helper = RecurringEventHelper(calendar.name, dav_principal)
     event_helper.save()
@@ -180,12 +179,16 @@ def test_deleting_event_with_exception(
     collection = groupware_resource.collection_from_display_name(calendar.name)
     akonadi_client.delete_item(item.id())
 
+    wait_until(lambda: len(groupware_resource.list_items(collection.id())) == 0)
+
     akonadi_items = groupware_resource.list_items(collection.id())
     assert len(akonadi_items) == 0
 
     groupware_resource.synchronize()
+    akonadi_items = groupware_resource.list_items(collection.id())
     assert len(akonadi_items) == 0
     assert len(dav_principal.calendar(calendar.name).get_events()) == 0
+
 
 
 async def test_etag_cache_built_on_resource_init(
@@ -209,4 +212,5 @@ async def test_etag_cache_built_on_resource_init(
     groupware_resource.synchronize()
     groupware_resource.wait_resource_is_idle()
 
+    akonadi_items = groupware_resource.list_items(collection.id())
     assert len(akonadi_items) == 3
