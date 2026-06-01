@@ -45,6 +45,7 @@ class DAVResource(Resource):
         await settings.set_settings_version(3)
         await settings.set_remote_urls([f"$default$|CalDav|{base_url}"])
         await settings.set_default_username(username)
+        await settings.set_refresh_interval(-1)
         await settings.set_display_name(
             f"akonadi-e2e-test - {self.akonadi_client.akonadi_instance_name}"
         )
