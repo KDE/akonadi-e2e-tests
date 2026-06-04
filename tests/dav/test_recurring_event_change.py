@@ -190,6 +190,35 @@ def test_deleting_event_with_exception_resource_side(
     assert len(dav_principal.calendar(calendar.name).get_events()) == 0
 
 
+def test_deleting_event_with_exception_server_side(
+    dav_principal: Principal, groupware_resource: DAVResource
+):
+    """Test deletion of an event with an exception resource side. Expecting the exception to be deleted too."""
+    calendar = DavCalendarFactory.create(nb_items=0)
+    event_helper = RecurringEventHelper(calendar.name, dav_principal)
+    event_helper.save()
+
+    groupware_resource.synchronize()
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    [item] = groupware_resource.list_items(collection.id())
+
+    event_helper.add_exception(occurence_nth=1, delta_hours=1)
+    event_helper.save()
+    groupware_resource.synchronize()
+
+    collection = groupware_resource.collection_from_display_name(calendar.name)
+    akonadi_items = groupware_resource.list_items(collection.id())
+    assert len(akonadi_items) == 2
+    assert len(dav_principal.calendar(calendar.name).get_events()) == 1
+    dav_principal.calendar(calendar.name).get_events()[0].delete()
+
+    groupware_resource.synchronize()
+    groupware_resource.wait_resource_is_idle()
+
+    assert len(dav_principal.calendar(calendar.name).get_events()) == 0
+    akonadi_items = groupware_resource.list_items(collection.id())
+    assert len(akonadi_items) == 0
+
 
 async def test_etag_cache_built_on_resource_init(
     dav_principal: Principal,
