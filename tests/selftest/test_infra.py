@@ -91,3 +91,26 @@ def test_akonadi_client_list_agents_dav(
     assert agents[0].name().startswith(f"akonadi-e2e-test - {akonadi_client.akonadi_instance_name}")
     assert agents[0].status() == Akonadi.AgentInstance.Idle
     assert agents[0].type().identifier() == "akonadi_davgroupware_resource"
+
+
+@pytest.mark.asyncio
+async def test_capabilities(imap_resource: ImapResource) -> None:
+    capabilities = set(await imap_resource.call_capabilities())
+    if "IMAP4REV2" in capabilities:
+        assert all(
+            capability in capabilities
+            for capability in [
+                "NAMESPACE",
+                "UNSELECT",
+                "UIDPLUS",
+                "ESEARCH",
+                "SEARCHRES",
+                "ENABLE",
+                "IDLE",
+                "SASL-IR",
+                "LIST-EXTENDED",
+                "LIST-STATUS",
+                "MOVE",
+            ]
+        )
+        assert "LITERAL-" in capabilities or "LITERAL+" in capabilities

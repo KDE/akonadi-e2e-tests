@@ -11,6 +11,9 @@ from sdbus import DbusInterfaceCommonAsync, DbusUnprivilegedFlag, dbus_method_as
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
+from src.akonadi.dbus.interfaces.org_kde_akonadi_imap_resource import (
+    OrgKdeAkonadiImapResourceBaseInterface,
+)
 from src.akonadi.dbus.interfaces.org_kde_akonadi_imap_settings import (
     OrgKdeAkonadiImapSettingsInterface,
 )
@@ -67,6 +70,13 @@ class ImapResource(Resource):
         self.instance.reconfigure()
 
         AkonadiUtils.wait_for_status(self, 0)
+
+    async def call_capabilities(self) -> list[str]:
+        dbus_proxy = OrgKdeAkonadiImapResourceBaseInterface.new_proxy(
+            self._dbus.agent_service_name(self._identifier), "/"
+        )
+        capabilities = await dbus_proxy.server_capabilities()
+        return capabilities
 
     @override
     async def remove(self) -> None:
