@@ -141,7 +141,7 @@ def test_akonadi_offline_delete_collection(
         )
     )
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
+    # Needs to be kept otherwise we never see the change replay being queued somehow
     imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
@@ -231,8 +231,6 @@ def test_offline_append_message(
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # Append the item to Akonadi
@@ -279,8 +277,6 @@ def test_offline_delete_message(
     assert len(items) == len(folder.messages)
     item = items[0]
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # This context manager is needed as we need to wait for the ChangeReplay
@@ -440,8 +436,6 @@ def test_offline_rename_collection(
     assert old_name in [c.name() for c in initial_collections]
     assert new_name not in [c.name() for c in initial_collections]
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # If the rename request arrives to quickly after the sync and list
@@ -495,8 +489,6 @@ def test_akonadi_offline_add_flag(
     item_flags = [bytes(f).decode().lower() for f in item.flags()]
     assert all(flag.lower() not in item_flags for flag in all_flags)
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_resource.add_flags(item.id(), flags)
@@ -533,8 +525,6 @@ def test_akonadi_offline_remove_flag(
     item_flags = [bytes(f).decode().lower() for f in item.flags()]
     assert all(flag.lower() in item_flags for flag in all_flags)
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_resource.clear_flags(item.id(), flags)

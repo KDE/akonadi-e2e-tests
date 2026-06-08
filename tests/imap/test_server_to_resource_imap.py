@@ -115,8 +115,6 @@ def test_offline_mailbox_deleted_on_server_is_synced(
     child = ImapFolderFactory.create(parent=parent)
     imap_resource.synchronize()
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     # Delete remote folder (need to delete child first)
@@ -375,8 +373,6 @@ def test_offline_change_email_flags_on_server_is_synced(
 
     # Set offline and change server flags
     [item] = imap_resource.list_items(folder.name)
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
     imap_client.folder.set(folder.name)
     imap_client.flag([item.remoteId()], "\\Flagged", True)
@@ -407,8 +403,6 @@ def test_offline_removed_message_server_side(
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
     imap_client.folder.set(folder.name)
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_resource.list_items(folder.name)
@@ -433,8 +427,6 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     ImapEmailFactory.create(folder=folder.name)
@@ -615,8 +607,6 @@ def test_server_offline_rename_collection(
     assert imap_client.folder.exists(old_name)
     assert not imap_client.folder.exists(new_name)
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
     imap_client.folder.rename(old_name, new_name)
 
@@ -660,8 +650,6 @@ def test_conflict_uidvalidity_collection(
     assert_collection_equal_mailbox(initial_folder.name, imap_resource, imap_client)
     initial_items = imap_resource.list_items(initial_folder.name)
 
-    # Issuing set_online(False) while the IMAP resource is not idle might lead to crashes
-    imap_resource.wait_resource_is_idle()
     imap_resource.set_online(False)
 
     imap_client.folder.set(
