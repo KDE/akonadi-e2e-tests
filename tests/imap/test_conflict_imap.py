@@ -157,9 +157,6 @@ def test_conflict_append_message(
     imap_client.folder.set(folder_name)
     wait_until(lambda: message_added(imap_client, folder_name, "1"))
 
-    # This context manager is needed as we need to wait for the ChangeReplay
-    # to be queued before set_online(True) is called, otherwise the ChangeReplay
-    # might be lost, this is sign of a bug in Akonadi
     with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
         # Remove the collection from the akonadi server
         imap_resource.delete_collection(folder_name)
