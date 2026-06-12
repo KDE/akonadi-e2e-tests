@@ -226,8 +226,7 @@ def test_offline_append_message(
     imap_resource.set_online(False)
 
     # Append the item to Akonadi
-    with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
-        AkonadiEmailFactory.create(folder=folder.name)
+    AkonadiEmailFactory.create(folder=folder.name)
 
     new_count = len(folder.messages) + 1
     items = imap_resource.list_items(folder.name)
@@ -268,8 +267,7 @@ def test_offline_delete_message(
 
     imap_resource.set_online(False)
 
-    with AkonadiUtils.wait_for_queued_change_replay(imap_resource.instance):
-        akonadi_client.delete_item(item.id())
+    akonadi_client.delete_item(item.id())
 
     new_count = len(folder.messages) - 1
     items = imap_resource.list_items(folder.name)
