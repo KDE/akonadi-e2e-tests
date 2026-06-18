@@ -4,6 +4,7 @@
 # SPDX-FileCopyrightText: 2026 Noham Devillers <noham.devillers@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+import time
 from datetime import timedelta
 
 import pytest
@@ -200,10 +201,6 @@ def test_offline_akonadi_remove_collection(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
-    strict=True,
-)
 def test_akonadi_sync_rename_collection(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
@@ -217,6 +214,10 @@ def test_akonadi_sync_rename_collection(
     initial_collection = groupware_resource.collection_from_display_name(old_name)
     initial_items = groupware_resource.list_items(initial_collection.id())
 
+    # If the rename request arrives to quickly after the sync and list
+    # somehow the rename never reaches the resource... there is a bug
+    # somewhere in the chain
+    time.sleep(0.1)
     groupware_resource.update_collection_displayname(initial_collection.name(), new_name)
 
     # Check the rename occurred locally and on remote
