@@ -230,10 +230,6 @@ def test_update_without_invitation_is_sync(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.xfail(
-    reason="DAV Groupware bug, after sync event exception disappear https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/137",
-    strict=True,
-)
 @pytest.mark.parametrize("factory", default_factories)
 def test_update_recurring_occurrence_is_sync(
     factory: ITIPEventFactory,
