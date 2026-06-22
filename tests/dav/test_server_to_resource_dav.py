@@ -71,10 +71,6 @@ def test_delete_collection_to_server_is_sync(
         groupware_resource.collection_from_display_name(created_calendar.name)
 
 
-@pytest.mark.xfail(
-    reason="Collection does not get a new display name in akonadi. See https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
-    strict=True,
-)
 def test_update_collection_name_on_server_is_sync(
     dav_principal: Principal,
     groupware_resource: DAVResource,
@@ -346,10 +342,6 @@ def test_offline_add_collection_server_side(
     assert_all_collections_are_equals(dav_resource=groupware_resource, dav_principal=dav_principal)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
-    strict=True,
-)
 def test_offline_rename_collection_server_side(
     dav_principal: Principal,
     groupware_resource: DAVResource,
