@@ -333,10 +333,6 @@ def test_akonadi_offline_remove_item(
     assert_collection_equal_calendar(collection.remoteId(), groupware_resource, dav_principal)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? Changing the displayname attribute isn't synced https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/91",
-    strict=True,
-)
 def test_offline_rename_collection(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
