@@ -5,7 +5,6 @@
 # SPDX-FileCopyrightText: 2026 Dominique Michel <dominique.michel@enioka.com>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-import time
 from logging import getLogger
 
 import pytest
@@ -106,10 +105,6 @@ def test_rename_collection(
     assert old_name in [c.name() for c in initial_collections]
     assert new_name not in [c.name() for c in initial_collections]
 
-    # If the rename request arrives to quickly after the sync and list
-    # somehow the rename never reaches the resource... there is a bug
-    # somewhere in the chain
-    time.sleep(0.1)
     imap_resource.rename_collection(old_name, new_name)
 
     updated_collections = imap_resource.list_collections()
@@ -438,10 +433,6 @@ def test_offline_rename_collection(
 
     imap_resource.set_online(False)
 
-    # If the rename request arrives to quickly after the sync and list
-    # somehow the rename never reaches the resource... there is a bug
-    # somewhere in the chain
-    time.sleep(0.1)
     imap_resource.rename_collection(old_name, new_name)
 
     updated_collections = imap_resource.list_collections()
