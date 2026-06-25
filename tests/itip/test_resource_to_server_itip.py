@@ -11,8 +11,6 @@ from icalendar.enums import PARTSTAT
 
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.itip_handler import ITIPHandler
-from src.dav.dav_server import DAVServer
-from src.dav.radicale_server import RadicaleServer
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     assert_event_with_recurrence_exception_are_equal,
@@ -46,21 +44,10 @@ def test_accept_invitation_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation for a new single event is received, an item must be created in a collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
@@ -90,22 +77,11 @@ def test_update_invitation_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for an existing single event is received (several properties to try)
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
@@ -141,22 +117,11 @@ def test_update_invitation_to_recurring_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for an existing single event is received, it changes the event to recurring (weekly or otherwise, ideally test several schemes)
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
@@ -190,23 +155,12 @@ def test_update_without_invitation_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for an existing single event is received (several properties to try) but we didn't create the item yet
     (assuming we didn't receive the initial invitation or it's because we weren't in the initial invitation and part of the update is adding us as participant)
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
@@ -236,22 +190,11 @@ def test_update_recurring_occurrence_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for a recurring event is received, it changes the time of one of the instances of the event
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
@@ -302,22 +245,11 @@ def test_delete_recurring_occurrence_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for a recurring event is received, it cancels one of the instances of the event
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
@@ -375,22 +307,11 @@ def test_update_recurring_end_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
-    dav_server: DAVServer,
-    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for a recurring event is received, it changes the end of the recurrence (check both postponed and set to an earlier date)
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
-    request.node.add_marker(
-        pytest.mark.xfail(
-            condition=isinstance(dav_server, RadicaleServer)
-            and factory.provider == MicrosoftITIPEventFactory.provider,
-            reason="Radicale: data after comma is lost when syncing to server. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/99",
-            strict=True,
-        )
-    )
-
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
     rrule_count = 10
