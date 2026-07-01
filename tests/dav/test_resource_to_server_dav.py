@@ -253,10 +253,6 @@ def test_akonadi_offline_sync_add_collection(
     )
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? The resource goes back to the old color once back online, see https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101",
-    strict=True,
-)
 def test_akonadi_offline_change_color_collection(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
@@ -274,7 +270,8 @@ def test_akonadi_offline_change_color_collection(
 
     groupware_resource.set_online(False)
 
-    groupware_resource.set_collection_color(collection.name(), new_color)
+    with AkonadiUtils.wait_for_queued_change_replay(groupware_resource.instance):
+        groupware_resource.set_collection_color(collection.name(), new_color)
 
     collection = groupware_resource.collection_from_display_name(calendar.name)
     assert groupware_resource.get_collection_color(collection.name()) == new_color
@@ -337,7 +334,9 @@ def test_offline_rename_collection(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
     groupware_resource.set_online(False)
-    groupware_resource.update_collection_displayname(initial_collection.name(), new_name)
+
+    with AkonadiUtils.wait_for_queued_change_replay(groupware_resource.instance):
+        groupware_resource.update_collection_displayname(initial_collection.name(), new_name)
 
     # Check the rename occurred locally and not on remote
     updated_collection_names = [c.displayName() for c in groupware_resource.list_collections()]

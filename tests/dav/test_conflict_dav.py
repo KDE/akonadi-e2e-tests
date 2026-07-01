@@ -66,7 +66,7 @@ def test_offline_remove_collection_and_add_event(
 
 
 @pytest.mark.xfail(
-    reason="Akonadi BUG? The akonadi collection is not renamed. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/105",
+    reason="Akonadi bug, after conflict it takes the local name https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/146",
     strict=True,
 )
 def test_offline_rename_collection_server_and_resource(
@@ -87,7 +87,8 @@ def test_offline_rename_collection_server_and_resource(
 
     groupware_resource.set_online(False)
 
-    groupware_resource.update_collection_displayname(collection.name(), resource_new_name)
+    with AkonadiUtils.wait_for_queued_change_replay(groupware_resource):
+        groupware_resource.update_collection_displayname(collection.name(), resource_new_name)
     dav_principal.calendar(calendar.name).set_properties([dav.DisplayName(server_new_name)])
 
     # Nothing changed
