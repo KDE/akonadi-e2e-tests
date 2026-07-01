@@ -72,10 +72,6 @@ def test_akonadi_sync_remove_collection(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? Akonadi doesnt seem to sync calendar attributes https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/101",
-    strict=True,
-)
 def test_akonadi_sync_change_color_collection(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:
@@ -91,8 +87,6 @@ def test_akonadi_sync_change_color_collection(
     groupware_resource.set_collection_color(collection.name(), new_color)
     assert groupware_resource.get_collection_color(collection.name()) == new_color
 
-    groupware_resource.synchronize()
-    assert groupware_resource.get_collection_color(collection.name()) == new_color
     wait_until(
         lambda: (
             dav_principal.calendar(calendar.name).get_property(ical.CalendarColor()) == new_color
