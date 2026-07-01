@@ -11,6 +11,8 @@ from icalendar.enums import PARTSTAT
 
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.itip_handler import ITIPHandler
+from src.dav.dav_server import DAVServer
+from src.dav.radicale_server import RadicaleServer
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     assert_event_with_recurrence_exception_are_equal,
@@ -245,11 +247,22 @@ def test_delete_recurring_occurrence_is_sync(
     itip_handler: ITIPHandler,
     dav_principal: Principal,
     groupware_resource: DAVResource,
+    dav_server: DAVServer,
+    request: pytest.FixtureRequest,
 ):
     """
     An invitation update for a recurring event is received, it cancels one of the instances of the event
     The corresponding item must be updated in its collection (and this is replicated on the server)
     """
+    request.node.add_marker(
+        pytest.mark.xfail(
+            condition=isinstance(dav_server, RadicaleServer)
+            and factory.provider == AkonadiITIPEventFactory.provider,
+            reason="Radicale: sequence number is not incremented https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/147",
+            strict=True,
+        )
+    )
+
     dav_calendar = dav_principal.calendar("Default Calendar")
     collection = groupware_resource.collection_from_display_name("Default Calendar")
 
