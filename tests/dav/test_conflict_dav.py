@@ -15,6 +15,8 @@ from icalendar import Calendar, vRecur
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.utils import AkonadiUtils, WaitJobError
+from src.dav.dav_server import DAVServer
+from src.dav.radicale_server import RadicaleServer
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     field_is_equal,
@@ -371,11 +373,15 @@ def test_akonadi_conflict_change_item_contents(
     new_value_akonadi: str,
     new_value_server: str,
     use_dtend: bool,
+    dav_server: DAVServer,
 ) -> None:
     """
     Changing the content of an item on the server, changing the content of the same item in akonadi server, nothing happens
     When the resource is set online, the server's version of the item is kept
     """
+    if isinstance(dav_server, RadicaleServer):
+        pytest.skip("Radicale sometimes doesn't update etag in time leading to a flaky test")
+
     calendar = DavCalendarFactory.create(nb_items=0)
     event = DavEventFactory.create(calendar=calendar.name, use_dtend=use_dtend)
     groupware_resource.synchronize()
@@ -474,12 +480,16 @@ def test_akonadi_conflict_change_item_rrule(
     base_rrule: dict,
     new_rrule_akonadi: dict,
     new_rrule_server: dict,
+    dav_server: DAVServer,
 ) -> None:
     """
     Changing the content of an item on the server, changing the content of the same item in akonadi server, nothing happens
     When the resource is set online, the server's version of the item is kept
     This test is separated from other change_item_contents tests because it needs special formatting / equality operators
     """
+    if isinstance(dav_server, RadicaleServer):
+        pytest.skip("Radicale sometimes doesn't update etag in time leading to a flaky test")
+
     calendar = DavCalendarFactory.create(nb_items=0)
     event = DavEventFactory.create(
         calendar=calendar.name, use_rrule=existing_rrule, rrule=base_rrule
