@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-FROM docker.io/tomsquest/docker-radicale:latest
+FROM ghcr.io/kozea/radicale:3.7
 
 USER root
 
@@ -20,13 +20,15 @@ RUN mkdir -p /data/collections/collection-root/test/addressbook \
     && touch /data/collections/collection-root/test/addressbook/addressbook.vcf
 
 # Create users file (htpasswd format)
-RUN printf "test:{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=\n" > /data/users
+RUN printf "test:testtest\n" > /data/users
 
 # Fix permissions
 RUN chown -R radicale:radicale /data
 
-# Provide config
+# Create config directory
 RUN mkdir -p /etc/radicale
+
+# Provide config
 RUN printf "\
 [server]\n\
 hosts = 0.0.0.0:5232\n\
@@ -34,7 +36,7 @@ hosts = 0.0.0.0:5232\n\
 [auth]\n\
 type = htpasswd\n\
 htpasswd_filename = /data/users\n\
-htpasswd_encryption = sha1\n\
+htpasswd_encryption = plain\n\
 \n\
 [storage]\n\
 filesystem_folder = /data/collections\n\
