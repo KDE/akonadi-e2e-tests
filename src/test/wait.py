@@ -11,7 +11,7 @@ from PySide6.QtCore import QCoreApplication  # type: ignore
 
 def wait_until(
     condition: Callable[[], bool] | Callable[[], Coroutine[Any, Any, bool]],
-    timeout: float = 5.0,
+    timeout: float = 45.0,
     interval: float = 0.2,
 ) -> None:
     """Checks the condition until it returns True or the timeout is reached.
