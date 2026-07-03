@@ -106,7 +106,7 @@ Once you made changes to the resource or the server, we need to make sure the ch
 
 ### Online and offline resource
 
-During the tests, the tested resource is set online by default, and can be set offline manually.
+During the tests, the tested resource is set online by default and can be set offline manually.
 
 If the resource is online, most changes to the resource or in the server will immediately be synced between the two.
 
@@ -115,6 +115,17 @@ If the resource is set offline, the changes made to either of the two can only b
 You can change the state of a resource with the `setOnline` method of the `Resource` class.
 
 Be careful, **with the IMAP resource only, putting the resource back online will only trigger a collection tree synchronization** (collections will be synced, but not the items in them on Akonadi's side). To trigger a full sync, you will have to call `synchronize` manually after setting the resource online. With the DAV resource, a full sync is triggered by default when setting the resource online.
+
+### Propagation of changes
+
+When Python code issues commands, they are sent to the akonadiserver / resource through D-Bus or a socket. Jobs go
+through the socket towards the akonadiserver, which forwards the corresponding ChangeReplay to the resource. Meanwhile
+`setOnline` is delivered directly through D-Bus to the resource. This means that consecutive python commands might be
+received out of order by the resource and require tooling to ensure desired behavior.
+
+For example, `wait_for_queued_change_replay` ensures a command is saved in the appropriate queue to be executed once
+going back online. Without this, `synchronize()` could be scheduled before and, while a plausible scenario, make the
+test not aim a specific and deterministic user scenario.
 
 ### iTIP calendar selection popup
 
@@ -134,6 +145,7 @@ Here are some rules and tips if you want to write some new tests :
 ### Frequent mistakes
 
 * When changing attributes of a collection (for example a dav collection's color), you should only supply values for attributes to be updated. More information [here][collection-modify-job].
+* When writing offline tests, forgetting to use `wait_for_queued_change_replay` for akonadi commands might cause unexpected order execution of akonadiserver tasks, leading to flakiness.
 
 ## Debuging tools
 
