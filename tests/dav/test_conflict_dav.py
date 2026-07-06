@@ -211,10 +211,6 @@ def test_update_item_locally_in_collection_removed_on_server(
     assert collection.remoteId() not in [c.remoteId() for c in akonadi_client.list_collections()]
 
 
-@pytest.mark.xfail(
-    reason="Items from deleted collections are still present in the resource. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/104",
-    strict=True,
-)
 def test_conflict_add_item_akonadi_remove_collection_server(
     dav_principal: Principal, groupware_resource: DAVResource, akonadi_client: AkonadiClient
 ) -> None:
