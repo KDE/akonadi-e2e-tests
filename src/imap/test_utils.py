@@ -51,7 +51,7 @@ def assert_collection_equal_mailbox(
 
     assert len(messages) == len(items)
 
-    for msg, item in zip(messages, items, strict=False):
+    for msg, item in zip(messages, items, strict=True):
         log.info("Comparing message %s and item %s", msg.uid, item.remoteId())
         assert msg.uid == item.remoteId()
         log.info("Comparing flags: %s and %s", msg.flags, item.flags())
