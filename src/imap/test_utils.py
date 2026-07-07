@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import itertools
 from logging import getLogger
 
 from AkonadiCore import Akonadi  # type: ignore
@@ -27,15 +28,16 @@ def assert_all_collections_are_equals(
 
 
 def assert_no_items_are_equal(messages: list[MailMessage], items: list[Akonadi.Item]) -> None:
+    """We assert that there is no message with the same remoteId, flags, and payload"""
     items.sort(key=lambda i: i.remoteId() or "-1")
     messages.sort(key=lambda m: m.uid or "-1")
 
-    for msg, item in zip(messages, items, strict=False):
+    for item, message in itertools.product(items, messages):
         assert (
-            msg.uid != item.remoteId()
-            or not compare_flags(msg.flags, [bytes(f).decode() for f in item.flags()])
+            item.remoteId() != message.uid
+            or not compare_flags(message.flags, [bytes(f).decode() for f in item.flags()])
             or item.payloadData().data().decode()
-            != msg.raw_message_data.decode().replace("\r\n", "\n")  # type: ignore
+            != message.raw_message_data.decode().replace("\r\n", "\n")  # type: ignore
         )
 
 
