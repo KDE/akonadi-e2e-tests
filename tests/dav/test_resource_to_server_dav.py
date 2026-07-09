@@ -16,6 +16,8 @@ from src.akonadi.client import AkonadiClient
 from src.akonadi.dav_resource import DAVResource
 from src.akonadi.test_utils import assert_akonadi_items_are_equal
 from src.akonadi.utils import AkonadiUtils
+from src.dav.dav_server import DAVServer
+from src.dav.radicale_server import RadicaleServer
 from src.dav.test_utils import (
     assert_all_collections_are_equals,
     assert_collection_equal_calendar,
@@ -712,12 +714,16 @@ def test_akonadi_offline_change_item_rrule(
     existing_rrule: bool,
     base_rrule: dict,
     new_rrule: dict,
+    dav_server: DAVServer,
 ) -> None:
     """
     Changing the content of an item on the server (description, alarms, attachments… should all be tested), nothing happens
     When the resource is set online, the content is also changed on the corresponding item in the akonadi server, no other change occurred (other than timestamps book keeping)
     This test is separated from other change_item_contents tests because it needs special formatting / equality operators
     """
+    if isinstance(dav_server, RadicaleServer):
+        pytest.skip("Radicale sometimes take too much time to process rrule changes and times out")
+
     calendar = DavCalendarFactory.create(nb_items=0)
     event = DavEventFactory.create(
         calendar=calendar.name, use_rrule=existing_rrule, rrule=base_rrule
