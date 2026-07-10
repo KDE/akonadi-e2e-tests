@@ -220,7 +220,7 @@ def test_deleting_event_with_exception_server_side(
     assert len(akonadi_items) == 0
 
 
-async def test_etag_cache_built_on_resource_init(
+def test_etag_cache_built_on_resource_init(
     dav_principal: Principal,
     groupware_resource: DAVResource,
 ):
@@ -235,7 +235,7 @@ async def test_etag_cache_built_on_resource_init(
     akonadi_items = groupware_resource.list_items(collection.id())
     assert len(akonadi_items) == 2
 
-    await groupware_resource.restart()
+    groupware_resource.restart()
 
     DavEventFactory.create(calendar=calendar.name)  # Ensure etag change for collection
     groupware_resource.synchronize()

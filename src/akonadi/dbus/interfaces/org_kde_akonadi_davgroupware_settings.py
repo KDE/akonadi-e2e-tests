@@ -4,7 +4,7 @@
 
 # Generated using `sdbus` with some manual edits.
 # ```
-# python3 -m sdbus gen-from-connection \
+# python3 -m sdbus gen-from-connection --block \
 #   org.freedesktop.Akonadi.Agent.akonadi_davgroupware_resource_0 \
 #   /Settings
 # ```
@@ -12,285 +12,272 @@
 from __future__ import annotations
 
 from sdbus import (
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     DbusUnprivilegedFlag,
-    dbus_method_async,
+    dbus_method,
 )
 
 
 class OrgKdeAkonadiDavGroupwareSettingsInterface(
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     interface_name="org.kde.Akonadi.davGroupware.Settings",
 ):
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="save",
-        result_args_names=(),
     )
-    async def save(
+    def save(
         self,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="i",
         flags=DbusUnprivilegedFlag,
         method_name="settingsVersion",
     )
-    async def settings_version(
+    def settings_version(
         self,
     ) -> int:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="i",
         flags=DbusUnprivilegedFlag,
         method_name="setSettingsVersion",
-        result_args_names=(),
     )
-    async def set_settings_version(
+    def set_settings_version(
         self,
         arg_0: int,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="displayName",
     )
-    async def display_name(
+    def display_name(
         self,
     ) -> str:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="setDisplayName",
-        result_args_names=(),
     )
-    async def set_display_name(
+    def set_display_name(
         self,
         arg_0: str,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="i",
         flags=DbusUnprivilegedFlag,
         method_name="refreshInterval",
     )
-    async def refresh_interval(
+    def refresh_interval(
         self,
     ) -> int:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="i",
         flags=DbusUnprivilegedFlag,
         method_name="setRefreshInterval",
-        result_args_names=(),
     )
-    async def set_refresh_interval(
+    def set_refresh_interval(
         self,
         arg_0: int,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="as",
         flags=DbusUnprivilegedFlag,
         method_name="remoteUrls",
     )
-    async def remote_urls(
+    def remote_urls(
         self,
     ) -> list[str]:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="as",
         flags=DbusUnprivilegedFlag,
         method_name="setRemoteUrls",
-        result_args_names=(),
     )
-    async def set_remote_urls(
+    def set_remote_urls(
         self,
         arg_0: list[str],
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="defaultUsername",
     )
-    async def default_username(
+    def default_username(
         self,
     ) -> str:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="setDefaultUsername",
-        result_args_names=(),
     )
-    async def set_default_username(
+    def set_default_username(
         self,
         arg_0: str,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="b",
         flags=DbusUnprivilegedFlag,
         method_name="limitSyncRange",
     )
-    async def limit_sync_range(
+    def limit_sync_range(
         self,
     ) -> bool:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="b",
         flags=DbusUnprivilegedFlag,
         method_name="setLimitSyncRange",
-        result_args_names=(),
     )
-    async def set_limit_sync_range(
+    def set_limit_sync_range(
         self,
         arg_0: bool,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="syncRangeStartNumber",
     )
-    async def sync_range_start_number(
+    def sync_range_start_number(
         self,
     ) -> str:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="setSyncRangeStartNumber",
-        result_args_names=(),
     )
-    async def set_sync_range_start_number(
+    def set_sync_range_start_number(
         self,
         arg_0: str,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="syncRangeStartType",
     )
-    async def sync_range_start_type(
+    def sync_range_start_type(
         self,
     ) -> str:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="setSyncRangeStartType",
-        result_args_names=(),
     )
-    async def set_sync_range_start_type(
+    def set_sync_range_start_type(
         self,
         arg_0: str,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="collectionsUrlsMappings",
     )
-    async def collections_urls_mappings(
+    def collections_urls_mappings(
         self,
     ) -> str:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="setCollectionsUrlsMappings",
-        result_args_names=(),
     )
-    async def set_collections_urls_mappings(
+    def set_collections_urls_mappings(
         self,
         arg_0: str,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="b",
         flags=DbusUnprivilegedFlag,
         method_name="readOnly",
     )
-    async def read_only(
+    def read_only(
         self,
     ) -> bool:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="b",
         flags=DbusUnprivilegedFlag,
         method_name="setReadOnly",
-        result_args_names=(),
     )
-    async def set_read_only(
+    def set_read_only(
         self,
         arg_0: bool,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="u",
         flags=DbusUnprivilegedFlag,
         method_name="accountId",
     )
-    async def account_id(
+    def account_id(
         self,
     ) -> int:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="u",
         flags=DbusUnprivilegedFlag,
         method_name="setAccountId",
-        result_args_names=(),
     )
-    async def set_account_id(
+    def set_account_id(
         self,
         arg_0: int,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="as",
         flags=DbusUnprivilegedFlag,
         method_name="accountServices",
     )
-    async def account_services(
+    def account_services(
         self,
     ) -> list[str]:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="as",
         flags=DbusUnprivilegedFlag,
         method_name="setAccountServices",
-        result_args_names=(),
     )
-    async def set_account_services(
+    def set_account_services(
         self,
         arg_0: list[str],
     ) -> None:

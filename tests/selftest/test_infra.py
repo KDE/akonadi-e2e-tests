@@ -5,7 +5,6 @@
 
 from logging import getLogger
 
-import pytest
 from AkonadiCore import Akonadi  # type: ignore
 from imap_tools import MailBoxUnencrypted
 
@@ -19,24 +18,19 @@ from src.imap.imap_server import ImapServer
 log = getLogger(__name__)
 
 
-@pytest.mark.asyncio
-async def test_imap_ready(imap_server: ImapServer):
+def test_imap_ready(imap_server: ImapServer):
     client = MailBoxUnencrypted(imap_server.host_or_ip, imap_server.port)
     client.login("admin", "admin")
     client.logout()
 
 
-@pytest.mark.asyncio
-async def test_akonadi_server_starts(
-    akonadi_server: AkonadiServer, dbus_client: AkonadiDBus
-) -> None:
+def test_akonadi_server_starts(akonadi_server: AkonadiServer, dbus_client: AkonadiDBus) -> None:
     assert akonadi_server.is_running()
-    path = await dbus_client.server_interface.server_path()
+    path = dbus_client.server_interface.server_path()
     assert path.startswith("/tmp/akonadi-e2e-")
 
 
-@pytest.mark.asyncio
-async def test_akonadi_client_list_collections(akonadi_client: AkonadiClient) -> None:
+def test_akonadi_client_list_collections(akonadi_client: AkonadiClient) -> None:
     collections = akonadi_client.list_collections()
     assert len(collections) == 2
     assert collections[0].id() == 0  # root collection
@@ -44,8 +38,7 @@ async def test_akonadi_client_list_collections(akonadi_client: AkonadiClient) ->
     assert collections[1].name() == "Search"
 
 
-@pytest.mark.asyncio
-async def test_akonadi_client_list_agents(
+def test_akonadi_client_list_agents(
     akonadi_client: AkonadiClient, imap_resource: ImapResource
 ) -> None:
     assert imap_resource.identifier.startswith("akonadi_imap_resource_")
@@ -57,8 +50,7 @@ async def test_akonadi_client_list_agents(
     assert agents[0].type().identifier() == "akonadi_imap_resource"
 
 
-@pytest.mark.asyncio
-async def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
+def test_akonadi_imap_resource(imap_resource: ImapResource) -> None:
     assert imap_resource.identifier.startswith("akonadi_imap_resource_")
     collections = imap_resource.list_collections()
 
@@ -93,9 +85,8 @@ def test_akonadi_client_list_agents_dav(
     assert agents[0].type().identifier() == "akonadi_davgroupware_resource"
 
 
-@pytest.mark.asyncio
-async def test_capabilities(imap_resource: ImapResource) -> None:
-    capabilities = set(await imap_resource.call_capabilities())
+def test_capabilities(imap_resource: ImapResource) -> None:
+    capabilities = set(imap_resource.call_capabilities())
     if "IMAP4REV2" in capabilities:
         assert all(
             capability in capabilities

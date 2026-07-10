@@ -7,7 +7,7 @@ from typing import override
 
 import pytest
 from AkonadiCore import Akonadi  # type: ignore
-from sdbus import DbusInterfaceCommonAsync, DbusUnprivilegedFlag, dbus_method_async
+from sdbus import DbusInterfaceCommon, DbusUnprivilegedFlag, dbus_method
 
 from src.akonadi.client import AkonadiClient
 from src.akonadi.dbus.client import AkonadiDBus
@@ -24,15 +24,13 @@ from src.kwallet.client import KWalletClient
 log = getLogger(__name__)
 
 
-class WalletIface(DbusInterfaceCommonAsync, interface_name="org.kde.Akonadi.Imap.Wallet"):
-    @dbus_method_async(
+class WalletIface(DbusInterfaceCommon, interface_name="org.kde.Akonadi.Imap.Wallet"):
+    @dbus_method(
         input_signature="s",
-        result_signature="",
-        result_args_names="password",
         flags=DbusUnprivilegedFlag,
         method_name="setPassword",
     )
-    async def set_password(self, password: str) -> None:
+    def set_password(self, password: str) -> None:
         pass
 
 
@@ -43,49 +41,47 @@ class ImapResource(Resource):
         super().__init__(akonadi_client, dbus, identifier)
         self._kwallet_key = f"{self._identifier}_{self.akonadi_client.akonadi_instance_name}rc"
 
-    async def configure(
-        self, host: str, port: int, username: str, password: str, delim: str
-    ) -> None:
+    def configure(self, host: str, port: int, username: str, password: str, delim: str) -> None:
         self.delimiter = delim
-        settings = OrgKdeAkonadiImapSettingsInterface.new_proxy(
+        settings = OrgKdeAkonadiImapSettingsInterface(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
         )
 
-        await settings.set_imap_server(host)
-        await settings.set_imap_port(port)
-        await settings.set_safety("PLAIN")
-        await settings.set_authentication(1)
-        await settings.set_user_name(username)
-        await settings.set_interval_check_enabled(False)
+        settings.set_imap_server(host)
+        settings.set_imap_port(port)
+        settings.set_safety("PLAIN")
+        settings.set_authentication(1)
+        settings.set_user_name(username)
+        settings.set_interval_check_enabled(False)
 
-        wallet = WalletIface.new_proxy(
+        wallet = WalletIface(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
         )
-        await wallet.set_password(password)
+        wallet.set_password(password)
 
-        await settings.save()
+        settings.save()
 
         self.instance.reconfigure()
 
         AkonadiUtils.wait_for_status(self, 0)
 
-    async def call_capabilities(self) -> list[str]:
-        dbus_proxy = OrgKdeAkonadiImapResourceBaseInterface.new_proxy(
+    def call_capabilities(self) -> list[str]:
+        dbus_proxy = OrgKdeAkonadiImapResourceBaseInterface(
             self._dbus.agent_service_name(self._identifier), "/"
         )
-        capabilities = await dbus_proxy.server_capabilities()
+        capabilities = dbus_proxy.server_capabilities()
         return capabilities
 
     @override
-    async def remove(self) -> None:
-        await super().remove()
+    def remove(self) -> None:
+        super().remove()
 
-        async with KWalletClient("imap") as kwallet:
-            password_exists = await kwallet.get_password(self._kwallet_key) is not None
+        with KWalletClient("imap") as kwallet:
+            password_exists = kwallet.get_password(self._kwallet_key) is not None
             if password_exists:
-                await kwallet.remove_password(self._kwallet_key)
+                kwallet.remove_password(self._kwallet_key)
 
     @override
     def resolve_collection(self, collection_name: str) -> Akonadi.Collection:

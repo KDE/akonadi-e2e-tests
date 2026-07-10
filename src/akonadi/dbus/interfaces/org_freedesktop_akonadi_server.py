@@ -3,33 +3,31 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from sdbus import (
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     DbusUnprivilegedFlag,
-    dbus_method_async,
+    dbus_method,
 )
 
 
 class OrgFreedesktopAkonadiServerInterface(
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     interface_name="org.freedesktop.Akonadi.Server",
 ):
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="quit",
-        result_args_names=(),
     )
-    async def quit(
+    def quit(
         self,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         result_signature="s",
         flags=DbusUnprivilegedFlag,
         method_name="serverPath",
-        result_args_names=("path",),
     )
-    async def server_path(
+    def server_path(
         self,
     ) -> str:
         raise NotImplementedError

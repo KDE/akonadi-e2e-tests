@@ -3,79 +3,59 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from sdbus import (
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     DbusUnprivilegedFlag,
-    dbus_method_async,
-    dbus_signal_async,
+    dbus_method,
 )
 
 
 class OrgFreedesktopAkonadiAgentControlInterface(
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     interface_name="org.freedesktop.Akonadi.Agent.Control",
 ):
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="quit",
-        result_args_names=(),
     )
-    async def quit(
+    def quit(
         self,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="cleanup",
-        result_args_names=(),
     )
-    async def cleanup(
+    def cleanup(
         self,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         input_signature="x",
         flags=DbusUnprivilegedFlag,
         method_name="configure",
-        result_args_names=(),
     )
-    async def configure(
+    def configure(
         self,
         window_id: int,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="reconfigure",
-        result_args_names=(),
     )
-    async def reconfigure(
+    def reconfigure(
         self,
     ) -> None:
         raise NotImplementedError
 
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="abort",
-        result_args_names=(),
     )
-    async def abort(
+    def abort(
         self,
     ) -> None:
-        raise NotImplementedError
-
-    @dbus_signal_async(
-        signal_args_names=(),
-        signal_name="configurationDialogAccepted",
-    )
-    def configuration_dialog_accepted(self) -> None:
-        raise NotImplementedError
-
-    @dbus_signal_async(
-        signal_args_names=(),
-        signal_name="configurationDialogRejected",
-    )
-    def configuration_dialog_rejected(self) -> None:
         raise NotImplementedError

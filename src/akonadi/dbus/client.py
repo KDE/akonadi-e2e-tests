@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import asyncio
-import os
 from logging import getLogger
 
-from sdbus.exceptions import DbusNameHasNoOwnerError
-from sdbus_async.dbus_daemon import FreedesktopDbus
+from sdbus import (
+    DbusInterfaceCommon,
+    DbusUnprivilegedFlag,
+    dbus_method,
+)
 
 from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_agent_control import (
     OrgFreedesktopAkonadiAgentControlInterface,
@@ -24,8 +25,35 @@ from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_resource import (
 from src.akonadi.dbus.interfaces.org_freedesktop_akonadi_server import (
     OrgFreedesktopAkonadiServerInterface,
 )
+from src.test import wait_until
 
 log = getLogger(__name__)
+
+
+class FreedesktopDbus(
+    DbusInterfaceCommon,
+    interface_name="org.freedesktop.DBus",
+):
+    @dbus_method(
+        flags=DbusUnprivilegedFlag,
+        input_signature="s",
+        method_name="NameHasOwner",
+        result_signature="b",
+    )
+    def name_has_owner(
+        self,
+        service_name: str,
+    ) -> bool:
+        raise NotImplementedError
+
+    @dbus_method(
+        flags=DbusUnprivilegedFlag,
+        input_signature="s",
+        method_name="GetNameOwner",
+        result_signature="s",
+    )
+    def get_name_owner(self, service_name: str) -> str:
+        raise NotImplementedError
 
 
 class AkonadiDBus:
@@ -33,12 +61,6 @@ class AkonadiDBus:
 
     def __init__(self, instance_id: str) -> None:
         self._instance_id = instance_id
-
-    async def wait_for_service(self, service_name: str, timeout_secs: float | None = 10) -> None:
-        await asyncio.wait_for(
-            self.name_owner(service_name),
-            timeout=timeout_secs,
-        )
 
     @property
     def akonadi_server_service_name(self) -> str:
@@ -56,65 +78,59 @@ class AkonadiDBus:
 
     @property
     def control_interface(self) -> OrgFreedesktopAkonadiControlManagerInterface:
-        return OrgFreedesktopAkonadiControlManagerInterface.new_proxy(
+        return OrgFreedesktopAkonadiControlManagerInterface(
             self.akonadi_control_service_name,
             "/ControlManager",
         )
 
     @property
     def server_interface(self) -> OrgFreedesktopAkonadiServerInterface:
-        return OrgFreedesktopAkonadiServerInterface.new_proxy(
+        return OrgFreedesktopAkonadiServerInterface(
             self.akonadi_server_service_name,
             "/Server",
         )
 
     @property
     def agent_manager_interface(self) -> OrgFreedesktopAkonadiAgentManagerInterface:
-        return OrgFreedesktopAkonadiAgentManagerInterface.new_proxy(
+        return OrgFreedesktopAkonadiAgentManagerInterface(
             self.akonadi_control_service_name,
             "/AgentManager",
         )
 
     def agent_interface(self, instance_name: str) -> OrgFreedesktopAkonadiAgentControlInterface:
-        return OrgFreedesktopAkonadiAgentControlInterface.new_proxy(
+        return OrgFreedesktopAkonadiAgentControlInterface(
             self.agent_service_name(instance_name),
             "/",
         )
 
     def resource_interface(self, instance_name: str) -> OrgFreedesktopAkonadiResourceInterface:
-        return OrgFreedesktopAkonadiResourceInterface.new_proxy(
+        return OrgFreedesktopAkonadiResourceInterface(
             self.resource_service_name(instance_name),
             "/",
         )
 
-    async def name_owner(self, service_name: str) -> str:
+    def name_owner(self, service_name: str) -> str:
         log.debug("Waiting for name owner of %s", service_name)
-        dbus = FreedesktopDbus.new_proxy(
+        dbus = FreedesktopDbus(
             "org.freedesktop.DBus",
             "/org/freedesktop/DBus",
         )
 
-        async def name_owner_changed():
-            async for name, _, new_owner in dbus.name_owner_changed.catch():
-                if name == service_name:
-                    log.debug("Name owner changed: %s -> %s", name, new_owner)
-                    return new_owner
-
-        try:
-            resp = await dbus.get_name_owner(service_name)
-        except DbusNameHasNoOwnerError:
-            timeout = None if os.environ.get("AKONADI_DEBUG_WAIT", None) else 10
+        if not dbus.name_has_owner(service_name):
             log.debug("Service %s has no owner, waiting for it...", service_name)
-            return await asyncio.wait_for(name_owner_changed(), timeout=timeout)
+            wait_until(lambda: dbus.name_has_owner(service_name))
+            owner = dbus.get_name_owner(service_name)
+            log.debug("Name owner changed: %s -> %s", service_name, owner)
         else:
-            log.debug("Service %s has owner %s, continuing", service_name, resp)
-            return resp
+            owner = dbus.get_name_owner(service_name)
+            log.debug("Service %s has owner %s, continuing", service_name, owner)
 
-    async def wait_name_owner_changed(self, name_owner: str, service_name: str, timeout=5):
-        async def name_owner_changed() -> None:
-            while True:
-                new_owner = await self.name_owner(service_name)
-                if new_owner != name_owner:
-                    return
+        assert owner is not None
+        return owner
 
-        await asyncio.wait_for(name_owner_changed(), timeout=timeout)
+    def wait_name_owner_changed(self, name_owner: str, service_name: str, timeout=5):
+        def name_owner_changed() -> bool:
+            new_owner = self.name_owner(service_name)
+            return new_owner != name_owner
+
+        wait_until(name_owner_changed, timeout=timeout)

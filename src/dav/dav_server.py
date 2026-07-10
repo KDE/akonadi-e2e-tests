@@ -3,7 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import abc
-import asyncio
 import uuid
 from abc import abstractmethod
 from enum import Enum
@@ -11,9 +10,11 @@ from functools import cached_property
 from logging import getLogger
 from typing import ClassVar
 
-import aiohttp
+import requests
 from caldav.davclient import get_davclient
 from testcontainers.core.container import DockerContainer  # type: ignore
+
+from src.test import wait_until
 
 log = getLogger(__name__)
 
@@ -33,7 +34,7 @@ class DAVServer(abc.ABC):
     def __init__(self):
         self.container = None
 
-    async def start(self) -> None:
+    def start(self) -> None:
         log.info(f"Starting {self.__class__.__name__} DAV container")
         # FIXME: This assumes image already exists!
         self.container = (
@@ -44,9 +45,9 @@ class DAVServer(abc.ABC):
         )
         self.container.start()
 
-        await self.wait_for_server(self.readiness_url)
+        self.wait_for_server(self.readiness_url)
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         log.info(f"Stopping {self.__class__.__name__} container")
         if self.container:
             self.container.stop()
@@ -75,30 +76,17 @@ class DAVServer(abc.ABC):
     def password(self) -> str:
         return self.PASSWORD
 
-    async def wait_for_server(self, url: str):
-        deadline = asyncio.get_event_loop().time() + 20
-
-        while True:
-            if asyncio.get_event_loop().time() > deadline:
-                raise TimeoutError(f"DAV server not responding at {url}")
-
+    def wait_for_server(self, url: str):
+        def server_is_ready():
             try:
-                async with (
-                    aiohttp.ClientSession(
-                        auth=aiohttp.BasicAuth(self.username, self.password)
-                    ) as session,
-                    session.request(
-                        "PROPFIND",
-                        url,
-                        headers={"Depth": "0"},
-                    ) as resp,
-                ):
-                    if resp.status == 207:
-                        return
+                resp = requests.request(
+                    "PROPFIND", url, auth=(self.username, self.password), headers={"Depth": "0"}
+                )
+                return resp.status_code == 207
             except Exception:
-                pass
+                return False
 
-            await asyncio.sleep(0.2)
+        wait_until(server_is_ready)
 
     def cleanup_test_environment(self):
         dav_client = get_davclient(

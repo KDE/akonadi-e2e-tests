@@ -31,40 +31,38 @@ class DAVResource(Resource):
             f"{self._identifier}_{self.akonadi_client.akonadi_instance_name},$default$"
         )
 
-    async def configure(self, base_url: str, username: str, password: str) -> None:
-        settings = OrgKdeAkonadiDavGroupwareSettingsInterface.new_proxy(
+    def configure(self, base_url: str, username: str, password: str) -> None:
+        settings = OrgKdeAkonadiDavGroupwareSettingsInterface(
             self._dbus.resource_service_name(self._identifier),
             "/Settings",
         )
 
         # The DAV resource doesn't expose means to set password externally, so we instead
         # store it into KWallet ourselves under the name that the resource expects.
-        async with KWalletClient() as kwallet:
-            await kwallet.store_password(self._kwallet_key, password)
+        with KWalletClient() as kwallet:
+            kwallet.store_password(self._kwallet_key, password)
 
-        await settings.set_settings_version(3)
-        await settings.set_remote_urls([f"$default$|CalDav|{base_url}"])
-        await settings.set_default_username(username)
-        await settings.set_refresh_interval(-1)
-        await settings.set_display_name(
-            f"akonadi-e2e-test - {self.akonadi_client.akonadi_instance_name}"
-        )
+        settings.set_settings_version(3)
+        settings.set_remote_urls([f"$default$|CalDav|{base_url}"])
+        settings.set_default_username(username)
+        settings.set_refresh_interval(-1)
+        settings.set_display_name(f"akonadi-e2e-test - {self.akonadi_client.akonadi_instance_name}")
 
-        await settings.save()
+        settings.save()
 
         self.instance.reconfigure()
 
         AkonadiUtils.wait_for_status(self, 0)
 
     @override
-    async def remove(self) -> None:
-        await super().remove()
+    def remove(self) -> None:
+        super().remove()
 
-        async with KWalletClient() as kwallet:
-            password_exists = await kwallet.get_password(self._kwallet_key) is not None
+        with KWalletClient() as kwallet:
+            password_exists = kwallet.get_password(self._kwallet_key) is not None
             if password_exists:
                 # Remove the KWallet entry
-                await kwallet.remove_password(
+                kwallet.remove_password(
                     self._kwallet_key,
                 )
 

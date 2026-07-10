@@ -3,22 +3,21 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from sdbus import (
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     DbusUnprivilegedFlag,
-    dbus_method_async,
+    dbus_method,
 )
 
 
 class OrgFreedesktopAkonadiControlManagerInterface(
-    DbusInterfaceCommonAsync,
+    DbusInterfaceCommon,
     interface_name="org.freedesktop.Akonadi.ControlManager",
 ):
-    @dbus_method_async(
+    @dbus_method(
         flags=DbusUnprivilegedFlag,
         method_name="shutdown",
-        result_args_names=(),
     )
-    async def shutdown(
+    def shutdown(
         self,
     ) -> None:
         raise NotImplementedError

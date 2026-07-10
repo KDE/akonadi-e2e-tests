@@ -5,7 +5,7 @@
 import locale
 import os
 import tempfile
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -63,7 +63,7 @@ def instance_id() -> Generator[str, Any]:
 
 
 @pytest.fixture(scope="session")
-async def dbus_client(instance_id: str) -> AsyncGenerator[AkonadiDBus]:
+def dbus_client(instance_id: str) -> Generator[AkonadiDBus]:
     """A pytest fixture that creates a new AkonadiDBus client.
 
     Depends on the `instance_id` fixture.
@@ -107,7 +107,7 @@ def qcore_app(_akonadi_env: AkonadiEnv):
 
 
 @pytest.fixture(scope="session", params=list(DAVServerType))
-async def dav_server_session(request: pytest.FixtureRequest) -> AsyncGenerator[DAVServer]:
+def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
     server_type = request.param
     server: DAVServer
     match server_type:
@@ -118,9 +118,9 @@ async def dav_server_session(request: pytest.FixtureRequest) -> AsyncGenerator[D
         case _:
             pytest.fail(f"Unknown DAV server type: {server_type}")
 
-    await server.start()
+    server.start()
     yield server
-    await server.stop()
+    server.stop()
 
 
 @pytest.fixture(scope="session", params=list(ImapServerType))
@@ -167,13 +167,13 @@ def akonadi_client(
 
 
 @pytest.fixture()
-async def imap_resource(
+def imap_resource(
     akonadi_client: AkonadiClient,
     dbus_client: AkonadiDBus,
     imap_server: ImapServer,
-) -> AsyncGenerator[ImapResource]:
+) -> Generator[ImapResource]:
     resource = ImapResource.create(akonadi_client, dbus_client)
-    await resource.configure(
+    resource.configure(
         host=imap_server.host_or_ip,
         port=imap_server.port,
         username=imap_server.username,
@@ -185,7 +185,7 @@ async def imap_resource(
     yield resource
 
     # Remove the resource after the test - this cleans up useless secrets from the keychain
-    await resource.remove()
+    resource.remove()
 
 
 @pytest.fixture()
@@ -224,11 +224,11 @@ def itip_handler() -> Generator[ITIPHandler]:
 
 
 @pytest.fixture()
-async def groupware_resource(
+def groupware_resource(
     akonadi_client: AkonadiClient, dbus_client: AkonadiDBus, dav_server: DAVServer
-) -> AsyncGenerator[DAVResource]:
+) -> Generator[DAVResource]:
     resource = DAVResource.create(akonadi_client, dbus_client)
-    await resource.configure(
+    resource.configure(
         dav_server.base_url, username=dav_server.username, password=dav_server.password
     )
     resource.synchronize()
@@ -236,7 +236,7 @@ async def groupware_resource(
 
     yield resource
 
-    await resource.remove()
+    resource.remove()
 
 
 @pytest.fixture(autouse=True)
