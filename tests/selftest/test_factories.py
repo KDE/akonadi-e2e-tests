@@ -56,16 +56,19 @@ def test_imap_factory_sub_folder(imap_resource: ImapResource, imap_client: BaseM
 
 
 def test_imap_resource_factory(imap_resource: ImapResource, imap_client: BaseMailBox):  # noqa: ARG001
+    imap_resource.set_online(False)
+
     AkonadiFolderFactory.create(name="Test", nb_items=5)
     AkonadiEmailFactory.create_batch(10, folder="INBOX")
 
-    imap_resource.wait_resource_is_idle()
     assert len(imap_resource.list_collections()) == 3  # INBOX, Test and IMAP Account
     assert len(imap_resource.list_items("INBOX")) == 10
     assert len(imap_resource.list_items("Test")) == 5
 
 
 def test_imap_resource_factory_sub_folder(imap_resource: ImapResource, imap_client: BaseMailBox):  # noqa: ARG001
+    imap_resource.set_online(False)
+
     parent = AkonadiFolderFactory.create(name="Parent", nb_items=3)
     child1 = AkonadiFolderFactory.create(name="Child1", parent=parent, nb_items=4)
     child2 = AkonadiFolderFactory.create(name="Child2", parent=parent, nb_items=5)
@@ -74,8 +77,6 @@ def test_imap_resource_factory_sub_folder(imap_resource: ImapResource, imap_clie
 
     assert parent.parent is None
     assert child1.parent.name == child2.parent.name == parent.name
-
-    imap_resource.wait_resource_is_idle()
 
     collection_parent = parent.get_collection()
     collection_child1 = child1.get_collection()
@@ -102,8 +103,9 @@ def test_dav_factory(groupware_resource: DAVResource, dav_principal: Principal):
 
 
 def test_dav_resource_factory(groupware_resource: DAVResource, dav_principal: Principal):  # noqa: ARG001
+    groupware_resource.set_online(False)
+
     AkonadiEventFactory.create_batch(10, calendar="Default Calendar")
-    groupware_resource.wait_resource_is_idle()
     assert (
         len(groupware_resource.list_collections()) == 2
     )  # Default Calendar and resource collection
