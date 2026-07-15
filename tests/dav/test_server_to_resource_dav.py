@@ -265,11 +265,6 @@ def test_offline_remove_items(dav_principal: Principal, groupware_resource: DAVR
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? The partial sync does not seem to replicate the new item in the akonadi server\n"
-    "Issue: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
-    strict=True,
-)
 def test_partial_sync_on_item_add(dav_principal: Principal, groupware_resource: DAVResource):
     """
     Adding an item to a collection on the server, after requesting a partial sync, the added item is replicated in the
@@ -370,11 +365,6 @@ def test_offline_rename_collection_server_side(
     assert_all_collections_are_equals(dav_resource=groupware_resource, dav_principal=dav_principal)
 
 
-@pytest.mark.xfail(
-    reason="The partial sync does not seem to replicate the delete item in the akonadi server "
-    "Issue: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
-    strict=True,
-)
 def test_partial_sync_on_item_deleted(
     dav_principal: Principal, groupware_resource: DAVResource
 ) -> None:

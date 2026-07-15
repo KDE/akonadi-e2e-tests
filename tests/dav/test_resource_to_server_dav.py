@@ -432,10 +432,6 @@ def test_akonadi_change_item_contents(
     )
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug ? The content is not changed in the akonadi server after partial sync: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
-    strict=True,
-)
 @pytest.mark.parametrize("field, new_value, use_dtend", changed_field_data)
 def test_akonadi_partial_change_item_contents(
     dav_principal: Principal,
@@ -638,10 +634,6 @@ def test_akonadi_change_item_rrule(
     )
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug ? The content is not changed in the akonadi server after partial sync: https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/103",
-    strict=True,
-)
 @pytest.mark.parametrize("existing_rrule, base_rrule, new_rrule", rrules, ids=ids)
 def test_akonadi_partial_change_item_rrule(
     dav_principal: Principal,
