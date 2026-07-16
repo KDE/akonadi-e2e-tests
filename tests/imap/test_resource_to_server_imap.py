@@ -9,6 +9,7 @@ from logging import getLogger
 
 import pytest
 from AkonadiCore import Akonadi  # type: ignore
+from faker import Faker
 from imap_tools import BaseMailBox
 
 from src.akonadi.client import AkonadiClient
@@ -101,7 +102,7 @@ def test_rename_collection(
     initial_collections = imap_resource.list_collections()
     initial_items = imap_resource.list_items(folder.name)
 
-    old_name, new_name = folder.name, fake.word()
+    old_name, new_name = folder.name, fake.word() + fake.word()
     assert old_name in [c.name() for c in initial_collections]
     assert new_name not in [c.name() for c in initial_collections]
 
@@ -298,8 +299,10 @@ def test_move_message_on_resource_is_synced(
     """
     Moving an item from one collection to another in the akonadi server, the change is replayed on the server
     """
+    fake = Faker()
+
     folder1 = ImapFolderFactory.create()
-    folder2 = ImapFolderFactory.create()
+    folder2 = ImapFolderFactory.create(name=fake.word() + fake.word())
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder1.name, imap_resource, imap_client)
     assert_collection_equal_mailbox(folder2.name, imap_resource, imap_client)
