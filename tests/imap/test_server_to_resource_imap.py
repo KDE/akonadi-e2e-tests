@@ -392,13 +392,14 @@ def test_offline_change_email_flags_on_server_is_synced(
     assert_all_collections_are_equals(imap_client, imap_resource)
 
 
+@pytest.mark.parametrize("init_items_count", [1, fake.random_int(min=2, max=8)])
 def test_offline_removed_message_server_side(
-    imap_resource: ImapResource, imap_client: BaseMailBox
+    imap_resource: ImapResource, imap_client: BaseMailBox, init_items_count: int
 ) -> None:
     """
     Removing a message on the server while offline, the message is removed in the resource when online
     """
-    folder = ImapFolderFactory.create()
+    folder = ImapFolderFactory.create(nb_items=init_items_count)
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
