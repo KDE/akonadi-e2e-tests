@@ -232,10 +232,6 @@ def test_akonadi_conflict_rename_collection(
     assert_all_collections_are_equals(imap_client, imap_resource)
 
 
-@pytest.mark.xfail(
-    reason="see `test_akonadi_behavior.py::test_delete_collection_with_one_item_should_delete_item",
-    strict=True,
-)
 def test_add_item_in_akonadi_on_collection_removed_on_server(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
@@ -302,10 +298,6 @@ def test_remove_item_in_akonadi_on_collection_removed_on_server(
         akonadi_client.item_by_id(pre_delete_items_on_resource[0].id())
 
 
-@pytest.mark.xfail(
-    reason="see `test_akonadi_behavior.py::test_delete_collection_with_one_item_should_delete_item",
-    strict=True,
-)
 def test_update_item_in_akonadi_on_collection_removed_on_server(
     imap_resource: ImapResource,
     imap_client: BaseMailBox,
