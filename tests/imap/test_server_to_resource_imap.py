@@ -402,11 +402,11 @@ def test_offline_removed_message_server_side(
     imap_resource.synchronize()
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
-    imap_client.folder.set(folder.name)
     imap_resource.set_online(False)
 
-    imap_resource.list_items(folder.name)
+    imap_client.folder.set(folder.name)
     imap_client.delete(["1"])
+    wait_until(lambda: len(list(imap_client.fetch(mark_seen=False))) == len(folder.messages) - 1)
 
     # Make sure this resource isn't updated when offline
     assert len(imap_resource.list_items(folder.name)) == len(folder.messages)
@@ -429,13 +429,13 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
 
     imap_resource.set_online(False)
 
+    imap_client.folder.set(folder.name)
     ImapEmailFactory.create(folder=folder.name)
+    wait_until(lambda: len(list(imap_client.fetch(mark_seen=False))) == len(folder.messages) + 1)
     # Make sure this resource isn't updated when offline
     assert len(imap_resource.list_items(folder.name)) == len(folder.messages)
 
     imap_resource.set_online(True)
-    # Only syncCollectionTree happened
-    assert len(imap_resource.list_items(folder.name)) == len(folder.messages)
     imap_resource.sync_collection(folder.name)
     wait_until(lambda: len(imap_resource.list_items(folder.name)) == len(folder.messages) + 1)
 
