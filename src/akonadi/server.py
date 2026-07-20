@@ -59,7 +59,7 @@ class AkonadiServer:
 
     def akonadiconsole_command(self) -> str:
         """Get the command to launch akonadiconsole for debugging purposes."""
-        return f"XDG_CONFIG_HOME={self._env.xdg_config_home} XDG_DATA_HOME={self._env.xdg_data_home} XDG_CACHE_HOME={self._env.xdg_cache_home} HOME={self._env.home_dir} AKONADI_INSTANCE={self._env.instance_id} akonadiconsole"
+        return f"XDG_CONFIG_HOME={self._env.xdg_config_home} XDG_DATA_HOME={self._env.xdg_data_home} XDG_CACHE_HOME={self._env.xdg_cache_home} XDG_STATE_HOME={self._env.xdg_state_home} HOME={self._env.home_dir} AKONADI_INSTANCE={self._env.instance_id} akonadiconsole"
 
     def _prepare_environment(self) -> None:
         """Prepare the environment for the Akonadi server."""

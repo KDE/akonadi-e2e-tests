@@ -37,6 +37,10 @@ class AkonadiEnv:
         return self._root_path / "tmp"
 
     @property
+    def xdg_state_home(self) -> Path:
+        return self._root_path / "state"
+
+    @property
     def xdg_data_home(self) -> Path:
         return self._root_path / "data"
 
@@ -64,6 +68,7 @@ class AkonadiEnv:
         env["XDG_CONFIG_HOME"] = str(self.xdg_config_home)
         env["XDG_CACHE_HOME"] = str(self.xdg_cache_home)
         env["XDG_DATA_HOME"] = str(self.xdg_data_home)
+        env["XDG_STATE_HOME"] = str(self.xdg_state_home)
         env["AKONADI_INSTANCE"] = self._instance_id
         env["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
         env["LC_ALL"] = "C.UTF-8"
