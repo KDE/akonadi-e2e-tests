@@ -52,6 +52,15 @@ nextcloud_image:
   variables:
     IMAGE_NAME: nextcloud
 
+nextcloud-push-notifications_image:
+  extends: .docker_build
+  stage: build
+  rules:
+    - changes:
+      - docker/nextcloud/*
+  variables:
+    IMAGE_NAME: nextcloud-push-notifications
+
 radicale_image:
   extends: .docker_build
   stage: build

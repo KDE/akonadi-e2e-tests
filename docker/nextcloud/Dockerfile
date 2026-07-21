@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-FROM php:8.2-apache
+FROM php:8.2-apache AS base_nextcloud
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -145,7 +145,7 @@ RUN php occ app:disable password_policy
 
 RUN php occ app:install calendar \
     && php occ app:install contacts \
-    && php occ app:install tasks
+    && php occ app:install tasks;
 
 # Setup users for testing
 RUN OC_PASS=testtest php occ user:add --password-from-env --display-name="Test User" test \
@@ -172,3 +172,7 @@ RUN { \
 EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
+
+FROM base_nextcloud AS nextcloud_push
+
+RUN php occ app:enable dav_push;
