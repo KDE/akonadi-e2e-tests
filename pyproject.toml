@@ -12,7 +12,7 @@ requires-python = ">=3.13"
 # >are< the main usage of this package, we list them here.
 dependencies = [
     "requests>=2.34.1",
-    "caldav>=3.1.0",
+    "caldav==3.1.0",
     "camel-converter>=5.1.0",
     "factory-boy>=3.3.3",
     "imap-tools>=1.14.0",
@@ -26,6 +26,7 @@ dependencies = [
     "sdbus>=0.14.2",
     "testcontainers>=4.15.0",
     "xdg-base-dirs>=6.0.2",
+    "python-ntfy>=0.11.2",
 ]
 
 [tool.pytest.ini_options]

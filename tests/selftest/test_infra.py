@@ -14,6 +14,7 @@ from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.server import AkonadiServer
 from src.imap.imap_server import ImapServer
+from src.ntfy.ntfy_server import NtfyServer
 
 log = getLogger(__name__)
 
@@ -119,3 +120,14 @@ def test_capabilities(imap_resource: ImapResource) -> None:
             ]
         )
         assert "LITERAL-" in capabilities or "LITERAL+" in capabilities
+
+
+def test_ntfy_server(ntfy_server: NtfyServer):
+    """
+    Publishes and reads a new message on the default test topic
+    """
+    ntfy_server.send_message("test message")
+
+    messages = ntfy_server.get_messages()
+    assert len(messages) == 1
+    assert messages[0]["message"] == "test message"

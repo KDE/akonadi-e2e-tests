@@ -33,6 +33,7 @@ from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
 from src.imap.mailbox_with_original_payload import MailBoxUnencryptedWithOriginalPayload
+from src.ntfy.ntfy_server import NtfyServer
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -125,7 +126,10 @@ def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
 
 
 @pytest.fixture(scope="module", params=list(DAVPushNotificationServerType))
-def dav_push_notifications_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
+def dav_push_notifications_server_session(
+    request: pytest.FixtureRequest,
+    ntfy_server: NtfyServer,  # noqa: ARG001
+) -> Generator[DAVServer]:
     server_type = request.param
     server: DAVServer
     match server_type:
@@ -161,6 +165,15 @@ def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
     server.stop()
 
 
+@pytest.fixture(scope="session")
+def ntfy_server_session() -> Generator[NtfyServer]:
+    server: NtfyServer = NtfyServer()
+    server.start()
+
+    yield server
+    server.stop()
+
+
 @pytest.fixture
 def imap_server(imap_server_session: ImapServer) -> Generator[ImapServer]:
     yield imap_server_session
@@ -180,6 +193,12 @@ def dav_push_notifications_server(
 ) -> Generator[DAVServer]:
     yield dav_push_notifications_server_session
     dav_push_notifications_server_session.cleanup_test_environment()
+
+
+@pytest.fixture(scope="session")
+def ntfy_server(ntfy_server_session: NtfyServer) -> Generator[NtfyServer]:
+    ntfy_server_session.setup_test()
+    yield ntfy_server_session
 
 
 @pytest.fixture()
