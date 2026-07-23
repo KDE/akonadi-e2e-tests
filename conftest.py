@@ -23,7 +23,8 @@ from src.akonadi.env import AkonadiEnv
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.itip_handler import ITIPHandler
 from src.akonadi.server import AkonadiServer
-from src.dav.dav_server import DAVServer, DAVServerType
+from src.dav.dav_server import DAVPushNotificationServerType, DAVServer, DAVServerType
+from src.dav.nextcloud_push_notifications_server import NextCloudPushNotificationsServer
 from src.dav.nextcloud_server import NextCloudServer
 from src.dav.radicale_server import RadicaleServer
 from src.factories.email_factory import set_clients as set_email_clients
@@ -123,6 +124,21 @@ def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
     server.stop()
 
 
+@pytest.fixture(scope="module", params=list(DAVPushNotificationServerType))
+def dav_push_notifications_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
+    server_type = request.param
+    server: DAVServer
+    match server_type:
+        case DAVPushNotificationServerType.NEXTCLOUD:
+            server = NextCloudPushNotificationsServer()
+        case _:
+            pytest.fail(f"Unknown DAV push notifications server type: {server_type}")
+
+    server.start()
+    yield server
+    server.stop()
+
+
 @pytest.fixture(scope="module", params=list(ImapServerType))
 def server_type(request):
     return request.param
@@ -156,6 +172,14 @@ def imap_server(imap_server_session: ImapServer) -> Generator[ImapServer]:
 def dav_server(dav_server_session: DAVServer) -> Generator[DAVServer]:
     yield dav_server_session
     dav_server_session.cleanup_test_environment()
+
+
+@pytest.fixture
+def dav_push_notifications_server(
+    dav_push_notifications_server_session: DAVServer,
+) -> Generator[DAVServer]:
+    yield dav_push_notifications_server_session
+    dav_push_notifications_server_session.cleanup_test_environment()
 
 
 @pytest.fixture()
@@ -218,6 +242,30 @@ def dav_principal(dav_client: DAVClient | None) -> Generator[Principal | None]:
 
 
 @pytest.fixture()
+def dav_push_notifications_client(
+    dav_push_notifications_server: DAVServer,
+) -> Generator[DAVClient | None]:
+    client = get_davclient(
+        url=dav_push_notifications_server.base_url,
+        username=dav_push_notifications_server.username,
+        password=dav_push_notifications_server.password,
+    )
+    yield client
+    client.close()  # type: ignore[union-attr]
+
+
+@pytest.fixture()
+def dav_push_notifications_principal(
+    dav_push_notifications_client: DAVClient | None,
+) -> Generator[Principal | None]:
+    if dav_push_notifications_client is None:
+        yield None
+    else:
+        principal = dav_push_notifications_client.get_principal()
+        yield principal
+
+
+@pytest.fixture()
 def itip_handler() -> Generator[ITIPHandler]:
     handler = ITIPHandler()
     yield handler
@@ -230,6 +278,26 @@ def groupware_resource(
     resource = DAVResource.create(akonadi_client, dbus_client)
     resource.configure(
         dav_server.base_url, username=dav_server.username, password=dav_server.password
+    )
+    resource.synchronize()
+    resource.wait_resource_is_idle()
+
+    yield resource
+
+    resource.remove()
+
+
+@pytest.fixture()
+def groupware_push_notifications_resource(
+    akonadi_client: AkonadiClient,
+    dbus_client: AkonadiDBus,
+    dav_push_notifications_server: DAVServer,
+) -> Generator[DAVResource]:
+    resource = DAVResource.create(akonadi_client, dbus_client)
+    resource.configure(
+        dav_push_notifications_server.base_url,
+        username=dav_push_notifications_server.username,
+        password=dav_push_notifications_server.password,
     )
     resource.synchronize()
     resource.wait_resource_is_idle()
@@ -257,10 +325,14 @@ def load_imap_factory(request):
 def load_dav_factory(request):
     if "groupware_resource" in request.fixturenames:
         groupware_resource = request.getfixturevalue("groupware_resource")
+    elif "groupware_push_notifications_resource" in request.fixturenames:
+        groupware_resource = request.getfixturevalue("groupware_push_notifications_resource")
     else:
         groupware_resource = None
     if "dav_principal" in request.fixturenames:
         dav_principal = request.getfixturevalue("dav_principal")
+    elif "dav_push_notifications_principal" in request.fixturenames:
+        dav_principal = request.getfixturevalue("dav_push_notifications_principal")
     else:
         dav_principal = None
     if groupware_resource and dav_principal:

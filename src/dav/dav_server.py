@@ -24,6 +24,10 @@ class DAVServerType(Enum):
     RADICALE = "radicale"
 
 
+class DAVPushNotificationServerType(Enum):
+    NEXTCLOUD = "nextcloud-push-notifications"
+
+
 class DAVServer(abc.ABC):
     DOCKER_IMAGE: ClassVar[str]
     USERNAME: ClassVar[str]

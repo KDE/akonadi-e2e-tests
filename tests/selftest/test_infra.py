@@ -85,6 +85,20 @@ def test_akonadi_client_list_agents_dav(
     assert agents[0].type().identifier() == "akonadi_davgroupware_resource"
 
 
+def test_akonadi_client_list_agents_dav_push_notifications(
+    akonadi_client: AkonadiClient, groupware_push_notifications_resource: DAVResource
+) -> None:
+    assert groupware_push_notifications_resource.identifier.startswith(
+        "akonadi_davgroupware_resource_"
+    )
+    agents = akonadi_client.list_agents()
+    assert len(agents) == 1
+    assert agents[0].identifier().startswith("akonadi_davgroupware_resource_")
+    assert agents[0].name().startswith(f"akonadi-e2e-test - {akonadi_client.akonadi_instance_name}")
+    assert agents[0].status() == Akonadi.AgentInstance.Idle
+    assert agents[0].type().identifier() == "akonadi_davgroupware_resource"
+
+
 def test_capabilities(imap_resource: ImapResource) -> None:
     capabilities = set(imap_resource.call_capabilities())
     if "IMAP4REV2" in capabilities:
