@@ -33,6 +33,7 @@ from src.imap.cyrus_server import CyrusServer
 from src.imap.dovecot_server import DovecotServer
 from src.imap.imap_server import ImapServer, ImapServerType
 from src.imap.mailbox_with_original_payload import MailBoxUnencryptedWithOriginalPayload
+from src.kunifiedpush.kunifiedpush_service import KunifiedPushService
 from src.ntfy.ntfy_server import NtfyServer
 
 
@@ -106,6 +107,14 @@ def qcore_app(_akonadi_env: AkonadiEnv):
     if app is None:
         app = QCoreApplication([])
     yield app
+
+
+@pytest.fixture(scope="session", autouse=True)
+def kunifiedpush_service(_akonadi_env: AkonadiEnv) -> Generator[KunifiedPushService]:
+    service = KunifiedPushService(_akonadi_env)
+    service.start()
+    yield service
+    service.stop()
 
 
 @pytest.fixture(scope="module", params=list(DAVServerType))

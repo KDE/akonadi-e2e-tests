@@ -14,6 +14,7 @@ from src.akonadi.dbus.client import AkonadiDBus
 from src.akonadi.imap_resource import ImapResource
 from src.akonadi.server import AkonadiServer
 from src.imap.imap_server import ImapServer
+from src.kunifiedpush.kunifiedpush_service import KunifiedPushService
 from src.ntfy.ntfy_server import NtfyServer
 
 log = getLogger(__name__)
@@ -131,3 +132,24 @@ def test_ntfy_server(ntfy_server: NtfyServer):
     messages = ntfy_server.get_messages()
     assert len(messages) == 1
     assert messages[0]["message"] == "test message"
+
+
+def test_kunifiedpush_healthy(kunifiedpush_service: KunifiedPushService):
+    """
+    Check that kunifiedpush is ready and healthy, by registering and unregistering to a test topic
+    """
+    token = "health_check_topic"
+
+    previous_registers = kunifiedpush_service.registered_clients()
+
+    result_register = kunifiedpush_service.register(token)
+    assert result_register["success"] == ("s", "REGISTRATION_SUCCEEDED")
+
+    current_registers = kunifiedpush_service.registered_clients()
+    assert len(current_registers) == len(previous_registers) + 1
+
+    result_unregister = kunifiedpush_service.unregister(token)
+    assert len(result_unregister) == 0
+
+    current_registers = kunifiedpush_service.registered_clients()
+    assert len(current_registers) == len(previous_registers)

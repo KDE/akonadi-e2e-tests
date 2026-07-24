@@ -73,6 +73,7 @@ class AkonadiEnv:
         env["AKONADI_DISABLE_AGENT_AUTOSTART"] = "true"
         env["LC_ALL"] = "C.UTF-8"
         env["QTKEYCHAIN_BACKEND"] = "kwallet6"  # not all DEs will use kwallet by default
+        env["KDE_DISTRIBUTOR_SERVICE_NAME"] = self.instance_id
         env["QT_LOGGING_RULES"] = ";".join(
             [
                 "kf.dav=true",
