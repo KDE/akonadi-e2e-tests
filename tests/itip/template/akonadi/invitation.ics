@@ -87,7 +87,7 @@ RRULE:FREQ={{ iTIP.rrule }}{{ rrule_until }};BYMONTHDAY={{ iTIP.dtstart.day }}
 RRULE:FREQ={{ iTIP.rrule }}{{ rrule_until }};INTERVAL=1;BYMONTHDAY={{ iTIP.dtstart.day }};BYMONTH={{ iTIP.dtstart.month }}
 {% endif %}
 {% for exdate in iTIP.exdate %}
-EXDATE:{{ exdate.strftime("%Y%m%dT%H%M%S") }}
+EXDATE:{{ exdate.strftime("%Y%m%dT%H%M%SZ") }}
 {% endfor %}
 DTSTART:{{ iTIP.dtstart.strftime("%Y%m%dT%H%M%SZ") }}
 DTEND:{{ iTIP.dtend.strftime("%Y%m%dT%H%M%SZ") }}
