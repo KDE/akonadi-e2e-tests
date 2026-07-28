@@ -13,6 +13,7 @@ SPDX-License-Identifier = "CC0-1.0"
 path = [
     "ci/kdewallet.kwl",
     "ci/kdewallet.salt",
+    "ci/kunifiedpush-distributor.conf"
 ]
 SPDX-FileCopyrightText = "none"
 SPDX-License-Identifier = "CC0-1.0"

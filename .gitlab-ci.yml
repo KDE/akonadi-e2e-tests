@@ -119,9 +119,11 @@ e2e_tests:
     - export DISPLAY=:90
     # The path to the binaries in the .service files are wrong because of a relocation issue during run-ci.py
     # So we have to replace it with the right path for services to start properly.
-    - sed -i -e 's|/builds/[^ ]*/_install|$CI_PROJECT_DIR/_install|g' $CI_PROJECT_DIR/_install/share/dbus-1/services/*.service
+    - sed -i -e 's|/builds/[^ ]*/_install|$CI_PROJECT_DIR/_install|g' $CI_PROJECT_DIR/_install/share/dbus-1/services/*.service $CI_PROJECT_DIR/_install/lib/systemd/user/*.service
     - mkdir $XDG_DATA_HOME/kwalletd
     - cp ci/kdewallet.{kwl,salt} "$XDG_DATA_HOME/kwalletd/"
+    - mkdir ~/.config/KDE
+    - cp ci/kunifiedpush-distributor.conf ~/.config/KDE/kunifiedpush-distributor.conf
     - Xvfb -ac :90 >/tmp/xvfb.log 2>&1 &
     - eval "$(dbus-launch --sh-syntax)"
     # We have to launch the kwallet daemon manually, otherwise it won't register the wallet we injected in time for the tests

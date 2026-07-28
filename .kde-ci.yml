@@ -34,3 +34,4 @@ Dependencies:
     'libraries/ktextaddons': '@latest-kf6'
     'frameworks/kwallet': '@latest-kf6'
     'network/kio-extras': '@latest-kf6'
+    'libraries/kunifiedpush': '@latest-kf6'
