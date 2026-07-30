@@ -90,7 +90,7 @@ def akonadi_server(_akonadi_env: AkonadiEnv) -> Generator[AkonadiServer]:
     server = AkonadiServer(_akonadi_env)
     server.start()
     root = Path(__file__).resolve().parent
-    output_file = root / "akonadiconsole.sh"
+    output_file = root / f"akonadiconsole-{server.env.instance_id}.sh"
     output_file.write_text("#!/bin/sh\n" + server.akonadiconsole_command() + "\n")
     output_file.chmod(0o755)
     yield server
