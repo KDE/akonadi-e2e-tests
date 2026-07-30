@@ -28,6 +28,8 @@ lint:
     - .suse_tumbleweed_qt6stable
   stage: validate
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
     - when: always
   variables:
     PYTHONPATH: /builds/pim/akonadi-e2e-tests/_install/lib64/python3.13/site-packages
@@ -43,6 +45,8 @@ nextcloud_image:
   extends: .docker_build
   stage: build
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
     - changes:
       - docker/nextcloud/*
   variables:
@@ -52,6 +56,8 @@ radicale_image:
   extends: .docker_build
   stage: build
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
     - changes:
       - docker/radicale/*
   variables:
@@ -61,6 +67,8 @@ cyrus_image:
   extends: .docker_build
   stage: build
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
     - changes:
       - docker/cyrus/*
   variables:
@@ -70,6 +78,8 @@ dovecot_image:
   extends: .docker_build
   stage: build
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
     - changes:
       - docker/dovecot/*
   variables:
@@ -80,6 +90,8 @@ e2e_tests:
     - .ci_linux_base
     - .suse_tumbleweed_qt6stable
   stage: test
+  rules:
+    - when: always
   variables:
     PYTHONPATH: /builds/pim/akonadi-e2e-tests/_install/lib64/python3.13/site-packages
     LD_LIBRARY_PATH: /builds/pim/akonadi-e2e-tests/_install/lib64
