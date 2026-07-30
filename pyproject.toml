@@ -29,7 +29,7 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]
-addopts = "-v"
+addopts = "--dist loadscope"
 
 [tool.mypy]
 explicit_package_bases = true
