@@ -10,7 +10,7 @@ init:
 	uv sync
 
 test:
-	uv run pytest -n 4 tests/
+	./run-tests.sh
 
 docker:
 	make -C docker
