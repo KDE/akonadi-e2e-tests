@@ -106,7 +106,7 @@ def qcore_app(_akonadi_env: AkonadiEnv):
     yield app
 
 
-@pytest.fixture(scope="session", params=list(DAVServerType))
+@pytest.fixture(scope="module", params=list(DAVServerType))
 def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
     server_type = request.param
     server: DAVServer
@@ -123,12 +123,12 @@ def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
     server.stop()
 
 
-@pytest.fixture(scope="session", params=list(ImapServerType))
+@pytest.fixture(scope="module", params=list(ImapServerType))
 def server_type(request):
     return request.param
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
     server: ImapServer
     match server_type:
