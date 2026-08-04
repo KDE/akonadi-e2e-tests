@@ -109,9 +109,11 @@ def qcore_app(_akonadi_env: AkonadiEnv):
     yield app
 
 
-@pytest.fixture(scope="session", autouse=True)
-def kunifiedpush_service(_akonadi_env: AkonadiEnv) -> Generator[KunifiedPushService]:
-    service = KunifiedPushService(_akonadi_env)
+@pytest.fixture(scope="session")
+def kunifiedpush_service(
+    _akonadi_env: AkonadiEnv, ntfy_server_session: NtfyServer
+) -> Generator[KunifiedPushService]:
+    service = KunifiedPushService(_akonadi_env, ntfy_server_session)
     service.start()
     yield service
     service.stop()
