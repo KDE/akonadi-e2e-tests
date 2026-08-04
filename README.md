@@ -154,7 +154,7 @@ Here are some rules and tips if you want to write some new tests :
 To help debug failures, you can add your own qt logging rules and message patterns by adding the following lines in the `environ` method in the `src/akonadi/env.py` file :
 
 ```python
-env["QT_LOGGING_RULES"] = ("{your logging rules}")
+env["QT_LOGGING_RULES"] = "{your logging rules}"
 env["QT_MESSAGE_PATTERN"] = "{message pattern}"
 ```
 

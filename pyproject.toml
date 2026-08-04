@@ -35,6 +35,20 @@ addopts = "--dist loadscope"
 [tool.mypy]
 explicit_package_bases = true
 
+[[tool.mypy.overrides]]
+module = [
+    "tests.dav.*",
+    "tests.itip.*",
+    "tests.selftest.*",
+    "src.dav.test_utils",
+]
+disable_error_code = [
+    "union-attr",
+    "arg-type",
+    "assignment",
+    "index"
+]
+
 [tool.pylint.messages_control]
 disable = [
     "missing-docstring",
