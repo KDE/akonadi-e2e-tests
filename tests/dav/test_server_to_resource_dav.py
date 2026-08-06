@@ -500,6 +500,9 @@ def test_akonadi_partial_offline_change_item_contents(
     updated_calendar = Calendar.from_ical(updated_payload)
     [updated_event] = updated_calendar.walk("VEVENT")
 
+    assert updated_item.revision() > item.revision()
+    assert updated_item.modificationTime() > item.modificationTime()
+
     assert field_is_equal(
         field, new_value, dav_principal.calendar(calendar.name).event_by_url(item.remoteId())
     )
