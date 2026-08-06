@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import itertools
 from datetime import timedelta
-from operator import eq, ge
+from operator import eq
 
 import pytest
 from caldav.collection import Principal
@@ -67,10 +67,6 @@ def test_accept_invitation_is_sync(
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? The SEQUENCE is incremented after processing the update. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/119",
-    strict=True,
-)
 @pytest.mark.parametrize("factory", default_factories)
 def test_update_invitation_is_sync(
     factory: ITIPEventFactory,
@@ -145,7 +141,7 @@ def test_update_invitation_to_recurring_is_sync(
     [new_item] = groupware_resource.list_items(collection.id())
     assert_akonadi_item_equals_itip_event(new_item, new_itip)
 
-    wait_until(lambda: event_sequence_op(ge, dav_calendar, itip.uid, new_itip.sequence))
+    wait_until(lambda: event_sequence_op(eq, dav_calendar, itip.uid, new_itip.sequence))
     assert_all_collections_are_equals(dav_principal, groupware_resource)
 
 
@@ -278,7 +274,7 @@ def test_delete_recurring_occurrence_is_sync(
         update_item = groupware_resource.akonadi_client.item_by_id(item.id())
         attendee.partstat = PARTSTAT.ACCEPTED
         assert_akonadi_item_equals_itip_event(update_item, itip)
-        wait_until(lambda: event_sequence_op(ge, dav_calendar, itip.uid, itip.sequence))
+        wait_until(lambda: event_sequence_op(eq, dav_calendar, itip.uid, itip.sequence))
     if new_ical:
         [new_item] = [
             i for i in groupware_resource.list_items(collection.id()) if i.id() != item.id()
@@ -338,6 +334,6 @@ def test_update_recurring_end_is_sync(
     groupware_resource.synchronize()
     [item] = groupware_resource.list_items(collection.id())
     assert_akonadi_item_equals_itip_event(item, new_itip)
-    wait_until(lambda: event_sequence_op(ge, dav_calendar, itip.uid, new_itip.sequence))
+    wait_until(lambda: event_sequence_op(eq, dav_calendar, itip.uid, new_itip.sequence))
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
