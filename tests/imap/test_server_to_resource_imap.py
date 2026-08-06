@@ -180,10 +180,6 @@ def test_mailbox_renamed_on_server_is_synced(
     assert_collection_equal_mailbox(collection_new_name, imap_resource, imap_client)
 
 
-@pytest.mark.xfail(
-    reason="IMAP/Akonadi bug? The old and new items get merged based on RID despite the UIDVALIDITY change. https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/121",
-    strict=True,
-)
 def test_uidvalidity_change_detected(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Recreating a mailbox on the server, the change is replayed on the resource
