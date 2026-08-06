@@ -443,10 +443,6 @@ def test_offline_append_message(imap_resource: ImapResource, imap_client: BaseMa
     assert_collection_equal_mailbox(folder.name, imap_resource, imap_client)
 
 
-@pytest.mark.xfail(
-    reason="Akonadi bug? ModificationTime is not updated, https://invent.kde.org/pim/pim-technical-roadmap/-/work_items/120",
-    strict=True,
-)
 def test_partial_sync_on_flag_change(imap_resource: ImapResource, imap_client: BaseMailBox) -> None:
     """
     Changing flags of an item on the server implicitly triggers a partial sync
