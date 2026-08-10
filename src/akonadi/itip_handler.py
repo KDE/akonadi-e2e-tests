@@ -5,6 +5,8 @@
 from logging import getLogger
 
 from AkonadiCalendar import Akonadi as AkonadiCal  # type: ignore
+from KCalendarCore import KCalendarCore  # type: ignore
+from PySide6.QtCore import QTimeZone  # type: ignore
 
 from src.itip.const import ITIPAction
 from src.itip.utils import ITIPUtils
@@ -20,4 +22,7 @@ class ITIPHandler:
         self.handler.setShowDialogsOnError(False)
 
     def process_message(self, receiver: str, ical: str, action: ITIPAction) -> None:
-        ITIPUtils.itip_process_message(self.handler, receiver, ical, action)
+        calendar = KCalendarCore.MemoryCalendar(QTimeZone.systemTimeZone())
+        format = KCalendarCore.ICalFormat()
+        message = format.parseScheduleMessage(KCalendarCore.CalendarPtr(calendar), ical)
+        ITIPUtils.itip_process_message(self.handler, receiver, message, action)
