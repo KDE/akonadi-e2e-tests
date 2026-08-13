@@ -149,6 +149,20 @@ class AkonadiClient:
 
         AkonadiUtils.wait_for_job(job)
 
+    def move_items(self, items_id: list[int], destination_id: int) -> None:
+        items = []
+        for item_id in items_id:
+            item = Akonadi.Item()
+            item.setId(item_id)
+            items.append(item)
+
+        destination = Akonadi.Collection()
+        destination.setId(destination_id)
+
+        job = Akonadi.ItemMoveJob(items, destination)
+
+        AkonadiUtils.wait_for_job(job)
+
     def copy_item(self, item_id: int, destination_id: int) -> None:
         item = Akonadi.Item()
         item.setId(item_id)

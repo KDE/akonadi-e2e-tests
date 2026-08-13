@@ -34,6 +34,7 @@ from src.factories.event_factory import (
     fake,
 )
 from src.test import wait_until
+from tests.dav.test_recurring_event_change import RecurringEventHelper
 
 
 def test_akonadi_sync_add_collection(
@@ -142,6 +143,72 @@ def test_akonadi_sync_remove_item(
     )
 
     assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_akonadi_sync_move_item(dav_principal: Principal, groupware_resource: DAVResource) -> None:
+    """
+    Moving an item from a collection in the akonadi server, the change is replayed on the server
+    """
+    calendar_src = AkonadiCalendarFactory.create()
+    calendar_dst = AkonadiCalendarFactory.create()
+    groupware_resource.synchronize()
+
+    def calendar_is_sync():
+        names = [c.get_display_name() for c in dav_principal.get_calendars()]
+        return calendar_src.name in names and calendar_dst.name in names
+
+    wait_until(lambda: calendar_is_sync())
+
+    collection_src = groupware_resource.collection_from_display_name(calendar_src.name)
+    collection_dst = groupware_resource.collection_from_display_name(calendar_dst.name)
+    item = groupware_resource.list_items(collection_src.id())[0]
+    groupware_resource.akonadi_client.move_item(item.id(), collection_dst.id())
+
+    assert len(groupware_resource.list_items(collection_src.id())) == len(calendar_src.events) - 1
+    assert len(groupware_resource.list_items(collection_dst.id())) == len(calendar_dst.events) + 1
+    assert (
+        groupware_resource.akonadi_client.item_by_id(item.id()).parentCollection().id()
+        == collection_dst.id()
+    )
+
+    groupware_resource.synchronize()
+
+    wait_until(
+        lambda: (
+            len(dav_principal.calendar(calendar_src.name).events()) == len(calendar_src.events) - 1
+            and len(dav_principal.calendar(calendar_dst.name).events())
+            == len(calendar_dst.events) + 1
+        )
+    )
+
+    assert_all_collections_are_equals(dav_principal, groupware_resource)
+
+
+def test_akonadi_sync_move_recurring_item(
+    dav_principal: Principal, groupware_resource: DAVResource
+) -> None:
+    """
+    Moving a recurring item with one occurrence from a collection in the akonadi server, the change is replayed on the server
+    """
+    calendar_src = DavCalendarFactory.create(nb_items=0)
+    calendar_dst = DavCalendarFactory.create(nb_items=0)
+    event_helper = RecurringEventHelper(calendar_src.name, dav_principal)
+    event_helper.add_exception(occurence_nth=1, delta_hours=1)
+    event_helper.save()
+
+    groupware_resource.synchronize()
+    collection_src = groupware_resource.collection_from_display_name(calendar_src.name)
+    collection_dst = groupware_resource.collection_from_display_name(calendar_dst.name)
+    items = groupware_resource.list_items(collection_src.id())
+    groupware_resource.akonadi_client.move_items([i.id() for i in items], collection_dst.id())
+
+    assert len(groupware_resource.list_items(collection_src.id())) == 0
+    assert len(groupware_resource.list_items(collection_dst.id())) == 2
+    for item in items:
+        assert (
+            groupware_resource.akonadi_client.item_by_id(item.id()).parentCollection().id()
+            == collection_dst.id()
+        )
 
 
 def test_offline_akonadi_remove_collection(

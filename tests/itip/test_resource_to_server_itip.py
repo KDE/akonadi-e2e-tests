@@ -297,7 +297,9 @@ def test_delete_recurring_occurrence_is_sync(
     )
 
 
-@pytest.mark.parametrize("factory,rrule_offset", itertools.product(default_factories, [2, -2]))
+@pytest.mark.parametrize(
+    "factory,rrule_offset", list(itertools.product(default_factories, [2, -2]))
+)
 def test_update_recurring_end_is_sync(
     factory: ITIPEventFactory,
     rrule_offset: int,
