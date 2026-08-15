@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 MAX_RERUN=5
-PYTEST_ARGS="-n 4 tests/"
+PYTEST_ARGS="--tb=short -n 2 tests/"
 
 uv run pytest $PYTEST_ARGS
 
