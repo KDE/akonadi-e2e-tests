@@ -108,13 +108,16 @@ e2e_tests:
     - export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
     - export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/run/user/$(id -u)/podman/podman.sock"
     - export PATH=/builds/pim/akonadi-e2e-tests/_install/bin:$PATH
+    - export LD_LIBRARY_PATH=/builds/pim/akonadi-e2e-tests/_install/lib64
     - export XDG_DATA_DIRS=/builds/pim/akonadi-e2e-tests/_install/share:$XDG_DATA_DIRS
     - export QT_PLUGIN_PATH=/builds/pim/akonadi-e2e-tests/_install/lib64/plugins:/builds/pim/akonadi-e2e-tests/_install/lib/plugins:$QT_PLUGIN_PATH
+    - export DISPLAY=:90
     # The path to the binaries in the .service files are wrong because of a relocation issue during run-ci.py
     # So we have to replace it with the right path for services to start properly.
     - sed -i -e 's|/builds/[^ ]*/_install|/builds/pim/akonadi-e2e-tests/_install|g' /builds/pim/akonadi-e2e-tests/_install/share/dbus-1/services/*.service
     - mkdir $XDG_DATA_HOME/kwalletd
     - cp ci/kdewallet.{kwl,salt} "$XDG_DATA_HOME/kwalletd/"
+    - Xvfb -ac :90 >/tmp/xvfb.log 2>&1 &
     - eval "$(dbus-launch --sh-syntax)"
     # We have to launch the kwallet daemon manually, otherwise it won't register the wallet we injected in time for the tests
     - kwalletd6 >/tmp/kwallet.log 2>&1 &
