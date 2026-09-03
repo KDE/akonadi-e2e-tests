@@ -98,6 +98,9 @@ e2e_tests:
   extends:
     - .ci_linux_base
     - .suse_tumbleweed_qt6stable
+  tags:
+    - LargeVM
+    - amd64
   stage: test
   rules:
     - when: always
