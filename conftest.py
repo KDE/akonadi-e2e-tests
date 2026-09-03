@@ -119,7 +119,7 @@ def kunifiedpush_service(
     service.stop()
 
 
-@pytest.fixture(scope="module", params=list(DAVServerType))
+@pytest.fixture(scope="session", params=list(DAVServerType))
 def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
     server_type = request.param
     server: DAVServer
@@ -136,7 +136,7 @@ def dav_server_session(request: pytest.FixtureRequest) -> Generator[DAVServer]:
     server.stop()
 
 
-@pytest.fixture(scope="module", params=list(DAVPushNotificationServerType))
+@pytest.fixture(scope="session", params=list(DAVPushNotificationServerType))
 def dav_push_notifications_server_session(
     request: pytest.FixtureRequest,
     ntfy_server: NtfyServer,  # noqa: ARG001
@@ -154,12 +154,12 @@ def dav_push_notifications_server_session(
     server.stop()
 
 
-@pytest.fixture(scope="module", params=list(ImapServerType))
+@pytest.fixture(scope="session", params=list(ImapServerType))
 def server_type(request):
     return request.param
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def imap_server_session(server_type: ImapServerType) -> Generator[ImapServer]:
     server: ImapServer
     match server_type:
