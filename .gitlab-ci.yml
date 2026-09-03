@@ -132,3 +132,5 @@ e2e_tests:
     # We have to launch the kwallet daemon manually, otherwise it won't register the wallet we injected in time for the tests
     - kwalletd6 >/tmp/kwallet.log 2>&1 &
     - make test
+  after_script:
+    - cat /tmp/kwallet.log
