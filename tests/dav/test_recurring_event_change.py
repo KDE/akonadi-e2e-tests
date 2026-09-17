@@ -4,6 +4,7 @@
 import copy
 from datetime import timedelta
 
+import pytest
 from caldav.collection import Principal
 from icalendar import Calendar, vDDDTypes
 
@@ -160,8 +161,12 @@ def test_deleting_exception_to_event_with_exception(
     assert_event_with_recurrence_exception_are_equal(event_helper.calendar, akonadi_items)
 
 
+@pytest.mark.parametrize("deleteMethod", ["mainOnly", "mainFirst", "mainLast", "batched"])
 def test_deleting_event_with_exception_resource_side(
-    dav_principal: Principal, groupware_resource: DAVResource, akonadi_client: AkonadiClient
+    dav_principal: Principal,
+    groupware_resource: DAVResource,
+    akonadi_client: AkonadiClient,
+    deleteMethod: str,
 ):
     """Test deletion of an event with an exception resource side. Expecting the exception to be deleted too."""
     calendar = DavCalendarFactory.create(nb_items=0)
@@ -170,24 +175,32 @@ def test_deleting_event_with_exception_resource_side(
 
     groupware_resource.synchronize()
     collection = groupware_resource.collection_from_display_name(calendar.name)
-    [item] = groupware_resource.list_items(collection.id())
 
     event_helper.add_exception(occurence_nth=1, delta_hours=1)
     event_helper.save()
     groupware_resource.synchronize()
 
     collection = groupware_resource.collection_from_display_name(calendar.name)
-    akonadi_client.delete_item(item.id())
-
+    items = groupware_resource.list_items(collection.id())
+    items.sort(key=lambda item: len(item.remoteId()))  # main event first
+    match deleteMethod:
+        case "mainOnly":
+            akonadi_client.delete_item(items[0].id())
+        case "mainFirst":
+            for item in items:
+                akonadi_client.delete_item(item.id())
+        case "mainLast":
+            for item in items[::-1]:
+                akonadi_client.delete_item(item.id())
+        case "batched":
+            akonadi_client.delete_items([i.id() for i in items])
+        case _:
+            pytest.fail("Invalid deleteMethod: " + deleteMethod)
     wait_until(lambda: len(groupware_resource.list_items(collection.id())) == 0)
 
-    akonadi_items = groupware_resource.list_items(collection.id())
-    assert len(akonadi_items) == 0
-
     groupware_resource.synchronize()
-    akonadi_items = groupware_resource.list_items(collection.id())
-    assert len(akonadi_items) == 0
-    assert len(dav_principal.calendar(calendar.name).get_events()) == 0
+    assert len(groupware_resource.list_items(collection.id())) == 0
+    wait_until(lambda: len(dav_principal.calendar(calendar.name).get_events()) == 0)
 
 
 def test_deleting_event_with_exception_server_side(
