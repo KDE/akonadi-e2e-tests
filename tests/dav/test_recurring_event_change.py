@@ -170,14 +170,16 @@ def test_deleting_event_with_exception_resource_side(
 
     groupware_resource.synchronize()
     collection = groupware_resource.collection_from_display_name(calendar.name)
-    [item] = groupware_resource.list_items(collection.id())
 
     event_helper.add_exception(occurence_nth=1, delta_hours=1)
     event_helper.save()
     groupware_resource.synchronize()
 
+    items = groupware_resource.list_items(collection.id())
+    items.sort(key=lambda item: len(item.remoteId()), reverse=True)
+
     collection = groupware_resource.collection_from_display_name(calendar.name)
-    akonadi_client.delete_item(item.id())
+    akonadi_client.delete_items([i.id() for i in items])
 
     wait_until(lambda: len(groupware_resource.list_items(collection.id())) == 0)
 

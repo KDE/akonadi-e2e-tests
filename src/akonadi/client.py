@@ -138,6 +138,15 @@ class AkonadiClient:
         job = Akonadi.ItemDeleteJob(item)
         AkonadiUtils.wait_for_job(job)
 
+    def delete_items(self, item_ids: list[int]) -> None:
+        items = []
+        for item_id in item_ids:
+            items.append(Akonadi.Item())
+            items[-1].setId(item_id)
+
+        job = Akonadi.ItemDeleteJob(items)
+        AkonadiUtils.wait_for_job(job)
+
     def move_item(self, item_id: int, destination_id: int) -> None:
         item = Akonadi.Item()
         item.setId(item_id)
