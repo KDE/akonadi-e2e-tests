@@ -9,9 +9,9 @@ from sdbus import (
 )
 
 
-class OrgKdeAkonadiImapResourceBaseInterface(
+class OrgKdeAkonadiImapResourceInterface(
     DbusInterfaceCommon,
-    interface_name="org.kde.Akonadi.ImapResourceBase",
+    interface_name="org.kde.Akonadi.Imap.Resource",
 ):
     @dbus_method(
         input_signature="x",
