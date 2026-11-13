@@ -9,7 +9,7 @@ include:
 
 .docker_build:
     needs: []
-    image: storage.kde.org/vm-images/image-builder
+    image: s3.kde.org/ci-vm-images/image-builder
     tags:
       - VM
       - amd64
