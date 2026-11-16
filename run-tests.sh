@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Kevin Ottens <kevin.ottens@enioka.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-MAX_RERUN=5
+MAX_RERUN=1
 PYTEST_ARGS="--tb=short tests/"
 
 uv run pytest $PYTEST_ARGS

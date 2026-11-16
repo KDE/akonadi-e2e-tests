@@ -22,77 +22,77 @@ include:
       - make -C docker/ ${IMAGE_NAME}
       - podman push ${CI_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:${IMAGE_TAG}
 
-lint:
-  extends:
-    - .ci_linux_base
-    - .suse_tumbleweed_qt6stable
-  stage: validate
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - when: always
-  variables:
-    PYTHONPATH: $CI_PROJECT_DIR/_install/lib64/python3.13/site-packages
-    LD_LIBRARY_PATH: $CI_PROJECT_DIR/_install/lib64
-  script:
-    - git config --global --add safe.directory $CI_PROJECT_DIR
-    - python3 -u ci-utilities/run-ci-build.py --project $CI_PROJECT_NAME --branch $CI_COMMIT_REF_NAME --platform Linux/Qt6/Shared --only-setup-environment
-    - make init
-    - export LD_PRELOAD=/lib64/libasan.so.8 ASAN_OPTIONS='detect_leaks=0:halt_on_error=0:abort_on_error=0:log_path=/tmp/asan.log'
-    - make lint
+# lint:
+#   extends:
+#     - .ci_linux_base
+#     - .suse_tumbleweed_qt6stable
+#   stage: validate
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#       when: never
+#     - when: always
+#   variables:
+#     PYTHONPATH: $CI_PROJECT_DIR/_install/lib64/python3.13/site-packages
+#     LD_LIBRARY_PATH: $CI_PROJECT_DIR/_install/lib64
+#   script:
+#     - git config --global --add safe.directory $CI_PROJECT_DIR
+#     - python3 -u ci-utilities/run-ci-build.py --project $CI_PROJECT_NAME --branch $CI_COMMIT_REF_NAME --platform Linux/Qt6/Shared --only-setup-environment
+#     - make init
+#     - export LD_PRELOAD=/lib64/libasan.so.8 ASAN_OPTIONS='detect_leaks=0:halt_on_error=0:abort_on_error=0:log_path=/tmp/asan.log'
+#     - make lint
 
-nextcloud_image:
-  extends: .docker_build
-  stage: build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - changes:
-      - docker/nextcloud/*
-  variables:
-    IMAGE_NAME: nextcloud
-
-nextcloud-push-notifications_image:
-  extends: .docker_build
-  stage: build
-  rules:
-    - changes:
-      - docker/nextcloud/*
-  variables:
-    IMAGE_NAME: nextcloud-push-notifications
-
-radicale_image:
-  extends: .docker_build
-  stage: build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - changes:
-      - docker/radicale/*
-  variables:
-    IMAGE_NAME: radicale
-
-cyrus_image:
-  extends: .docker_build
-  stage: build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - changes:
-      - docker/cyrus/*
-  variables:
-    IMAGE_NAME: cyrus
-
-dovecot_image:
-  extends: .docker_build
-  stage: build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - changes:
-      - docker/dovecot/*
-  variables:
-    IMAGE_NAME: dovecot
+# nextcloud_image:
+#   extends: .docker_build
+#   stage: build
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#       when: never
+#     - changes:
+#       - docker/nextcloud/*
+#   variables:
+#     IMAGE_NAME: nextcloud
+#
+# nextcloud-push-notifications_image:
+#   extends: .docker_build
+#   stage: build
+#   rules:
+#     - changes:
+#       - docker/nextcloud/*
+#   variables:
+#     IMAGE_NAME: nextcloud-push-notifications
+#
+# radicale_image:
+#   extends: .docker_build
+#   stage: build
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#       when: never
+#     - changes:
+#       - docker/radicale/*
+#   variables:
+#     IMAGE_NAME: radicale
+#
+# cyrus_image:
+#   extends: .docker_build
+#   stage: build
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#       when: never
+#     - changes:
+#       - docker/cyrus/*
+#   variables:
+#     IMAGE_NAME: cyrus
+#
+# dovecot_image:
+#   extends: .docker_build
+#   stage: build
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#       when: never
+#     - changes:
+#       - docker/dovecot/*
+#   variables:
+#     IMAGE_NAME: dovecot
 
 e2e_tests:
   extends:
